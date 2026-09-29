@@ -1,0 +1,520 @@
+/* Foundations da Base.
+   Identidade (cores da marca, fontes, radius) → brand.css.
+   Este arquivo NÃO deve ser editado por projeto. */
+@import './brand.css';
+
+:root {
+  /* ─── Font Sizes ───────────────────────────────────── */
+  --font-size-xs:          10px;
+  --font-size-sm:          12px;
+  --font-size-md:          14px;
+  --font-size-base:        16px;
+  --font-size-lg:          18px;
+  --font-size-xl:          20px;
+  --font-size-2xl:         24px;
+  --font-size-3xl:         30px;
+  --font-size-4xl:         36px;
+  --font-size-5xl:         48px;
+  --font-size-6xl:         60px;
+  --font-size-7xl:         72px;
+  --font-size-8xl:         96px;
+  --font-size-9xl:         128px;
+  --font-size-display-sm:  32px;
+  --font-size-display-md:  40px;
+  --font-size-display-lg:  56px;
+
+  /* ─── Font Weights ─────────────────────────────────── */
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* Semânticos de peso (Maglev): componentes usam estes, não os crus */
+  --font-weight-heading: var(--font-weight-semibold);
+  --font-weight-button:  var(--font-weight-semibold);
+  --font-weight-label:   var(--font-weight-medium);
+  --font-weight-body:    var(--font-weight-regular);
+  --font-weight-caption: var(--font-weight-regular);
+
+  /* Caption: dois níveis abaixo do body */
+  --font-size-caption-m: var(--font-size-md);
+  --font-size-caption-s: var(--font-size-sm);
+
+  /* ─── Line Heights ─────────────────────────────────── */
+  --line-height-tight:   1.2;
+  --line-height-snug:    1.375;
+  --line-height-normal:  1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose:   2;
+
+  /* ─── Letter Spacing ───────────────────────────────── */
+  --letter-spacing-tight:  -0.5px;
+  --letter-spacing-normal: 0px;
+  --letter-spacing-wide:   0.5px;
+  --letter-spacing-wider:  1px;
+
+  /* ─── Colors — Brand (gerada a partir de --brand-primary) ──── */
+  --color-brand-50:  color-mix(in oklab, var(--brand-primary)  8%, white);
+  --color-brand-100: color-mix(in oklab, var(--brand-primary) 16%, white);
+  --color-brand-200: color-mix(in oklab, var(--brand-primary) 32%, white);
+  --color-brand-300: color-mix(in oklab, var(--brand-primary) 52%, white);
+  --color-brand-400: color-mix(in oklab, var(--brand-primary) 76%, white);
+  --color-brand-500: var(--brand-primary);
+  --color-brand-600: color-mix(in oklab, var(--brand-primary) 82%, black);
+  --color-brand-700: color-mix(in oklab, var(--brand-primary) 64%, black);
+  --color-brand-800: color-mix(in oklab, var(--brand-primary) 46%, black);
+  --color-brand-900: color-mix(in oklab, var(--brand-primary) 30%, black);
+  --color-brand-950: color-mix(in oklab, var(--brand-primary) 18%, black);
+
+  /* ─── Colors — Secondary (gerada a partir de --brand-secondary) ─ */
+  --color-secondary-50:  color-mix(in oklab, var(--brand-secondary)  8%, white);
+  --color-secondary-100: color-mix(in oklab, var(--brand-secondary) 16%, white);
+  --color-secondary-200: color-mix(in oklab, var(--brand-secondary) 32%, white);
+  --color-secondary-300: color-mix(in oklab, var(--brand-secondary) 52%, white);
+  --color-secondary-400: color-mix(in oklab, var(--brand-secondary) 76%, white);
+  --color-secondary-500: var(--brand-secondary);
+  --color-secondary-600: color-mix(in oklab, var(--brand-secondary) 82%, black);
+  --color-secondary-700: color-mix(in oklab, var(--brand-secondary) 64%, black);
+  --color-secondary-800: color-mix(in oklab, var(--brand-secondary) 46%, black);
+  --color-secondary-900: color-mix(in oklab, var(--brand-secondary) 30%, black);
+  --color-secondary-950: color-mix(in oklab, var(--brand-secondary) 18%, black);
+
+  /* ─── Colors — Gray ────────────────────────────────── */
+  --color-gray-white: #FFFFFF;
+  --color-gray-50:    #FAFAFA;
+  --color-gray-100:   #F5F5F4;
+  --color-gray-200:   #E2E0DF;
+  --color-gray-300:   #D6D3D1;
+  --color-gray-400:   #AEA7A3;
+  --color-gray-500:   #847A75;
+  --color-gray-600:   #5B5552;
+  --color-gray-700:   #46413F;
+  --color-gray-800:   #2B2827;
+  --color-gray-900:   #1B1918;
+  --color-gray-950:   #0B0A0A;
+
+  /* ─── Colors — Red ─────────────────────────────────── */
+  --color-red-50:   #FEF2F3;
+  --color-red-100:  #FEE2E5;
+  --color-red-200:  #FECAD0;
+  --color-red-300:  #FCA5AF;
+  --color-red-400:  #F87171;
+  --color-red-500:  #EF4458;
+  --color-red-600:  #DC263B;
+  --color-red-700:  #B91C2E;
+  --color-red-800:  #991B2A;
+  --color-red-900:  #7F1D28;
+  --color-red-950:  #450A11;
+
+  /* ─── Colors — Green ───────────────────────────────── */
+  --color-green-50:   #F0FDF4;
+  --color-green-100:  #DCFCE7;
+  --color-green-200:  #BBF7D0;
+  --color-green-300:  #86EFAC;
+  --color-green-400:  #4ADE80;
+  --color-green-500:  #22C55E;
+  --color-green-600:  #16A34A;
+  --color-green-700:  #15803D;
+  --color-green-800:  #166534;
+  --color-green-900:  #14532D;
+  --color-green-950:  #052E15;
+
+  /* ─── Colors — Blue ────────────────────────────────── */
+  --color-blue-50:   #EFF6FF;
+  --color-blue-100:  #DBEAFE;
+  --color-blue-200:  #BFDBFE;
+  --color-blue-300:  #93C5FD;
+  --color-blue-400:  #60A5FA;
+  --color-blue-500:  #3B82F6;
+  --color-blue-600:  #2563EB;
+  --color-blue-700:  #1D4ED8;
+  --color-blue-800:  #1E40AF;
+  --color-blue-900:  #1E3A8A;
+  --color-blue-950:  #11204B;
+
+  /* ─── Colors — Yellow ──────────────────────────────── */
+  --color-yellow-50:   #FFFBED;
+  --color-yellow-100:  #FFF7D4;
+  --color-yellow-200:  #FFEBA8;
+  --color-yellow-300:  #FFDA71;
+  --color-yellow-400:  #FFBF38;
+  --color-yellow-500:  #FDA712;
+  --color-yellow-600:  #E07900;
+  --color-yellow-700:  #BA5303;
+  --color-yellow-800:  #96400A;
+  --color-yellow-900:  #7C350B;
+  --color-yellow-950:  #471901;
+
+  /* ─── Colors — Orange ──────────────────────────────── */
+  --color-orange-50:   #FFF7ED;
+  --color-orange-100:  #FFEDD5;
+  --color-orange-200:  #FED7AA;
+  --color-orange-300:  #FDBA74;
+  --color-orange-400:  #FB923C;
+  --color-orange-500:  #F97316;
+  --color-orange-600:  #EA580C;
+  --color-orange-700:  #C2410C;
+  --color-orange-800:  #9A3412;
+  --color-orange-900:  #7C2D12;
+  --color-orange-950:  #591E09;
+
+  /* ─── Colors — Indigo ──────────────────────────────── */
+  --color-indigo-50:   #EEF2FF;
+  --color-indigo-100:  #E0E7FF;
+  --color-indigo-200:  #C7D2FE;
+  --color-indigo-300:  #A5B4FC;
+  --color-indigo-400:  #818CF8;
+  --color-indigo-500:  #6366F1;
+  --color-indigo-600:  #4F46E5;
+  --color-indigo-700:  #4338CA;
+  --color-indigo-800:  #3730A3;
+  --color-indigo-900:  #312E81;
+  --color-indigo-950:  #1D1B4B;
+
+  /* ─── Colors — Violet ──────────────────────────────── */
+  --color-violet-50:   #FAF5FF;
+  --color-violet-100:  #F3E8FF;
+  --color-violet-200:  #E9D5FF;
+  --color-violet-300:  #D8B4FE;
+  --color-violet-400:  #C084FC;
+  --color-violet-500:  #A855F7;
+  --color-violet-600:  #9333EA;
+  --color-violet-700:  #7E22CE;
+  --color-violet-800:  #6B21A8;
+  --color-violet-900:  #581C87;
+  --color-violet-950:  #411662;
+
+  /* ─── Colors — Pink ────────────────────────────────── */
+  --color-pink-50:   #FDF2F8;
+  --color-pink-100:  #FCE7F3;
+  --color-pink-200:  #FBCFE8;
+  --color-pink-300:  #F9A8D4;
+  --color-pink-400:  #F472B6;
+  --color-pink-500:  #EC4899;
+  --color-pink-600:  #DB2777;
+  --color-pink-700:  #B3185B;
+  --color-pink-800:  #9D174D;
+  --color-pink-900:  #831843;
+  --color-pink-950:  #500724;
+
+  /* ─── Semantic — Text ──────────────────────────────── */
+  --color-text-primary:    var(--color-gray-900);
+  --color-text-secondary:  var(--color-gray-700);
+  --color-text-tertiary:   var(--color-gray-600);   /* ≥ 4.5:1 sobre bg-default/surface/subtle */
+  --color-text-disabled:   var(--color-gray-400);
+  --color-text-inverse:    var(--color-gray-50);
+  /* Maglev: a primária como texto não atinge 4,5:1; usa um tom mais escuro (≥5,6:1 sobre branco e brand-50) */
+  --color-text-brand:      color-mix(in oklab, var(--brand-primary) 74%, black);
+  --color-text-link:       var(--color-blue-600);
+  --color-text-link-hover: var(--color-blue-700);
+  --color-text-error:      var(--color-red-600);
+  --color-text-success:    var(--color-green-700);
+  --color-text-warning:    var(--color-yellow-700);
+
+  /* ─── Semantic — Background ────────────────────────── */
+  --color-bg-default:   var(--color-gray-50);
+  --color-bg-subtle:    var(--color-gray-100);
+  --color-bg-surface:   var(--color-gray-white);
+  --color-bg-disabled:  var(--color-gray-200);
+  --color-bg-brand:     var(--color-brand-50);
+  --color-bg-brand-strong: var(--color-brand-500);
+  --color-bg-brand-pressed: var(--color-brand-100);
+  --color-overlay:      color-mix(in srgb, black 45%, transparent);
+  --color-bg-inverse:   var(--color-gray-900);   /* tooltip, toast */
+  --color-bg-stripe:    var(--color-gray-100);   /* linhas alternadas de tabela (escala de cinza) */
+
+  /* ─── Semantic — Navigation (Sidebar) ─────────────── */
+  /* Maglev: Sidebar na cor secundária com texto branco (mesmo esquema em claro e escuro) */
+  --color-nav-bg:            var(--brand-secondary);
+  --color-nav-border:        color-mix(in srgb, var(--color-gray-white) 16%, transparent);
+  --color-nav-text:          var(--color-gray-white);
+  --color-nav-text-muted:    color-mix(in srgb, var(--color-gray-white) 72%, transparent);
+  --color-nav-hover-bg:      color-mix(in srgb, var(--color-gray-white) 8%, transparent);
+  --color-nav-active-bg:     color-mix(in srgb, var(--color-gray-white) 14%, var(--color-nav-bg));
+  --color-nav-active-text:   var(--color-gray-white);
+  --color-nav-active-accent: var(--brand-primary);
+
+  /* ─── Semantic — Border ────────────────────────────── */
+  --color-border-default:  var(--color-gray-600);
+  --color-border-subtle:   var(--color-gray-100);
+  --color-border-muted:    var(--color-gray-500);   /* bordas de controles: ≥ 3:1 (WCAG 1.4.11) */
+  --color-border-disabled: var(--color-gray-300);
+  --color-border-focus:    var(--color-brand-600);
+
+  /* ─── Semantic — Action/Primary ────────────────────── */
+  --color-action-primary:         var(--color-brand-400);
+  --color-action-primary-hover:   color-mix(in oklab, var(--color-brand-400) 50%, var(--color-brand-500));
+  --color-action-primary-pressed: var(--color-brand-500);
+
+  /* ─── Semantic — Action/Secondary ─────────────────── */
+  --color-action-secondary:         var(--color-secondary-500);
+  --color-action-secondary-hover:   var(--color-secondary-600);
+  --color-action-secondary-pressed: var(--color-secondary-700);
+  /* Maglev: Button secondary é outline navy; o fundo aparece no hover/pressed */
+  --color-action-secondary-hover-bg:   var(--color-secondary-50);
+  --color-action-secondary-pressed-bg: var(--color-secondary-100);
+
+  /* Texto/ícone sobre fundos de ação (garante contraste em light e dark) */
+  /* Maglev: texto navy sobre a primária; hover/pressed escurecem o fundo, então o texto clareia (navy cairia p/ 3,7:1 e 2,2:1) */
+  --color-on-action-primary:         var(--brand-secondary);
+  --color-on-action-primary-hover:   var(--brand-secondary);
+  --color-on-action-primary-pressed: var(--brand-secondary);
+  --color-on-action-secondary:   var(--color-gray-white);
+  --color-on-action-error:       var(--color-gray-white);
+
+  /* ─── Semantic — Action/Destructive ───────────────── */
+  --color-action-error:         var(--color-red-700);
+  --color-action-error-hover:   var(--color-red-800);
+  --color-action-error-pressed: var(--color-red-900);
+
+  /* ─── Semantic — Action/Warning ───────────────────── */
+  --color-action-warning:         var(--color-yellow-600);
+  --color-action-warning-hover:   var(--color-yellow-700);
+  --color-action-warning-pressed: var(--color-yellow-800);
+
+  /* ─── Semantic — Action/Success ───────────────────── */
+  --color-action-success:         var(--color-green-600);
+  --color-action-success-hover:   var(--color-green-700);
+  --color-action-success-pressed: var(--color-green-800);
+
+  /* ─── Semantic — Status ────────────────────────────── */
+  --color-status-success-bg:  var(--color-green-50);
+  --color-status-success-fg:  var(--color-green-700);
+  --color-status-error-bg:    var(--color-red-50);
+  --color-status-error-fg:    var(--color-red-700);
+  --color-status-warning-bg:  var(--color-yellow-50);
+  --color-status-warning-fg:  var(--color-yellow-700);
+  --color-status-info-bg:     var(--color-blue-50);
+  --color-status-info-fg:     var(--color-blue-700);
+  --color-status-disabled-bg: var(--color-gray-300);
+  --color-status-disabled-fg: var(--color-gray-400);
+  --color-status-orange-bg:   var(--color-orange-50);
+  --color-status-orange-fg:   var(--color-orange-700);
+  --color-status-indigo-bg:   var(--color-indigo-50);
+  --color-status-indigo-fg:   var(--color-indigo-700);
+  --color-status-violet-bg:   var(--color-violet-50);
+  --color-status-violet-fg:   var(--color-violet-700);
+  --color-status-pink-bg:     var(--color-pink-50);
+  --color-status-pink-fg:     var(--color-pink-700);
+
+  /* ─── Spacing ──────────────────────────────────────── */
+  --spacing-2xs: 2px;
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  16px;
+  --spacing-lg:  24px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  --spacing-4xl: 96px;
+
+  /* ─── Border Radius ────────────────────────────────── */
+  /* Escala base — multiplicada por --radius-scale (brand.css) */
+  --radius-none: 0px;
+  --radius-xs:   calc(4px  * var(--radius-scale, 1));
+  --radius-sm:   calc(8px  * var(--radius-scale, 1));
+  --radius-md:   calc(16px * var(--radius-scale, 1));
+  --radius-lg:   calc(24px * var(--radius-scale, 1));
+  --radius-xl:   calc(32px * var(--radius-scale, 1));
+  --radius-2xl:  calc(48px * var(--radius-scale, 1));
+  --radius-full: 9999px;
+
+  /* Semânticos — componentes usam APENAS estes */
+  --radius-control:    var(--radius-sm);   /* botões, inputs, selects */
+  --radius-control-sm: var(--radius-xs);   /* controles compactos, checkbox */
+  --radius-card:       var(--radius-md);   /* cards, tabelas, painéis */
+  --radius-overlay:    var(--radius-lg);   /* dialogs, menus, popovers */
+  --radius-pill:       var(--radius-full); /* badges, chips */
+
+  /* ─── Border Width ─────────────────────────────────── */
+  --border-width-hairline: 0.5px;
+  --border-width-thin:     1px;
+  --border-width-medium:   2px;
+  --border-width-thick:    4px;
+
+  /* ─── Shadows ──────────────────────────────────────── */
+  --shadow-xs:    0 1px 4px rgba(35, 35, 35, 0.05);
+  --shadow-sm:    0 1px 2px rgba(35, 35, 35, 0.10), 0 1px 2px rgba(35, 35, 35, 0.12);
+  --shadow-md:    0 2px 4px rgba(35, 35, 35, 0.14), 0 4px 8px rgba(35, 35, 35, 0.10);
+  --shadow-lg:    0 4px 12px rgba(35, 35, 35, 0.16), 0 8px 24px rgba(35, 35, 35, 0.12);
+  --shadow-xl:    0 6px 16px rgba(20, 20, 30, 0.20), 0 12px 24px rgba(20, 20, 30, 0.14);
+  --shadow-2xl:   0 10px 28px rgba(35, 35, 35, 0.18), 0 16px 40px rgba(35, 35, 35, 0.14);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+
+  /* ─── Opacity ──────────────────────────────────────── */
+  --opacity-0:   0;
+  --opacity-5:   0.05;
+  --opacity-10:  0.10;
+  --opacity-20:  0.20;
+  --opacity-25:  0.25;
+  --opacity-50:  0.50;
+  --opacity-75:  0.75;
+  --opacity-90:  0.90;
+  --opacity-100: 1;
+
+  /* ─── Transitions ──────────────────────────────────── */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+
+  /* ─── Controls (botões, inputs, selects) ───────────── */
+  --control-gap:         10px;
+  --control-gap-icon:    8px;
+  --control-padding-y-sm: 8px;
+  --control-padding-y-md: 12px;
+  --control-padding-y-lg: 14px;
+  --control-padding-x-sm: 16px;
+  --control-padding-x-md: 24px;
+  --control-padding-x-lg: 32px;
+  --control-padding-x-icon-sm: 12px;
+  --control-padding-x-icon-md: 16px;
+  --control-padding-x-icon-lg: 24px;
+  --control-letter-spacing: 0.5px;
+
+  /* ─── Focus ────────────────────────────────────────── */
+  --focus-ring-width:  var(--border-width-medium);
+  --focus-ring-offset: 2px;
+  --focus-ring-color:  var(--color-border-focus);
+  --focus-glow:        0 0 0 3px color-mix(in srgb, var(--color-border-focus) 22%, transparent);
+  --focus-glow-error:  0 0 0 3px color-mix(in srgb, var(--color-action-error) 20%, transparent);
+
+  /* ─── Disabled ─────────────────────────────────────── */
+  --opacity-disabled: var(--opacity-50);
+
+  /* ─── Z-index ──────────────────────────────────────── */
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  1000;
+  --z-toast:    1100;
+  --z-tooltip:  1200;
+
+  /* ─── Breakpoints (referência — ver breakpoints.ts) ──
+     Media queries não aceitam var(); use estes valores literais. */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* ─── Dark mode overrides ────────────────────────────── */
+[data-theme="dark"] {
+  /* Text */
+  --color-text-primary:    var(--color-gray-50);
+  --color-text-secondary:  var(--color-gray-300);
+  --color-text-tertiary:   var(--color-gray-400);
+  --color-text-disabled:   var(--color-gray-600);
+  --color-text-inverse:    var(--color-gray-900);
+  --color-text-brand:      var(--color-brand-400);
+  --color-text-link:       var(--color-blue-400);
+  --color-text-link-hover: var(--color-blue-300);
+  --color-text-error:      var(--color-red-400);
+  --color-text-success:    var(--color-green-400);
+  --color-text-warning:    var(--color-yellow-400);
+
+  /* Background */
+  --color-bg-default:      var(--color-gray-950);
+  --color-bg-subtle:       var(--color-gray-900);
+  --color-bg-surface:      var(--color-gray-800);
+  --color-bg-disabled:     var(--color-gray-700);
+  --color-bg-brand:        var(--color-brand-950);
+  --color-bg-brand-strong: var(--color-brand-600);
+
+  /* Border */
+  --color-border-default:  var(--color-gray-400);
+  --color-border-subtle:   var(--color-gray-800);
+  --color-border-muted:    var(--color-gray-500);
+  --color-border-disabled: var(--color-gray-700);
+  --color-border-focus:    var(--color-brand-400);
+
+  /* Action / Primary */
+  --color-action-primary:         var(--color-brand-400);
+  --color-action-primary-hover:   var(--color-brand-300);
+  --color-action-primary-pressed: var(--color-brand-200);
+
+  /* Action / Secondary */
+  /* Maglev: a escala secundária é escura; no dark o outline usa o tom claro */
+  --color-action-secondary:         var(--color-secondary-50);
+  --color-action-secondary-hover:   var(--color-secondary-50);
+  --color-action-secondary-pressed: var(--color-secondary-50);
+  --color-action-secondary-hover-bg:   color-mix(in srgb, var(--color-gray-white) 8%, var(--color-bg-surface));
+  --color-action-secondary-pressed-bg: color-mix(in srgb, var(--color-gray-white) 14%, var(--color-bg-surface));
+
+  /* Fundos de ação ficam claros no dark → texto escuro */
+  --color-on-action-primary:         var(--color-gray-950);
+  --color-on-action-primary-hover:   var(--color-gray-950);
+  --color-on-action-primary-pressed: var(--color-gray-950);
+  --color-on-action-secondary:   var(--color-gray-950);
+  --color-on-action-error:       var(--color-gray-950);
+  --color-bg-brand-pressed:      var(--color-brand-900);
+  --color-overlay:               color-mix(in srgb, black 65%, transparent);
+  --color-bg-inverse:            var(--color-gray-100);
+  --color-bg-stripe:             var(--color-gray-700);
+  --color-nav-bg:                var(--brand-secondary);
+  --color-nav-border:            color-mix(in srgb, var(--color-gray-white) 28%, transparent);
+  --color-nav-text:              var(--color-gray-white);
+  --color-nav-text-muted:        color-mix(in srgb, var(--color-gray-white) 72%, transparent);
+  --color-nav-hover-bg:          color-mix(in srgb, var(--color-gray-white) 8%, transparent);
+  --color-nav-active-bg:         color-mix(in srgb, var(--color-gray-white) 14%, var(--color-nav-bg));
+  --color-nav-active-text:       var(--color-gray-white);
+  --color-nav-active-accent:     var(--brand-primary);
+
+  /* Action / Destructive */
+  --color-action-error:         var(--color-red-400);
+  --color-action-error-hover:   var(--color-red-300);
+  --color-action-error-pressed: var(--color-red-200);
+
+  /* Action / Warning */
+  --color-action-warning:         var(--color-yellow-400);
+  --color-action-warning-hover:   var(--color-yellow-300);
+  --color-action-warning-pressed: var(--color-yellow-200);
+
+  /* Action / Success */
+  --color-action-success:         var(--color-green-400);
+  --color-action-success-hover:   var(--color-green-300);
+  --color-action-success-pressed: var(--color-green-200);
+
+  /* Status */
+  --color-status-success-bg:  var(--color-green-950);
+  --color-status-success-fg:  var(--color-green-400);
+  --color-status-error-bg:    var(--color-red-950);
+  --color-status-error-fg:    var(--color-red-400);
+  --color-status-warning-bg:  var(--color-yellow-950);
+  --color-status-warning-fg:  var(--color-yellow-400);
+  --color-status-info-bg:     var(--color-blue-950);
+  --color-status-info-fg:     var(--color-blue-400);
+  --color-status-disabled-bg: var(--color-gray-700);
+  --color-status-disabled-fg: var(--color-gray-500);
+  --color-status-orange-bg:   var(--color-orange-950);
+  --color-status-orange-fg:   var(--color-orange-400);
+  --color-status-indigo-bg:   var(--color-indigo-950);
+  --color-status-indigo-fg:   var(--color-indigo-400);
+  --color-status-violet-bg:   var(--color-violet-950);
+  --color-status-violet-fg:   var(--color-violet-400);
+  --color-status-pink-bg:     var(--color-pink-950);
+  --color-status-pink-fg:     var(--color-pink-400);
+}
+
+/* ─── Global resets ──────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-default);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Títulos usam a fonte display; controles nativos herdam do contexto */
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); font-weight: var(--font-weight-heading); }
+button, input, select, textarea { font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

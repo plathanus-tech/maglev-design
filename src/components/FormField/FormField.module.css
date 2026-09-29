@@ -1,0 +1,56 @@
+.field { display: flex; flex-direction: column; gap: var(--spacing-xs); width: 100%; }
+
+.label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-label);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+.required { color: var(--color-text-error); margin-left: var(--spacing-2xs); }
+
+.helper {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-secondary);
+}
+
+.error,
+.success {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+.error   { color: var(--color-text-error); }
+.success { color: var(--color-status-success-fg); }
+.msgIcon { flex-shrink: 0; margin-top: var(--spacing-2xs); }
+
+/* ── Base visual compartilhada por Input, Textarea, Select e Dropdown ─────
+   Componentes de campo usam:  composes: control from '../FormField/FormField.module.css'; */
+.control {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
+  border: var(--border-width-thin) solid var(--color-border-muted);
+  border-radius: var(--radius-control);
+  padding: var(--spacing-sm) var(--spacing-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+.control::placeholder { color: var(--color-text-tertiary); }
+.control:hover:not(:disabled) { border-color: var(--color-border-default); }
+.control:focus-visible {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--focus-glow);
+}
+.control:disabled {
+  background: var(--color-status-disabled-bg);
+  border-color: var(--color-border-disabled);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+.control[aria-invalid="true"] { border-color: var(--color-action-error); }
+.control[aria-invalid="true"]:focus-visible { box-shadow: var(--focus-glow-error); }

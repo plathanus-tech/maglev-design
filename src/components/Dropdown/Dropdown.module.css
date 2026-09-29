@@ -1,0 +1,91 @@
+.anchor { position: relative; }
+
+.trigger {
+  composes: control from '../FormField/FormField.module.css';
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.open .trigger { border-color: var(--color-border-focus); box-shadow: var(--focus-glow); }
+.open .trigger[aria-invalid="true"] { box-shadow: var(--focus-glow-error); }
+
+.placeholder { color: var(--color-text-tertiary); }
+.chevron {
+  display: flex;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+  color: var(--color-text-tertiary);
+}
+.open .chevron { transform: rotate(180deg); }
+
+/* Fundo escurecido: só existe na folha mobile */
+.backdrop { display: none; }
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  left: 0;
+  right: 0;
+  z-index: var(--z-dropdown);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--color-bg-surface);
+  border: var(--border-width-thin) solid var(--color-border-subtle);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-md);
+  max-height: 15rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Sem espaço abaixo: abre para cima */
+.menu[data-placement="top"] { top: auto; bottom: calc(100% + var(--spacing-xs)); }
+
+.option {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+.option[data-active="true"] { background: var(--color-bg-subtle); }
+.option[aria-selected="true"] {
+  background: var(--color-bg-brand);
+  color: var(--color-text-brand);
+  font-weight: var(--font-weight-body);
+}
+
+/* ── Mobile (≤ 640px = --breakpoint-sm): folha inferior ───────────────── */
+@media (max-width: 640px) {
+  .trigger { min-height: 2.75rem; }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: var(--color-overlay);
+  }
+
+  .menu,
+  .menu[data-placement="top"] {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: calc(var(--z-overlay) + 1);
+    max-height: 60vh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border: none;
+    border-radius: var(--radius-overlay) var(--radius-overlay) 0 0;
+    box-shadow: var(--shadow-2xl);
+  }
+
+  .option { min-height: 3rem; font-size: var(--font-size-lg); }
+}

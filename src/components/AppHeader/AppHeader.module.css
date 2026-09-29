@@ -1,0 +1,26 @@
+.header {
+  background: var(--color-bg-surface);
+  border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
+  height: 3.75rem;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-xl);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  box-shadow: var(--shadow-xs);
+}
+
+.inner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+.inner.start { justify-content: space-between; }
+
+.logo { display: flex; align-items: center; height: 2rem; }
+.logo img, .logo svg { height: 100%; width: auto; display: block; }
+
+.actions { display: flex; align-items: center; gap: var(--spacing-sm); }

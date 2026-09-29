@@ -1,0 +1,67 @@
+.fieldset { border: none; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.group { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.group.horizontal { flex-direction: row; flex-wrap: wrap; gap: var(--spacing-md); }
+
+.label {
+  padding: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-label);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.option {
+  position: relative;
+  display: inline-flex; align-items: center; gap: var(--spacing-sm);
+  min-width: 24px; min-height: 24px;
+  cursor: pointer; user-select: none;
+}
+.option.disabled { cursor: not-allowed; }
+.option.disabled .circle {
+  background: var(--color-status-disabled-bg);
+  border-color: var(--color-border-disabled);
+}
+.option.disabled .dot { background: var(--color-text-disabled); }
+.option.disabled .optionLabel { color: var(--color-text-disabled); }
+
+.input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.circle {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: var(--border-width-medium) solid var(--color-border-muted);
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast);
+}
+.checked .circle { border-color: var(--color-action-primary); }
+.option:has(input:focus-visible) .circle {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+.option:has(input[aria-invalid="true"]) .circle {
+  border-color: var(--color-action-error);
+}
+
+.error { composes: error from '../FormField/FormField.module.css'; }
+.msgIcon { composes: msgIcon from '../FormField/FormField.module.css'; }
+
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-action-primary);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+}
+.checked .dot { opacity: 1; }
+
+.optionLabel { font-size: var(--font-size-base); color: var(--color-text-primary); }

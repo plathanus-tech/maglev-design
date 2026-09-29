@@ -1,0 +1,8 @@
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+.gap { padding: 0 var(--spacing-xs); color: var(--color-text-tertiary); }

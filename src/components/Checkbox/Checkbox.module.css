@@ -1,0 +1,53 @@
+.field { composes: field from '../FormField/FormField.module.css'; align-items: flex-start; }
+
+.wrapper {
+  display: inline-flex; align-items: center; gap: var(--spacing-sm);
+  position: relative;
+  min-width: 24px; min-height: 24px;
+  cursor: pointer; user-select: none;
+}
+
+.wrapper:has(input[aria-invalid="true"]) .box {
+  border-color: var(--color-action-error);
+}
+
+.error { composes: error from '../FormField/FormField.module.css'; }
+.msgIcon { composes: msgIcon from '../FormField/FormField.module.css'; }
+.wrapper.disabled { cursor: not-allowed; }
+.disabled .box,
+.disabled.checked .box,
+.disabled.indeterminate .box {
+  background: var(--color-status-disabled-bg);
+  border-color: var(--color-border-disabled);
+}
+.disabled .mark { color: var(--color-text-disabled); }
+.disabled .label { color: var(--color-text-disabled); }
+
+.input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.box {
+  width: 18px; height: 18px;
+  border: var(--border-width-medium) solid var(--color-border-muted);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-bg-surface);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.checked .box, .indeterminate .box {
+  background: var(--color-action-primary);
+  border-color: var(--color-action-primary);
+}
+.wrapper:has(input:focus-visible) .box {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.mark { display: flex; color: var(--color-on-action-primary); line-height: 1; }
+
+.label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}

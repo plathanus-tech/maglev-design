@@ -1,0 +1,58 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+}
+
+/* Link padrão — text-tertiary */
+.link {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-body);
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  border-radius: var(--radius-control-sm);
+  transition: color var(--transition-fast);
+}
+.link:hover {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
+.link:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Separador chevron — embutido dentro de cada link */
+.sep {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-tertiary);
+  margin: 0 var(--spacing-2xs);
+  flex-shrink: 0;
+}
+
+/* Item atual (último) */
+.current {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-body);
+  color: var(--color-text-secondary);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+}

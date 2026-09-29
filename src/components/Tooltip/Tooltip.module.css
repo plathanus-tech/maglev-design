@@ -1,0 +1,35 @@
+.wrapper { position: relative; display: inline-flex; }
+
+.tip {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  background: var(--color-bg-inverse);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-control-sm);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  box-shadow: var(--shadow-md);
+}
+.wrapper:hover .tip,
+.wrapper:focus-within .tip { opacity: 1; visibility: visible; }
+.wrapper[data-dismissed] .tip { opacity: 0; visibility: hidden; }
+
+.top    { bottom: calc(100% + var(--spacing-sm)); left: 50%; transform: translateX(-50%); }
+.bottom { top: calc(100% + var(--spacing-sm));    left: 50%; transform: translateX(-50%); }
+.left   { right: calc(100% + var(--spacing-sm));  top: 50%;  transform: translateY(-50%); }
+.right  { left: calc(100% + var(--spacing-sm));   top: 50%;  transform: translateY(-50%); }
+
+.arrow {
+  position: absolute;
+  width: 6px; height: 6px;
+  background: var(--color-bg-inverse);
+  transform: rotate(45deg);
+}
+.top    .arrow { top: 100%; left: 50%; margin-left: -3px; margin-top: -3px; }
+.bottom .arrow { bottom: 100%; left: 50%; margin-left: -3px; margin-bottom: -3px; }
+.left   .arrow { left: 100%; top: 50%; margin-top: -3px; margin-left: -3px; }
+.right  .arrow { right: 100%; top: 50%; margin-top: -3px; margin-right: -3px; }

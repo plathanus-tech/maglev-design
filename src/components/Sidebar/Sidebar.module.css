@@ -1,0 +1,193 @@
+/* Sidebar — cores vêm dos tokens --color-nav-* (tokens.css). Aberta: 15.375rem · Recolhida: 4.875rem */
+
+.sidebar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-nav-bg);
+  border-right: var(--border-width-thin) solid var(--color-nav-border);
+  padding: var(--spacing-xl) 0;
+  gap: var(--spacing-lg);
+  transition: width var(--transition-normal);
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.open   { width: 15.375rem; }
+.closed { width: 4.875rem; }
+
+/* Logo + botão de recolher alinhados; o botão sobrepõe a borda direita */
+.logoRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-md);
+  min-height: 2.875rem;
+  flex-shrink: 0;
+}
+.logoWrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+}
+.logoWrap img, .logoWrap svg { max-height: 2.875rem; width: auto; display: block; }
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 0 var(--spacing-sm);
+  gap: var(--spacing-md);
+}
+
+.navList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 var(--spacing-sm);
+  border: var(--border-width-thin) solid transparent;
+  border-left-width: 3px;
+  border-radius: var(--radius-control-sm);
+  background: transparent;
+  color: var(--color-nav-text);
+  font-family: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-normal);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+.navItem:hover:not(.navItemActive) { background: var(--color-nav-hover-bg); }
+
+.navItemActive {
+  background: var(--color-nav-active-bg);
+  color: var(--color-nav-active-text);
+  border-left-color: var(--color-nav-active-accent);
+}
+
+.navItem:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.navIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.navLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  flex-shrink: 0;
+}
+
+.spacer { flex: 1; }
+
+.bottomList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.separator {
+  height: var(--border-width-thin);
+  background: var(--color-nav-border);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-sm);
+  min-height: 2.5rem;
+  overflow: hidden;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.userName {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-body);
+  color: var(--color-nav-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: var(--font-size-sm);
+  color: var(--color-nav-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: calc(var(--spacing-md) * -0.75);
+  width: 24px;
+  height: 24px;
+  border: var(--border-width-thin) solid var(--color-nav-border);
+  border-radius: 50%;
+  background: var(--color-nav-bg);
+  color: var(--color-nav-text);
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+  z-index: var(--z-sticky);
+}
+.toggleBtn:hover { background: var(--color-secondary-700); box-shadow: var(--shadow-md); }
+.toggleBtn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,61 @@
+name: Storybook (GitHub Pages)
+
+# Publica o Storybook em  https://plathanus-tech.github.io/maglev-design/storybook/
+# A raiz do site (/maglev-design/) fica livre para o produto.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verificações
+        run: |
+          npm run typecheck
+          npm run check:tokens
+
+      - name: Build do Storybook em /storybook/
+        env:
+          STORYBOOK_BASE: /maglev-design/storybook/
+        run: npx storybook build -o _site/storybook
+
+      - name: Desativar Jekyll
+        run: touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}storybook/
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

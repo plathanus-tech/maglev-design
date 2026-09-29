@@ -1,0 +1,32 @@
+import { Meta } from '@storybook/blocks';
+
+<Meta title="Getting Started/Introduction" />
+
+# Design System Maglev
+
+Design System da Maglev: componentes React e tokens de design, derivado do Storybook Base.
+
+## Identidade Maglev
+
+- **Cores:** primária `#F96900`, secundária `#051730` (texto sobre a primária).
+- **Tipografia:** Inter. Peso 600 em títulos e botões, 500 em labels de campos e cabeçalho de tabela, 400 no restante.
+- **Ícones:** [Tabler Icons](https://tabler.io/icons) (`@tabler/icons-react`) é a única biblioteca de ícones.
+- **Logo:** `public/maglev-logo.svg`.
+
+Construa o produto **reutilizando** os componentes existentes antes de criar novos.
+
+## Foundations
+
+Todos os componentes usam CSS custom properties de `src/tokens/tokens.css`.
+A identidade visual vem de `src/tokens/brand.css`:
+
+| Token | O que controla |
+|-------|----------------|
+| `--brand-primary` | Escala `--color-brand-50…950` e todas as ações primárias |
+| `--brand-secondary` | Escala `--color-secondary-50…950` (opcional) |
+| `--font-display` | Títulos, botões e elementos de destaque |
+| `--font-body` | Textos, labels, campos, tabelas |
+| `--font-weight-heading/-button/-label/-body` | Pesos semânticos usados pelos componentes (`tokens.css`) |
+| `--radius-scale` | Multiplicador do arredondamento (opcional, padrão 1) |
+
+Para usar **uma fonte só**, defina `--font-display: var(--font-body)`.

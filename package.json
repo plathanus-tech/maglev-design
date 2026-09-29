@@ -1,0 +1,33 @@
+{
+  "name": "storybook-maglev",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build-storybook": "storybook build",
+    "typecheck": "tsc -p tsconfig.app.json",
+    "check:tokens": "node scripts/check-tokens.mjs"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.0",
+    "@tabler/icons-react": "^3.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "^8.6.12",
+    "@storybook/addon-essentials": "^8.6.12",
+    "@storybook/addon-interactions": "^8.6.12",
+    "@storybook/blocks": "^8.6.12",
+    "@storybook/react": "^8.6.12",
+    "@storybook/react-vite": "^8.6.12",
+    "@storybook/test": "^8.6.12",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "storybook": "^8.6.12",
+    "typescript": "~5.6.2",
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,126 @@
+/* ── Base ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--control-gap);
+  font-family: var(--font-display);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-button);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--control-letter-spacing);
+  padding: var(--control-padding-y-md) var(--control-padding-x-md);
+  border-radius: var(--radius-control);
+  border: var(--border-width-thin) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+/* Com ícone, gap e padding do lado do ícone reduzem */
+.btn.hasLeft  { gap: var(--control-gap-icon); padding-left: var(--control-padding-x-icon-md); }
+.btn.hasRight { gap: var(--control-gap-icon); padding-right: var(--control-padding-x-icon-md); }
+
+.btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ── Icon wrapper ─────────────────────────────────── */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Variants ─────────────────────────────────────── */
+.primary {
+  background-color: var(--color-action-primary);
+  color: var(--color-on-action-primary);
+  border-color: var(--color-action-primary);
+}
+.primary:hover:not(:disabled) {
+  color: var(--color-on-action-primary-hover);
+  background-color: var(--color-action-primary-hover);
+  border-color: var(--color-action-primary-hover);
+}
+.primary:active:not(:disabled) {
+  color: var(--color-on-action-primary-pressed);
+  background-color: var(--color-action-primary-pressed);
+  border-color: var(--color-action-primary-pressed);
+}
+
+.secondary {
+  background-color: transparent;
+  color: var(--color-action-secondary);
+  border-color: var(--color-action-secondary);
+}
+.secondary:hover:not(:disabled) {
+  background-color: var(--color-action-secondary-hover-bg);
+}
+.secondary:active:not(:disabled) {
+  background-color: var(--color-action-secondary-pressed-bg);
+}
+
+.destructive {
+  background-color: var(--color-action-error);
+  color: var(--color-on-action-error);
+  border-color: var(--color-action-error);
+}
+.destructive:hover:not(:disabled) {
+  background-color: var(--color-action-error-hover);
+  border-color: var(--color-action-error-hover);
+}
+.destructive:active:not(:disabled) {
+  background-color: var(--color-action-error-pressed);
+  border-color: var(--color-action-error-pressed);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--color-text-primary);
+  border-color: transparent;
+}
+.ghost:hover:not(:disabled) { background-color: var(--color-bg-subtle); }
+.ghost:active:not(:disabled) { background-color: var(--color-bg-disabled); }
+
+/* ── Disabled ─────────────────────────────────────── */
+.btn:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: var(--opacity-disabled);
+}
+
+/* ── Sizes (.md usa os valores base do .btn) ──────── */
+.sm {
+  font-size: var(--font-size-md);
+  padding: var(--control-padding-y-sm) var(--control-padding-x-sm);
+  border-radius: var(--radius-control-sm);
+}
+.sm.hasLeft  { padding-left: var(--control-padding-x-icon-sm); }
+.sm.hasRight { padding-right: var(--control-padding-x-icon-sm); }
+
+.lg {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-height-tight);
+  padding: var(--control-padding-y-lg) var(--control-padding-x-lg);
+}
+.lg.hasLeft  { padding-left: var(--control-padding-x-icon-lg); }
+.lg.hasRight { padding-right: var(--control-padding-x-icon-lg); }
+
+/* ── Icon Only ────────────────────────────────────── */
+.iconOnly         { padding: var(--control-padding-y-md); gap: 0; }
+.iconOnly.sm      { padding: var(--control-padding-y-sm); }
+.iconOnly.lg      { padding: var(--control-padding-y-lg); }
+.iconOnly.hasLeft,
+.iconOnly.hasRight { padding-left: var(--control-padding-y-md); padding-right: var(--control-padding-y-md); }
+.iconOnly.sm.hasLeft,
+.iconOnly.sm.hasRight { padding-left: var(--control-padding-y-sm); padding-right: var(--control-padding-y-sm); }
+.iconOnly.lg.hasLeft,
+.iconOnly.lg.hasRight { padding-left: var(--control-padding-y-lg); padding-right: var(--control-padding-y-lg); }

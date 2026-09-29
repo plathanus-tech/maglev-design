@@ -1,0 +1,30 @@
+/* ════════════════════════════════════════════════════════════════
+   BRAND — Maglev
+   Identidade visual do projeto. Guia completo: TOKENS.md
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Cores da marca ────────────────────────────────────────────
+     Texto sobre a primária usa --brand-secondary (6,02:1, AA).      */
+  --brand-primary:   #F96900;
+  --brand-secondary: #051730;
+
+  /* ─── Fontes ────────────────────────────────────────────────────
+     Inter em ambas. Carregada localmente via @fontsource (preview.ts) */
+  --font-display: 'Inter', sans-serif;
+  --font-body:    'Inter', sans-serif;
+
+  /* ─── Border radius ─────────────────────────────────────────────
+     Mantido o padrão da Base.                                       */
+  --radius-scale: 1;
+}
+
+/* ─── Logo por tema ─────────────────────────────────────────────
+   O wordmark é navy (#051730) e some no tema escuro. Use as duas
+   versões juntas; a classe certa aparece conforme data-theme.
+     <img className="logo-light" src="maglev-logo.svg" alt="Maglev" />
+     <img className="logo-dark"  src="maglev-logo-dark.svg" alt="" aria-hidden="true" />
+   Versão escura: navy trocado por #D1D5DB (secondary-100). */
+:root .logo-dark { display: none; }
+:root[data-theme="dark"] .logo-light { display: none; }
+:root[data-theme="dark"] .logo-dark  { display: block; }
