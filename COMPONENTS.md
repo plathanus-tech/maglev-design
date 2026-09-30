@@ -10,13 +10,13 @@ Tudo abaixo está em ordem alfabética.
 
 | Preciso de… | Use | Não use / observação |
 |---|---|---|
-| Ação clicável | `Button` (`primary` 1 por área · `secondary` · `destructive` · `ghost`) | Não crie `CustomButton`. Só ícone → `iconOnly` + `aria-label`. |
+| Ação clicável | `Button` (`primary` 1 por área · `secondary` tonal, sem borda, para ações alternativas/voltar · `destructive` · `ghost`) | Não crie `CustomButton`. Só ícone → `iconOnly` + `aria-label`. |
 | Agrupar conteúdo relacionado | `Card` (`padding="none"` p/ tabelas) | Não faça `div` com borda/sombra própria |
 | Alternar seções de conteúdo | `Tab` | — |
 | Barra superior | `AppHeader` (recebe `logo`, `actions`) | — |
 | Campo de data | `DatePicker` (valor ISO `YYYY-MM-DD`) | Não use `<input type="date">`: o calendário é do navegador e não segue a identidade |
 | Campo de tipo novo (hora, cor…) | `FormField` + `fieldControlClass` no controle | Não reimplemente label/erro/ajuda |
-| Campo de texto (1 linha) | `Input` | Dados pessoais: passe `autoComplete` |
+| Campo de texto (1 linha) | `Input` | Dados pessoais: passe `autoComplete`. Ação dentro do campo (mostrar senha, limpar) → `iconRightAction` |
 | Campo de texto (várias linhas) | `Textarea` | — |
 | Carregando | `Spinner` | Em tabela: prop `loading` |
 | Confirmação efêmera após ação | `Toast` (`ToastProvider` + `useToast`) | — |
@@ -55,7 +55,7 @@ Tudo abaixo está em ordem alfabética.
 | **EmptyState** | `icon` `title` `description` `action` | `--color-text-*` |
 | **Feedback** | `type` success/error/warning/info · `title` `message` `dismissible` | `--color-status-*` |
 | **FormField** | `label` `helperText` `error` `success` `required` · children = `(control) => …` | `--color-text-*`, `--color-status-*` |
-| **Input** | props de `<input>` + `label` `helperText` `error` `success` `iconLeft/Right` | `--radius-control`, `--focus-glow*`, `--color-border-*` |
+| **Input** | props de `<input>` + `label` `helperText` `error` `success` `iconLeft/Right` (decorativos) · `iconRightAction` (ícone clicável: mostrar/ocultar senha, limpar) | `--radius-control`, `--focus-glow*`, `--color-border-*` |
 | **Pagination** | `page` `pageCount` `onPageChange` | herda de Button |
 | **RadioButton** | `options` `value` `onChange` `name` `label` `orientation` | `--color-action-primary` |
 | **Sidebar** | `items` `logo` `activeItem` `onNavClick` `user` `onLogout` `open` `onToggle` `labels` | `--color-nav-*` |
@@ -70,7 +70,8 @@ Tudo abaixo está em ordem alfabética.
 
 ## Composição típica
 
-- **Formulário:** `Card` (footer com `Button`s) → `Stack` → `Input`/`Dropdown`/`DatePicker`/`Textarea`/`Checkbox`. Erros por campo via prop `error`; resumo via `Feedback`.
+- **Formulário:** `Card` (footer com `Button`s) → `Stack` → `Input`/`Dropdown`/`DatePicker`/`Textarea`/`Checkbox`.
+  **Espaçamento padrão:** 16px entre campos (`Stack gap="md"`), 24px do último campo até o botão principal (`gap="lg"` entre o grupo de campos e o grupo de ações) e 16px entre o botão e ações secundárias/links abaixo dele (`gap="md"`). Campos e botões (tamanho padrão `md`, texto 16px `--font-size-base`): 44px de altura (`--control-height-md`). Erros por campo via prop `error`; resumo via `Feedback`.
 - **Listagem:** título + `Button` numa `Stack horizontal` → `Table` → `Pagination`; sem dados → `EmptyState`.
 - **Área logada:** `Sidebar` + conteúdo com `Card`s.
 

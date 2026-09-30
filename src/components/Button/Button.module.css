@@ -9,7 +9,9 @@
   font-weight: var(--font-weight-button);
   line-height: var(--line-height-normal);
   letter-spacing: var(--control-letter-spacing);
-  padding: var(--control-padding-y-md) var(--control-padding-x-md);
+  /* md: mesma altura dos campos (44px); o conteúdo é centralizado verticalmente */
+  min-height: var(--control-height-md);
+  padding: 0 var(--control-padding-x-md);
   border-radius: var(--radius-control);
   border: var(--border-width-thin) solid transparent;
   cursor: pointer;
@@ -56,15 +58,18 @@
   border-color: var(--color-action-primary-pressed);
 }
 
+/* Tonal: sem borda visível (borda transparente mantém a mesma altura), fundo claro */
 .secondary {
-  background-color: transparent;
+  background-color: var(--color-action-secondary-bg);
   color: var(--color-action-secondary);
-  border-color: var(--color-action-secondary);
+  border-color: transparent;
 }
 .secondary:hover:not(:disabled) {
+  color: var(--color-action-secondary-hover);
   background-color: var(--color-action-secondary-hover-bg);
 }
 .secondary:active:not(:disabled) {
+  color: var(--color-action-secondary-pressed);
   background-color: var(--color-action-secondary-pressed-bg);
 }
 
@@ -99,6 +104,7 @@
 
 /* ── Sizes (.md usa os valores base do .btn) ──────── */
 .sm {
+  min-height: 0;
   font-size: var(--font-size-md);
   padding: var(--control-padding-y-sm) var(--control-padding-x-sm);
   border-radius: var(--radius-control-sm);
@@ -107,6 +113,7 @@
 .sm.hasRight { padding-right: var(--control-padding-x-icon-sm); }
 
 .lg {
+  min-height: 0;
   font-size: var(--font-size-xl);
   line-height: var(--line-height-tight);
   padding: var(--control-padding-y-lg) var(--control-padding-x-lg);
@@ -115,11 +122,11 @@
 .lg.hasRight { padding-right: var(--control-padding-x-icon-lg); }
 
 /* ── Icon Only ────────────────────────────────────── */
-.iconOnly         { padding: var(--control-padding-y-md); gap: 0; }
-.iconOnly.sm      { padding: var(--control-padding-y-sm); }
-.iconOnly.lg      { padding: var(--control-padding-y-lg); }
+.iconOnly         { padding: 0; width: var(--control-height-md); gap: 0; } /* md: 44×44 */
+.iconOnly.sm      { padding: var(--control-padding-y-sm); width: auto; }
+.iconOnly.lg      { padding: var(--control-padding-y-lg); width: auto; }
 .iconOnly.hasLeft,
-.iconOnly.hasRight { padding-left: var(--control-padding-y-md); padding-right: var(--control-padding-y-md); }
+.iconOnly.hasRight { padding-left: 0; padding-right: 0; }
 .iconOnly.sm.hasLeft,
 .iconOnly.sm.hasRight { padding-left: var(--control-padding-y-sm); padding-right: var(--control-padding-y-sm); }
 .iconOnly.lg.hasLeft,

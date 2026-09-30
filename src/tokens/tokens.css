@@ -201,12 +201,15 @@
   --color-text-primary:    var(--color-gray-900);
   --color-text-secondary:  var(--color-gray-700);
   --color-text-tertiary:   var(--color-gray-600);   /* ≥ 4.5:1 sobre bg-default/surface/subtle */
+  /* Placeholder: mais claro que o texto digitado (evita parecer preenchido) e ainda ≥ 4,5:1 sobre branco (~4,9:1) */
+  --color-text-placeholder: color-mix(in oklab, var(--color-gray-600) 30%, var(--color-gray-500));
   --color-text-disabled:   var(--color-gray-400);
   --color-text-inverse:    var(--color-gray-50);
   /* Maglev: a primária como texto não atinge 4,5:1; usa um tom mais escuro (≥5,6:1 sobre branco e brand-50) */
   --color-text-brand:      color-mix(in oklab, var(--brand-primary) 74%, black);
-  --color-text-link:       var(--color-blue-600);
-  --color-text-link-hover: var(--color-blue-700);
+  /* Maglev: sem azul na identidade; links usam a secundária (navy, 8,4:1 sobre branco) */
+  --color-text-link:       var(--color-secondary-400);
+  --color-text-link-hover: var(--color-secondary-500);
   --color-text-error:      var(--color-red-600);
   --color-text-success:    var(--color-green-700);
   --color-text-warning:    var(--color-yellow-700);
@@ -250,9 +253,11 @@
   --color-action-secondary:         var(--color-secondary-500);
   --color-action-secondary-hover:   var(--color-secondary-600);
   --color-action-secondary-pressed: var(--color-secondary-700);
-  /* Maglev: Button secondary é outline navy; o fundo aparece no hover/pressed */
-  --color-action-secondary-hover-bg:   var(--color-secondary-50);
-  --color-action-secondary-pressed-bg: var(--color-secondary-100);
+  /* Maglev: Button secondary é tonal (sem borda, fundo claro derivado do navy) —
+     distingue-se dos campos, que são brancos com borda */
+  --color-action-secondary-bg:         var(--color-secondary-50);
+  --color-action-secondary-hover-bg:   var(--color-secondary-100);
+  --color-action-secondary-pressed-bg: var(--color-secondary-200);
 
   /* Texto/ícone sobre fundos de ação (garante contraste em light e dark) */
   /* Maglev: texto navy sobre a primária; hover/pressed escurecem o fundo, então o texto clareia (navy cairia p/ 3,7:1 e 2,2:1) */
@@ -358,6 +363,7 @@
   --transition-slow:   400ms ease;
 
   /* ─── Controls (botões, inputs, selects) ───────────── */
+  --control-height-md:   44px;   /* altura mínima de campos (Input, Dropdown, DatePicker, Textarea) */
   --control-gap:         10px;
   --control-gap-icon:    8px;
   --control-padding-y-sm: 8px;
@@ -402,11 +408,12 @@
   --color-text-primary:    var(--color-gray-50);
   --color-text-secondary:  var(--color-gray-300);
   --color-text-tertiary:   var(--color-gray-400);
+  --color-text-placeholder: var(--color-gray-400);
   --color-text-disabled:   var(--color-gray-600);
   --color-text-inverse:    var(--color-gray-900);
   --color-text-brand:      var(--color-brand-400);
-  --color-text-link:       var(--color-blue-400);
-  --color-text-link-hover: var(--color-blue-300);
+  --color-text-link:       var(--color-secondary-100);
+  --color-text-link-hover: var(--color-secondary-50);
   --color-text-error:      var(--color-red-400);
   --color-text-success:    var(--color-green-400);
   --color-text-warning:    var(--color-yellow-400);
@@ -432,12 +439,13 @@
   --color-action-primary-pressed: var(--color-brand-200);
 
   /* Action / Secondary */
-  /* Maglev: a escala secundária é escura; no dark o outline usa o tom claro */
+  /* Maglev: a escala secundária é escura; no dark o texto usa o tom claro sobre fundo tonal */
   --color-action-secondary:         var(--color-secondary-50);
   --color-action-secondary-hover:   var(--color-secondary-50);
   --color-action-secondary-pressed: var(--color-secondary-50);
-  --color-action-secondary-hover-bg:   color-mix(in srgb, var(--color-gray-white) 8%, var(--color-bg-surface));
-  --color-action-secondary-pressed-bg: color-mix(in srgb, var(--color-gray-white) 14%, var(--color-bg-surface));
+  --color-action-secondary-bg:         color-mix(in srgb, var(--color-gray-white) 8%, var(--color-bg-surface));
+  --color-action-secondary-hover-bg:   color-mix(in srgb, var(--color-gray-white) 14%, var(--color-bg-surface));
+  --color-action-secondary-pressed-bg: color-mix(in srgb, var(--color-gray-white) 20%, var(--color-bg-surface));
 
   /* Fundos de ação ficam claros no dark → texto escuro */
   --color-on-action-primary:         var(--color-gray-950);

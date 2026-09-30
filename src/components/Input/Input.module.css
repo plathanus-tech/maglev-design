@@ -18,3 +18,11 @@
 }
 .iconLeft  { left: var(--spacing-sm); }
 .iconRight { right: var(--spacing-sm); }
+
+/* Ícone à direita clicável (Button ghost sm iconOnly) */
+.actionRight {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  right: var(--spacing-xs);
+  color: var(--color-text-tertiary);
+}

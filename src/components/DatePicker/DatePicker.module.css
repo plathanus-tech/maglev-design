@@ -68,6 +68,7 @@
   text-align: left;
   cursor: pointer;
   min-width: 0;
+  min-height: 0; /* seletor compacto do cabeçalho do calendário: não segue a altura de campo */
 }
 .selectAnchor.open .select { border-color: var(--color-border-focus); box-shadow: var(--focus-glow); }
 

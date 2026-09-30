@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
+import { IconEye, IconEyeOff, IconX } from '@tabler/icons-react';
 import { Input } from './Input';
 
 const meta: Meta<typeof Input> = {
@@ -17,3 +19,40 @@ export const WithError: Story = { args: { label: 'Senha', type: 'password', valu
 export const WithIcons: Story = { args: { label: 'Buscar', iconLeft: <span>🔍</span>, iconRight: <span>✕</span>, placeholder: 'Pesquisar...' } };
 export const Disabled: Story = { args: { label: 'Campo desabilitado', value: 'Valor fixo', disabled: true, readOnly: true } };
 export const Search: Story = { args: { type: 'search', iconLeft: <span>🔍</span>, placeholder: 'Pesquisar produtos...' } };
+
+/** Senha com mostrar/ocultar: `iconRightAction` renderiza um botão clicável dentro do campo. */
+export const PasswordToggle: Story = {
+  render: (args) => {
+    const [show, setShow] = useState(false);
+    return (
+      <Input
+        {...args}
+        label="Senha"
+        type={show ? 'text' : 'password'}
+        autoComplete="current-password"
+        iconRightAction={{
+          icon: show ? <IconEyeOff size={20} /> : <IconEye size={20} />,
+          label: show ? 'Ocultar senha' : 'Mostrar senha',
+          pressed: show,
+          onClick: () => setShow((v) => !v),
+        }}
+      />
+    );
+  },
+};
+
+/** Limpar busca: ação simples, sem estado de alternância. */
+export const ClearAction: Story = {
+  render: (args) => {
+    const [value, setValue] = useState('Filtro');
+    return (
+      <Input
+        {...args}
+        label="Buscar"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        iconRightAction={{ icon: <IconX size={20} />, label: 'Limpar busca', onClick: () => setValue('') }}
+      />
+    );
+  },
+};

@@ -64,12 +64,13 @@ const aliasGroups: TokenGroup[] = [
     tokens: [
       { name: 'text-primary',    token: '--color-text-primary',    light: 'Gray/900',   dark: 'Gray/50',    description: 'Texto principal' },
       { name: 'text-secondary',  token: '--color-text-secondary',  light: 'Gray/700',   dark: 'Gray/100',   description: 'Texto secundário' },
-      { name: 'text-tertiary',   token: '--color-text-tertiary',   light: 'Gray/500',   dark: 'Gray/300',   description: 'Placeholder / label auxiliar' },
+      { name: 'text-tertiary',   token: '--color-text-tertiary',   light: 'Gray/600',   dark: 'Gray/400',   description: 'Label auxiliar' },
+      { name: 'text-placeholder', token: '--color-text-placeholder', light: 'Gray/500+600', dark: 'Gray/400', description: 'Placeholder de campos (≥ 4,5:1)' },
       { name: 'text-disabled',   token: '--color-text-disabled',   light: 'Gray/400',   dark: 'Gray/600',   description: 'Texto desativado' },
       { name: 'text-inverse',    token: '--color-text-inverse',    light: 'Gray/50',    dark: 'Gray/900',   description: 'Texto sobre fundo escuro' },
       { name: 'text-brand',      token: '--color-text-brand',      light: 'Brand/500 + 26% preto', dark: 'Brand/400', description: 'Texto da marca (mais escuro no claro, para contraste ≥4,5:1)' },
-      { name: 'text-link',       token: '--color-text-link',       light: 'Blue/600',   dark: 'Blue/400',   description: 'Links' },
-      { name: 'text-link-hover', token: '--color-text-link-hover', light: 'Blue/700',   dark: 'Blue/300',   description: 'Links — hover' },
+      { name: 'text-link',       token: '--color-text-link',       light: 'Secondary/400', dark: 'Secondary/100', description: 'Links' },
+      { name: 'text-link-hover', token: '--color-text-link-hover', light: 'Secondary/500', dark: 'Secondary/50',  description: 'Links — hover' },
       { name: 'text-error',      token: '--color-text-error',      light: 'Red/600',    dark: 'Red/400',    description: 'Erros' },
       { name: 'text-success',    token: '--color-text-success',    light: 'Green/700',  dark: 'Green/400',  description: 'Sucesso' },
       { name: 'text-warning',    token: '--color-text-warning',    light: 'Yellow/700', dark: 'Yellow/400', description: 'Aviso' },
@@ -115,9 +116,10 @@ const aliasGroups: TokenGroup[] = [
   {
     label: 'Action — Secondary (outline)',
     tokens: [
-      { name: 'action-secondary',            token: '--color-action-secondary',            light: 'Secondary/500', dark: 'Secondary/50', description: 'Texto e borda do Button secondary' },
-      { name: 'action-secondary-hover-bg',   token: '--color-action-secondary-hover-bg',   light: 'Secondary/50',  dark: 'Branco 8% + surface',  description: 'Fundo no hover' },
-      { name: 'action-secondary-pressed-bg', token: '--color-action-secondary-pressed-bg', light: 'Secondary/100', dark: 'Branco 14% + surface', description: 'Fundo no pressed' },
+      { name: 'action-secondary',            token: '--color-action-secondary',            light: 'Secondary/500', dark: 'Secondary/50', description: 'Texto do Button secondary (tonal)' },
+      { name: 'action-secondary-bg',         token: '--color-action-secondary-bg',         light: 'Secondary/50',  dark: 'Branco 8% + surface',  description: 'Fundo do Button secondary' },
+      { name: 'action-secondary-hover-bg',   token: '--color-action-secondary-hover-bg',   light: 'Secondary/100', dark: 'Branco 14% + surface', description: 'Fundo no hover' },
+      { name: 'action-secondary-pressed-bg', token: '--color-action-secondary-pressed-bg', light: 'Secondary/200', dark: 'Branco 20% + surface', description: 'Fundo no pressed' },
     ],
   },
   {

@@ -12,7 +12,7 @@
 .open .trigger { border-color: var(--color-border-focus); box-shadow: var(--focus-glow); }
 .open .trigger[aria-invalid="true"] { box-shadow: var(--focus-glow-error); }
 
-.placeholder { color: var(--color-text-tertiary); }
+.placeholder { color: var(--color-text-placeholder); }
 .chevron {
   display: flex;
   flex-shrink: 0;
