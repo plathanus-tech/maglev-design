@@ -1,0 +1,40 @@
+/* Notas para desenvolvimento como comentários ancorados (só protótipo).
+   Só tokens do Storybook MAGLEV. A numeração dos pins é automática (contador CSS),
+   na ordem em que aparecem na página. */
+body { counter-reset: dev-note; }
+
+.dev-anchor { position: relative; min-width: 0; }
+.dev-anchor.is-annotated { outline: var(--border-width-thin) dashed var(--color-border-focus); outline-offset: var(--spacing-xs); border-radius: var(--radius-control); }
+
+.dev-pin {
+  position: absolute;
+  top: calc(var(--spacing-sm) * -1);
+  right: calc(var(--spacing-xs) * -1);
+  z-index: var(--z-dropdown);
+  counter-increment: dev-note;
+  display: flex; align-items: center; justify-content: center;
+  width: var(--spacing-lg); height: var(--spacing-lg); padding: 0;
+  border: var(--border-width-thin) solid var(--color-bg-surface);
+  border-radius: var(--radius-pill);
+  background: var(--color-action-primary);
+  color: var(--color-on-action-primary);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-button);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+.dev-pin:hover { background: var(--color-action-primary-hover); }
+.dev-pin:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.dev-pin-num::before { content: counter(dev-note); }
+
+.dev-note-popover {
+  position: fixed;
+  z-index: var(--z-overlay);
+  width: calc(var(--spacing-3xl) * 4);
+  max-width: calc(100vw - var(--spacing-md));
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-card);
+}
+.dev-note-body { display: flex; flex-direction: column; gap: var(--spacing-sm); align-items: flex-start; }
+.dev-note-text { margin: 0; font-size: var(--font-size-md); line-height: var(--line-height-normal); color: var(--color-text-primary); }

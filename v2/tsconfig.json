@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.v2.tsbuildinfo",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "paths": {
+      "@maglev/ds": [
+        "../src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "admin",
+    "prototype-nav",
+    "vite-env.d.ts",
+    "../src/css-modules.d.ts"
+  ]
+}
