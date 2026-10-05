@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconEye, IconPencil, IconPlus, IconSearch } from '@tabler/icons-react';
-import { Badge, Button, Dropdown, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
+import { Badge, Button, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { MobileCardList } from './MobileCardList';
@@ -12,6 +12,7 @@ import { useSession } from './store';
 import { AdminUser } from './data';
 import { maskPhone, noBreak } from './format';
 import { maskEmail } from './recovery';
+import { FilterControl } from './FilterControl';
 import { RowAction, RowActions, TableToolbar, goTo, recordStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · noresults · deactivate (confirmação de inativação) */
@@ -28,6 +29,7 @@ function UsuariosScreen() {
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('todos');
+  const [profile, setProfile] = useState('todos');
   const [page, setPage] = useState(1);
   const [toggling, setToggling] = useState<AdminUser | null>(null);
 
@@ -38,15 +40,15 @@ function UsuariosScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, status]);
+  useEffect(() => setPage(1), [query, status, profile]);
 
   const profileName = (id: string) => db.profiles.find((p) => p.id === id)?.name ?? '-';
   const filtered = useMemo(() => {
     const t = query.trim().toLowerCase();
     return db.adminUsers
-      .filter((u) => (status === 'todos' || u.status === status) && (!t || u.name.toLowerCase().includes(t) || u.email.toLowerCase().includes(t)))
+      .filter((u) => (status === 'todos' || u.status === status) && (profile === 'todos' || u.profileId === profile) && (!t || u.name.toLowerCase().includes(t) || u.email.toLowerCase().includes(t)))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [db, query, status]);
+  }, [db, query, status, profile]);
   const rows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((u) => ({ ...u, profile: profileName(u.profileId) }));
 
   const actions = (u: AdminUser) => {
@@ -82,11 +84,16 @@ function UsuariosScreen() {
   const toolbarFor = (withColumns: boolean) => (
     <TableToolbar
       search={<Input type="search" aria-label="Buscar usuário por nome ou e-mail" placeholder="Buscar por nome ou e-mail" iconLeft={<IconSearch size={20} />} value={query} onChange={(e) => setQuery(e.target.value)} />}
-      status={<Dropdown aria-label="Filtrar por status" options={[{ value: 'todos', label: 'Todos os status' }, { value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }]} value={status} onChange={setStatus} />}
+      filters={(
+        <FilterControl filters={[
+          { id: 'status', label: 'Status', options: [{ value: 'todos', label: 'Todos os status' }, { value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }], value: status, onChange: setStatus },
+          { id: 'profile', label: 'Perfil de acesso', options: [{ value: 'todos', label: 'Todos os perfis' }, ...db.profiles.map((p) => ({ value: p.id, label: p.name }))], value: profile, onChange: setProfile },
+        ]} />
+      )}
       columns={withColumns ? control : undefined}
     />
   );
-  const empty = { title: 'Nenhum usuário encontrado', description: 'Revise a busca ou o filtro de status.' };
+  const empty = { title: 'Nenhum usuário encontrado', description: 'Revise a busca ou os filtros aplicados.' };
 
   return (
     <AppLayout active="usuarios" screen="usuarios">

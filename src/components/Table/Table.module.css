@@ -82,6 +82,10 @@
   position: sticky;
   right: 0;
   z-index: 1;
+  /* Largura = conteúdo: 3 ícones ocupam o mesmo espaço em qualquer tabela. Sem isto, o layout automático reparte
+     a folga da tabela com esta coluna e ela fica mais larga em uma listagem do que em outra. */
+  width: 1px;
+  white-space: nowrap;
   border-right: none;
   box-shadow: inset var(--border-width-thin) 0 0 var(--color-gray-200);   /* separador da coluna fixa: um tom acima do subtle */
 }

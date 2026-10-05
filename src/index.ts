@@ -51,6 +51,8 @@ export { ToastProvider, useToast } from './components/Toast/Toast';
 export type { ToastOptions } from './components/Toast/Toast';
 export { Toggle } from './components/Toggle/Toggle';
 export type { ToggleProps } from './components/Toggle/Toggle';
+export { Popover } from './components/Popover/Popover';
+export type { PopoverProps } from './components/Popover/Popover';
 export { Tooltip } from './components/Tooltip/Tooltip';
 export type { TooltipProps } from './components/Tooltip/Tooltip';
 export { cx } from './utils/cx';

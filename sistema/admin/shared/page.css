@@ -11,13 +11,14 @@
   justify-content: center;
   padding: var(--spacing-lg) var(--spacing-md);
   background-color: var(--color-bg-default);
-  background-image: url('./bg-login.png');
+  background-image: url('../../../BG%20tela%20de%20login.png');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
+  background-attachment: fixed;   /* telas longas (ex.: Primeiro acesso): o fundo fica parado e só o card rola */
 }
 [data-theme="dark"] .layout-auth {
-  background-image: linear-gradient(var(--color-overlay), var(--color-overlay)), url('./bg-login.png');
+  background-image: linear-gradient(var(--color-overlay), var(--color-overlay)), url('../../../BG%20tela%20de%20login.png');
 }
 #root.auth-root { width: 100%; display: flex; justify-content: center; }
 .auth-column { width: 100%; max-width: calc(var(--spacing-3xl) * 7); } /* 448px */
@@ -302,6 +303,10 @@ section.contact-card { border: none; background: var(--color-gray-50); }
   height: calc(var(--control-height-md) - var(--spacing-sm)); min-height: 0; padding-block: 0;
   font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking);
 }
+/* Âncora do popover de filtros: ocupa a largura do botão (no mobile, a da coluna) */
+.filter-anchor { display: block; width: 100%; }
+.dev-anchor:has(> .filter-anchor) { width: 100%; }
+
 /* Exibição é um botão: usa o estilo Button/S (--text-button-s), não o Body/S dos campos */
 .toolbar-row .toolbar-columns button { font: var(--text-button-s); letter-spacing: var(--text-button-s-tracking); }
 

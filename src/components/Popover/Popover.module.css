@@ -1,0 +1,12 @@
+.panel {
+  position: fixed;   /* portal no <body>; top e right/left vêm do botão (inline) */
+  z-index: var(--z-dropdown);   /* abaixo de Dialog e dos menus de Dropdown (z-overlay + 1) */
+  box-sizing: border-box;
+  width: min(calc(var(--spacing-3xl) * 5.5), calc(100vw - var(--spacing-xl)));   /* 352px, sem estourar telas estreitas */
+  padding: var(--spacing-md);
+  background: var(--color-bg-raised);
+  border: var(--border-width-thin) solid var(--color-border-subtle);
+  border-radius: var(--radius-overlay);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text-primary);
+}

@@ -4,7 +4,7 @@ Ponto único de importação: `import { Button, Input } from '<caminho>/src'` (v
 Cada componente tem story com props e exemplos em `Components/<Nome>`; composições prontas em `Patterns/Composições`.
 Tudo abaixo está em ordem alfabética.
 
-**Índice A–Z:** Accordion · AppHeader · Avatar · Badge · Breadcrumb · Button · Card · Checkbox · DatePicker · Dialog · Dropdown · EmptyState · Feedback · FormField · Input · KpiCard · Pagination · RadioButton · Sidebar · Spinner · Stack · Tab · Table · Textarea · Toast · Toggle · Tooltip
+**Índice A–Z:** Accordion · AppHeader · Avatar · Badge · Breadcrumb · Button · Card · Checkbox · DatePicker · Dialog · Dropdown · EmptyState · Feedback · FormField · Input · KpiCard · Pagination · Popover · RadioButton · Sidebar · Spinner · Stack · Tab · Table · Textarea · Toast · Toggle · Tooltip
 
 ## Como escolher (por necessidade)
 
@@ -21,6 +21,7 @@ Tudo abaixo está em ordem alfabética.
 | Carregando | `Spinner` | Em tabela: prop `loading` |
 | Confirmação efêmera após ação | `Toast` (`ToastProvider` + `useToast`) | — |
 | Confirmar/decidir sem sair da tela | `Dialog` | — |
+| Painel ancorado a um botão (filtros de tabela) | `Popover` | Sem decisão obrigatória; no mobile, use `Dialog` |
 | Dica curta em hover/foco | `Tooltip` | Nunca para conteúdo essencial |
 | Escolher 1 entre poucas opções visíveis | `RadioButton` | Mais de ~5 opções → `Dropdown` |
 | Escolher 1 opção de uma lista | `Dropdown` (no celular abre como folha inferior) | Poucas opções visíveis (até ~5) → `RadioButton` |
@@ -69,6 +70,7 @@ Tudo abaixo está em ordem alfabética.
 | **Textarea** | props de `<textarea>` + `label` `helperText` `error` | idem Input |
 | **Toast** | `useToast().show({ type, message, title, duration })` | herda de Feedback, `--z-toast` |
 | **Toggle** | `label` `checked` `size` sm/md | `--color-action-primary`, `--radius-pill` |
+| **Popover** | `open` `onClose` `anchorRef` `label` `align` · filhos livres | `--color-bg-raised`, `--shadow-lg`, `--z-dropdown` |
 | **Tooltip** | `content` `placement` · filho focável | `--color-bg-inverse`, `--z-tooltip` |
 
 ## Composição típica
