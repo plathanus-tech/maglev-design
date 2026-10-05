@@ -7,7 +7,7 @@ const meta: Meta<typeof Button> = {
   component: Button,
   tags: ['autodocs'],
   argTypes: {
-    variant: { control: 'select', options: ['primary', 'secondary', 'destructive', 'ghost'] },
+    variant: { control: 'select', options: ['primary', 'secondary', 'destructive', 'ghost', 'outline'] },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
     disabled: { control: 'boolean' },
     children: { control: 'text' },
@@ -27,6 +27,7 @@ export const AllVariants: Story = {
       <Button variant="secondary">Secondary</Button>
       <Button variant="destructive">Destructive</Button>
       <Button variant="ghost">Ghost</Button>
+      <Button variant="outline">Outline</Button>
     </div>
   ),
 };

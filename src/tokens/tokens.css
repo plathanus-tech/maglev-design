@@ -53,6 +53,73 @@
   --letter-spacing-wide:   0.5px;
   --letter-spacing-wider:  1px;
 
+  /* ─── Estilos de texto (Foundations/Typography) ─────────────
+     Um token por estilo, no formato do shorthand `font` (peso tamanho/altura-de-linha família),
+     mais o tracking. Uso: `font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking);`
+     Valores fixos dos estilos do Figma: não acompanham a tipografia reduzida do mobile. */
+
+  /* Heading */
+  --text-heading-1-xl: var(--font-weight-semibold) 128px/1.1 var(--font-display);
+  --text-heading-1-xl-tracking: -0.02em;
+  --text-heading-1-l: var(--font-weight-semibold) 96px/1.1 var(--font-display);
+  --text-heading-1-l-tracking: -0.02em;
+  --text-heading-1-m: var(--font-weight-semibold) 72px/1.1 var(--font-display);
+  --text-heading-1-m-tracking: -0.02em;
+  --text-heading-2: var(--font-weight-semibold) 56px/1.1 var(--font-display);
+  --text-heading-2-tracking: -0.02em;
+  --text-heading-3: var(--font-weight-semibold) 48px/1.1 var(--font-display);
+  --text-heading-3-tracking: -0.01em;
+  --text-heading-4: var(--font-weight-semibold) 40px/1.1 var(--font-display);
+  --text-heading-4-tracking: -0.01em;
+  --text-heading-5: var(--font-weight-semibold) 32px/1.1 var(--font-display);
+  --text-heading-5-tracking: -0.01em;
+  --text-heading-6: var(--font-weight-semibold) 24px/1.1 var(--font-display);
+  --text-heading-6-tracking: -0.01em;
+
+  /* Subtitle */
+  --text-subtitle-xl: var(--font-weight-medium) 20px/1.1 var(--font-body);
+  --text-subtitle-xl-tracking: 0em;
+  --text-subtitle-l: var(--font-weight-medium) 18px/1.1 var(--font-body);
+  --text-subtitle-l-tracking: 0em;
+  --text-subtitle-m: var(--font-weight-medium) 16px/1.1 var(--font-body);
+  --text-subtitle-m-tracking: 0.01em;
+  --text-subtitle-s: var(--font-weight-medium) 14px/1.1 var(--font-body);
+  --text-subtitle-s-tracking: 0.01em;
+
+  /* Body */
+  --text-body-xxxl: var(--font-weight-regular) 32px/1.3 var(--font-body);
+  --text-body-xxxl-tracking: 0.01em;
+  --text-body-xxl: var(--font-weight-regular) 24px/1.3 var(--font-body);
+  --text-body-xxl-tracking: 0.01em;
+  --text-body-xl: var(--font-weight-regular) 20px/1.5 var(--font-body);
+  --text-body-xl-tracking: 0.01em;
+  --text-body-l: var(--font-weight-regular) 18px/1.5 var(--font-body);
+  --text-body-l-tracking: 0.01em;
+  --text-body-m: var(--font-weight-regular) 16px/1.4 var(--font-body);
+  --text-body-m-tracking: 0.01em;
+  --text-body-s: var(--font-weight-regular) 14px/1.4 var(--font-body);
+  --text-body-s-tracking: 0.01em;
+  --text-body-xs: var(--font-weight-regular) 12px/1.4 var(--font-body);
+  --text-body-xs-tracking: 0.02em;
+  --text-body-xxs: var(--font-weight-regular) 10px/1.4 var(--font-body);
+  --text-body-xxs-tracking: 0.02em;
+
+  /* Caption */
+  --text-caption-m: var(--font-weight-regular) 14px/1.4 var(--font-body);
+  --text-caption-m-tracking: 0.01em;
+  --text-caption-s: var(--font-weight-regular) 12px/1.4 var(--font-body);
+  --text-caption-s-tracking: 0.02em;
+
+  /* Button */
+  --text-button-xl: var(--font-weight-semibold) 24px/1.2 var(--font-display);
+  --text-button-xl-tracking: 0.5px;
+  --text-button-l: var(--font-weight-semibold) 20px/1.2 var(--font-display);
+  --text-button-l-tracking: 0.5px;
+  --text-button-m: var(--font-weight-semibold) 16px/1.5 var(--font-display);
+  --text-button-m-tracking: 0.5px;
+  --text-button-s: var(--font-weight-semibold) 14px/1.7 var(--font-display);
+  --text-button-s-tracking: 0.5px;
+
   /* ─── Colors — Brand (gerada a partir de --brand-primary) ──── */
   --color-brand-50:  color-mix(in oklab, var(--brand-primary)  8%, white);
   --color-brand-100: color-mix(in oklab, var(--brand-primary) 16%, white);
@@ -224,7 +291,7 @@
   --color-bg-brand-pressed: var(--color-brand-100);
   --color-overlay:      color-mix(in srgb, black 45%, transparent);
   --color-bg-inverse:   var(--color-gray-900);   /* tooltip, toast */
-  --color-bg-stripe:    var(--color-gray-100);   /* linhas alternadas de tabela (escala de cinza) */
+  --color-bg-stripe:    var(--color-gray-50);    /* linhas alternadas de tabela (escala de cinza) */
 
   /* ─── Semantic — Navigation (Sidebar) ─────────────── */
   /* Maglev: Sidebar na cor secundária com texto branco (mesmo esquema em claro e escuro) */
@@ -384,6 +451,16 @@
   --focus-glow:        0 0 0 3px color-mix(in srgb, var(--color-border-focus) 22%, transparent);
   --focus-glow-error:  0 0 0 3px color-mix(in srgb, var(--color-action-error) 20%, transparent);
 
+  /* ─── Scrollbar ────────────────────────────────────── */
+  /* Visual fino e neutro; a faixa transparente em volta do thumb também recebe clique/arraste.
+     Horizontal 24px (alvo WCAG 2.5.8); vertical 16px (encostada na borda, não rouba largura
+     do conteúdo — ver Foundations/Scrollbar). Aplicado globalmente em "Global resets". */
+  --scrollbar-size-x:      var(--spacing-lg);   /* altura da barra horizontal: 24px */
+  --scrollbar-size-y:      var(--spacing-md);   /* largura da barra vertical: 16px */
+  --scrollbar-thickness:   var(--spacing-sm);   /* espessura visível do thumb: 8px */
+  --scrollbar-thumb:       var(--color-gray-400);
+  --scrollbar-thumb-hover: var(--color-gray-500);
+
   /* ─── Disabled ─────────────────────────────────────── */
   --opacity-disabled: var(--opacity-50);
 
@@ -500,6 +577,9 @@
   --color-status-violet-fg:   var(--color-violet-400);
   --color-status-pink-bg:     var(--color-pink-950);
   --color-status-pink-fg:     var(--color-pink-400);
+
+  --scrollbar-thumb:       var(--color-gray-600);
+  --scrollbar-thumb-hover: var(--color-gray-500);
 }
 
 /* ─── Global resets ──────────────────────────────────── */
@@ -519,6 +599,27 @@ body {
 /* Títulos usam a fonte display; controles nativos herdam do contexto */
 h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); font-weight: var(--font-weight-heading); }
 button, input, select, textarea { font-family: inherit; }
+
+/* Barra de rolagem padrão (horizontal e vertical): fina, neutra e com alvo de 24px */
+*::-webkit-scrollbar { width: var(--scrollbar-size-y); height: var(--scrollbar-size-x); }
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  background-clip: padding-box;
+  border-style: solid;
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+}
+/* Espessura visível sempre igual (--scrollbar-thickness); o resto da faixa é área de interação */
+*::-webkit-scrollbar-thumb:horizontal { border-width: calc((var(--scrollbar-size-x) - var(--scrollbar-thickness)) / 2); }
+*::-webkit-scrollbar-thumb:vertical   { border-width: calc((var(--scrollbar-size-y) - var(--scrollbar-thickness)) / 2); }
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active { background-color: var(--scrollbar-thumb-hover); }
+/* Firefox (sem ::-webkit-scrollbar): barra fina nativa nas mesmas cores */
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

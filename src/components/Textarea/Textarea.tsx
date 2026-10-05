@@ -5,18 +5,20 @@ import styles from './Textarea.module.css';
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** Rótulo visível. Sem `label`, passe `aria-label`. */
   label?: string;
+  /** Campo opcional: mostra “(opcional)” ao lado do rótulo (os obrigatórios não levam marcação). */
+  optional?: boolean;
   helperText?: string;
   error?: string;
   success?: string;
 }
 
 /** Campo de texto multilinha (comentários, descrições, mensagens). */
-export function Textarea({ label, helperText, error, success, className, id, required, rows = 4, ...props }: TextareaProps) {
+export function Textarea({ label, helperText, error, success, className, id, required, optional, rows = 4, ...props }: TextareaProps) {
   if (import.meta.env.DEV && !label && !props['aria-label'] && !props['aria-labelledby']) {
     console.warn('Textarea: forneça `label` ou `aria-label` para que o campo tenha um nome acessível.');
   }
   return (
-    <FormField label={label} helperText={helperText} error={error} success={success} required={required} id={id} className={className}>
+    <FormField label={label} helperText={helperText} error={error} success={success} required={required} optional={optional} id={id} className={className}>
       {(control) => <textarea className={styles.textarea} rows={rows} {...control} {...props} />}
     </FormField>
   );

@@ -7,6 +7,8 @@ import styles from './Input.module.css';
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Rótulo visível. Sem `label`, passe `aria-label` para manter o campo acessível. */
   label?: string;
+  /** Campo opcional: mostra “(opcional)” ao lado do rótulo (os obrigatórios não levam marcação). */
+  optional?: boolean;
   /** Texto de ajuda exibido abaixo do campo. */
   helperText?: string;
   /** Mensagem de erro. Marca o campo como inválido (`aria-invalid`). */
@@ -31,7 +33,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({
-  label, helperText, error, success, iconLeft, iconRight, iconRightAction, hideErrorIcon, className, id, required, ...props
+  label, helperText, error, success, iconLeft, iconRight, iconRightAction, hideErrorIcon, className, id, required, optional, ...props
 }: InputProps) {
   if (import.meta.env.DEV && !label && !props['aria-label'] && !props['aria-labelledby']) {
     console.warn('Input: forneça `label` ou `aria-label` para que o campo tenha um nome acessível.');
@@ -39,7 +41,7 @@ export function Input({
   return (
     <FormField
       label={label} helperText={helperText} error={error} success={success}
-      required={required} hideErrorIcon={hideErrorIcon} id={id} className={className}
+      required={required} optional={optional} hideErrorIcon={hideErrorIcon} id={id} className={className}
     >
       {(control) => (
         <div className={cx(styles.inputWrap, Boolean(iconLeft) && styles.hasLeft, Boolean(iconRight || iconRightAction) && styles.hasRight)}>

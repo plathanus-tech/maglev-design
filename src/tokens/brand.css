@@ -28,3 +28,181 @@
 :root .logo-dark { display: none; }
 :root[data-theme="dark"] .logo-light { display: none; }
 :root[data-theme="dark"] .logo-dark  { display: block; }
+
+
+/* ════════════════════════════════════════════════════════════════
+   PALETA E TOKENS SEMÂNTICOS DE COR — Maglev (revisão cromática)
+
+   Direção: Navy (#051730) + neutros frios constroem a base da interface;
+   o laranja é accent (CTA, indicadores). O dark mode usa a mesma matiz do
+   sidebar nos neutros (levemente azulados, ainda lidos como neutros), então
+   sidebar e conteúdo parecem um sistema só. Light mode: valores inalterados.
+
+   Camadas:  escalas cruas (navy, ink)  →  tokens semânticos (--background-*,
+   --border-*, --text-*, --action-*)  →  tokens de componente (--color-*).
+   Componentes nunca usam as escalas cruas; mudar de tema = trocar só a
+   segunda camada.
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Brand Navy — ajustada à mão (não é interpolação) ───────────
+     900 = #051730 (a cor da marca). 700–950 sustentam sidebar e superfícies
+     com matiz; 50–300 servem textos/links no dark e fundos sutis no light.
+     Matiz ≈ 214°; o croma cai nos extremos para não "azular" demais. */
+  --color-navy-50:  #F2F6FB;
+  --color-navy-100: #E3EBF5;
+  --color-navy-200: #C5D4E8;
+  --color-navy-300: #9BB3D1;
+  --color-navy-400: #6F8DB4;
+  --color-navy-500: #4B6C96;
+  --color-navy-600: #335279;
+  --color-navy-700: #223F63;
+  --color-navy-800: #132E4E;
+  --color-navy-900: var(--brand-secondary);   /* #051730 */
+  --color-navy-950: #030E1F;
+
+  /* ─── Ink — neutros frios para o dark mode ───────────────────────
+     Matiz ≈ 217° e croma baixo: percebidos como cinza, mas na mesma
+     família do navy. Substituem os cinzas quentes (marrons) do dark. */
+  --color-ink-50:  #F4F6F9;
+  --color-ink-100: #E7EBF1;
+  --color-ink-200: #D2D9E3;
+  --color-ink-300: #B4BFCE;
+  --color-ink-400: #94A1B5;
+  --color-ink-500: #66758D;
+  --color-ink-600: #4C596E;
+  --color-ink-700: #354052;
+  --color-ink-800: #263041;
+  --color-ink-900: #172030;
+  --color-ink-950: #0C121B;
+}
+
+/* ─── Tokens semânticos — LIGHT (iguais aos valores atuais) ───────── */
+:root:root {
+  --background-page:           var(--color-gray-100);
+  --background-sidebar:        var(--color-navy-900);
+  --background-surface:        var(--color-gray-white);
+  --background-surface-raised: var(--color-gray-white);   /* dialog, menu, popover, toast */
+  --background-surface-hover:  var(--color-gray-100);
+  --background-selected:       var(--color-brand-50);
+  --background-stripe:         var(--color-gray-50);      /* linhas alternadas de tabela */
+
+  --border-subtle:  var(--color-gray-100);
+  --border-card:    color-mix(in srgb, var(--color-gray-200) 64%, transparent);   /* contorno de card/tabela: gray-200 a 64% */
+  --border-control: var(--color-gray-500);   /* bordas de campos: ≥ 3:1 (WCAG 1.4.11) */
+  --border-strong:  var(--color-gray-600);
+
+  --text-primary:   var(--color-gray-900);
+  --text-secondary: var(--color-gray-700);
+  --text-tertiary:  var(--color-gray-600);
+
+  --action-primary:         var(--color-brand-400);
+  --action-primary-hover:   color-mix(in oklab, var(--color-brand-400) 50%, var(--color-brand-500));
+  --action-primary-pressed: var(--color-brand-500);
+  --on-action-primary:      var(--brand-secondary);
+
+  /* Botão outline: ação secundária de configuração (sem cor da marca) */
+  --action-outline-bg:         var(--background-surface);
+  --action-outline-border:     var(--color-gray-300);
+  --action-outline-text:       var(--color-gray-800);
+  --action-outline-hover-bg:   var(--color-gray-100);
+  --action-outline-pressed-bg: var(--color-gray-200);
+}
+
+/* ─── Tokens semânticos — DARK ────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --background-page:           var(--color-ink-950);
+  --background-sidebar:        var(--color-navy-900);
+  --background-surface:        var(--color-ink-900);
+  --background-surface-raised: color-mix(in srgb, var(--color-ink-100) 4.5%, var(--color-ink-900));
+  --background-surface-hover:  color-mix(in srgb, var(--color-ink-100) 10%, var(--color-ink-900));
+  --background-selected:       color-mix(in srgb, var(--color-navy-700) 60%, var(--color-ink-900));
+  --background-stripe:         color-mix(in srgb, var(--color-ink-100) 3%, var(--color-ink-900));
+
+  --border-subtle:  var(--color-ink-800);
+  --border-card:    var(--color-ink-800);
+  --border-control: var(--color-ink-500);
+  --border-strong:  var(--color-ink-400);
+
+  --text-primary:   var(--color-ink-50);
+  --text-secondary: var(--color-ink-300);
+  --text-tertiary:  var(--color-ink-400);
+
+  /* Laranja pleno como accent (antes: tom claro/pastel); hover clareia, pressed escurece */
+  --action-primary:         var(--color-brand-500);
+  --action-primary-hover:   var(--color-brand-400);
+  --action-primary-pressed: var(--color-brand-600);
+  --on-action-primary:      var(--color-navy-950);
+
+  --action-outline-bg:         var(--background-surface);
+  --action-outline-border:     var(--color-ink-600);
+  --action-outline-text:       var(--color-ink-100);
+  --action-outline-hover-bg:   var(--background-surface-hover);
+  --action-outline-pressed-bg: color-mix(in srgb, var(--color-ink-100) 16%, var(--color-ink-900));
+}
+
+/* ─── Ligação dos tokens semânticos aos tokens de componente ─────────
+   Seletor duplo: vence `:root` e `[data-theme="dark"]` do tokens.css e também
+   cobre o <body> (o Storybook aplica data-theme no html e no body). */
+:root:root,
+:is(:root, body)[data-theme="dark"] {
+  --color-bg-default:   var(--background-page);
+  --color-bg-surface:   var(--background-surface);
+  --color-bg-raised:    var(--background-surface-raised);
+  --color-bg-subtle:    var(--background-surface-hover);
+  --color-bg-brand:     var(--background-selected);   /* light: tinta laranja · dark: tinta navy */
+  --color-bg-stripe:    var(--background-stripe);
+
+  --color-border-subtle:  var(--border-subtle);
+  --color-border-card:    var(--border-card);
+  --color-border-muted:   var(--border-control);
+  --color-border-default: var(--border-strong);
+
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary:  var(--text-tertiary);
+
+  --color-action-primary:         var(--action-primary);
+  --color-action-primary-hover:   var(--action-primary-hover);
+  --color-action-primary-pressed: var(--action-primary-pressed);
+  --color-on-action-primary:         var(--on-action-primary);
+  --color-on-action-primary-hover:   var(--on-action-primary);
+  --color-on-action-primary-pressed: var(--on-action-primary);
+
+  --color-action-outline-bg:         var(--action-outline-bg);
+  --color-action-outline-border:     var(--action-outline-border);
+  --color-action-outline-text:       var(--action-outline-text);
+  --color-action-outline-hover-bg:   var(--action-outline-hover-bg);
+  --color-action-outline-pressed-bg: var(--action-outline-pressed-bg);
+
+  /* Sidebar: navy em todos os estados, mesma lógica nos dois temas.
+     default → texto navy-200 · hover → fundo navy 55% · selected → fundo navy-800
+     + indicador laranja (único cromático) · focus → anel da marca (border-focus). */
+  --color-nav-bg:            var(--background-sidebar);
+  --color-nav-border:        var(--color-navy-800);
+  --color-nav-text:          var(--color-navy-200);
+  --color-nav-text-muted:    var(--color-navy-300);
+  --color-nav-hover-bg:      color-mix(in srgb, var(--color-navy-800) 55%, var(--color-navy-900));
+  --color-nav-active-bg:     var(--color-navy-800);
+  --color-nav-active-text:   var(--color-gray-white);
+  --color-nav-active-accent: var(--brand-primary);
+}
+
+/* ─── DARK — ajustes que só existem no dark ───────────────────────── */
+:is(:root, body)[data-theme="dark"] {
+  --color-text-placeholder: var(--color-ink-400);
+  --color-text-disabled:    var(--color-ink-600);
+  --color-text-inverse:     var(--color-ink-900);
+  --color-text-link:        var(--color-navy-300);
+  --color-text-link-hover:  var(--color-navy-200);
+
+  --color-bg-disabled:      var(--color-ink-800);
+  --color-bg-inverse:       var(--color-ink-100);   /* tooltip */
+  --color-bg-brand-pressed: color-mix(in srgb, var(--color-navy-600) 45%, var(--color-ink-900));
+  --color-border-disabled:  var(--color-ink-700);
+
+  --scrollbar-thumb:       var(--color-ink-600);
+  --scrollbar-thumb-hover: var(--color-ink-500);
+
+  --color-on-action-secondary: var(--color-navy-950);
+}

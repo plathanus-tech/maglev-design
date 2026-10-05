@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "storybook": "storybook dev -p 6006 --no-open",
+    "dev:v2": "vite --config v2/vite.config.ts",
+    "build:v2": "vite build --config v2/vite.config.ts",
     "build-storybook": "storybook build",
     "typecheck": "tsc -p tsconfig.app.json",
     "check:tokens": "node scripts/check-tokens.mjs"

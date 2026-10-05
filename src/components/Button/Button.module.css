@@ -4,11 +4,9 @@
   align-items: center;
   justify-content: center;
   gap: var(--control-gap);
-  font-family: var(--font-display);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-button);
-  line-height: var(--line-height-normal);
-  letter-spacing: var(--control-letter-spacing);
+  /* Tipografia do estilo Button/M (Foundations/Typography): 16px */
+  font: var(--text-button-m);
+  letter-spacing: var(--text-button-m-tracking);
   /* md: mesma altura dos campos (44px); o conteúdo é centralizado verticalmente */
   min-height: var(--control-height-md);
   padding: 0 var(--control-padding-x-md);
@@ -87,6 +85,17 @@
   border-color: var(--color-action-error-pressed);
 }
 
+/* Outline: fundo da superfície + borda neutra. Ação secundária de configuração (ex.: personalizar colunas);
+   não usa cor da marca e não compete com busca e filtros. */
+.outline {
+  background-color: var(--color-action-outline-bg);
+  color: var(--color-action-outline-text);
+  border-color: var(--color-action-outline-border);
+  font-weight: var(--font-weight-label);
+}
+.outline:hover:not(:disabled) { background-color: var(--color-action-outline-hover-bg); }
+.outline:active:not(:disabled) { background-color: var(--color-action-outline-pressed-bg); }
+
 .ghost {
   background-color: transparent;
   color: var(--color-text-primary);
@@ -104,9 +113,12 @@
 
 /* ── Sizes (.md usa os valores base do .btn) ──────── */
 .sm {
+  /* Button/S: 14px; altura fixa de 36px (44px - 2 x spacing-xs) */
+  font: var(--text-button-s);
+  letter-spacing: var(--text-button-s-tracking);
   min-height: 0;
-  font-size: var(--font-size-md);
-  padding: var(--control-padding-y-sm) var(--control-padding-x-sm);
+  height: calc(var(--control-height-md) - var(--spacing-sm));
+  padding: 0 var(--control-padding-x-sm);
   border-radius: var(--radius-control-sm);
 }
 .sm.hasLeft  { padding-left: var(--control-padding-x-icon-sm); }
@@ -123,11 +135,11 @@
 
 /* ── Icon Only ────────────────────────────────────── */
 .iconOnly         { padding: 0; width: var(--control-height-md); gap: 0; } /* md: 44×44 */
-.iconOnly.sm      { padding: var(--control-padding-y-sm); width: auto; }
+.iconOnly.sm      { padding: 0; width: calc(var(--control-height-md) - var(--spacing-sm)); }   /* sm: 36×36 */
 .iconOnly.lg      { padding: var(--control-padding-y-lg); width: auto; }
 .iconOnly.hasLeft,
 .iconOnly.hasRight { padding-left: 0; padding-right: 0; }
 .iconOnly.sm.hasLeft,
-.iconOnly.sm.hasRight { padding-left: var(--control-padding-y-sm); padding-right: var(--control-padding-y-sm); }
+.iconOnly.sm.hasRight { padding-left: 0; padding-right: 0; }
 .iconOnly.lg.hasLeft,
 .iconOnly.lg.hasRight { padding-left: var(--control-padding-y-lg); padding-right: var(--control-padding-y-lg); }

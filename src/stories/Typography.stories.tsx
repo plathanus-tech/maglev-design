@@ -60,10 +60,10 @@ const textStyles: { category: string; styles: TextStyle[] }[] = [
   {
     category: 'Button',
     styles: [
-      { name: 'Button/XL', fontSize: 24, fontFamily: 'var(--font-body)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.2, letterSpacing: '0.5px' },
-      { name: 'Button/L',  fontSize: 20, fontFamily: 'var(--font-body)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.2, letterSpacing: '0.5px' },
-      { name: 'Button/M',  fontSize: 16, fontFamily: 'var(--font-body)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.5, letterSpacing: '0.5px' },
-      { name: 'Button/S',  fontSize: 14, fontFamily: 'var(--font-body)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.7, letterSpacing: '0.5px' },
+      { name: 'Button/XL', fontSize: 24, fontFamily: 'var(--font-display)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.2, letterSpacing: '0.5px' },
+      { name: 'Button/L',  fontSize: 20, fontFamily: 'var(--font-display)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.2, letterSpacing: '0.5px' },
+      { name: 'Button/M',  fontSize: 16, fontFamily: 'var(--font-display)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.5, letterSpacing: '0.5px' },
+      { name: 'Button/S',  fontSize: 14, fontFamily: 'var(--font-display)', fontWeight: 600, fontStyle: 'SemiBold', lineHeight: 1.7, letterSpacing: '0.5px' },
     ],
   },
 ];
@@ -108,7 +108,7 @@ const TypographyStory = () => (
   <div style={{ padding: 32, maxWidth: 1100, fontFamily: 'var(--font-body)' }}>
     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Typography</h2>
     <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 40 }}>
-      Fontes controladas por <code>--font-display</code> (títulos, botões, destaques) e <code>--font-body</code> (textos e UI), definidas em <code>brand.css</code>.
+      Fontes controladas por <code>--font-display</code> (títulos, botões, destaques) e <code>--font-body</code> (textos e UI), definidas em <code>brand.css</code>. Cada estilo abaixo é um token em <code>tokens.css</code>: <code>font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking);</code>.
     </p>
 
     <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 80px 80px 90px 80px', gap: 16, padding: '0 16px', marginBottom: 8 }}>

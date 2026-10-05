@@ -4,7 +4,7 @@ import styles from './Card.module.css';
 
 export interface CardProps {
   /** Título do cartão (renderizado como heading). */
-  title?: string;
+  title?: ReactNode;
   subtitle?: string;
   /** Ações no canto do cabeçalho (ex.: `<Button size="sm">`). */
   actions?: ReactNode;

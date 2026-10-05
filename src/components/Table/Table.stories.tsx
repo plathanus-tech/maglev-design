@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { IconPencil, IconTrash, IconEye, IconDots } from '@tabler/icons-react';
+import { IconPencil, IconTrash, IconEye, IconDots, IconSearch } from '@tabler/icons-react';
 import { Table } from './Table';
 import { Button } from '../Button/Button';
+import { Input } from '../Input/Input';
+import { Dropdown } from '../Dropdown/Dropdown';
 
 type Product = {
   avatar:   string;
@@ -16,11 +18,11 @@ type Product = {
 };
 
 const rows: Product[] = [
-  { avatar: '', name: 'Produto Alpha',   category: 'Eletrônicos', price: 'R$ 299,00',   stock: '42',  status: 'active',   active: true,  link: 'Ver detalhes' },
-  { avatar: '', name: 'Produto Beta',    category: 'Vestuário',   price: 'R$ 89,90',    stock: '7',   status: 'warning',  active: false, link: 'Ver detalhes' },
-  { avatar: '', name: 'Produto Gamma',   category: 'Alimentos',   price: 'R$ 12,50',    stock: '150', status: 'active',   active: true,  link: 'Ver detalhes' },
-  { avatar: '', name: 'Produto Delta',   category: 'Livros',      price: 'R$ 49,00',    stock: '0',   status: 'inactive', active: false, link: 'Ver detalhes' },
-  { avatar: '', name: 'Produto Epsilon', category: 'Eletrônicos', price: 'R$ 1.299,00', stock: '5',   status: 'active',   active: true,  link: 'Ver detalhes' },
+  { avatar: '', name: 'Forno combinado 01',   category: 'Cocção', price: 'R$ 18.900,00',   stock: '42',  status: 'active',   active: true,  link: 'Ver detalhes' },
+  { avatar: '', name: 'Câmara fria 02',    category: 'Refrigeração',   price: 'R$ 24.500,00',    stock: '7',   status: 'warning',  active: false, link: 'Ver detalhes' },
+  { avatar: '', name: 'Fritadeira 01',   category: 'Cocção',   price: 'R$ 6.300,00',    stock: '150', status: 'active',   active: true,  link: 'Ver detalhes' },
+  { avatar: '', name: 'Máquina de gelo 01',   category: 'Gelo e bebidas',      price: 'R$ 9.800,00',    stock: '0',   status: 'inactive', active: false, link: 'Ver detalhes' },
+  { avatar: '', name: 'Coifa 02', category: 'Cocção', price: 'R$ 7.450,00', stock: '5',   status: 'active',   active: true,  link: 'Ver detalhes' },
 ];
 
 const statusMap = {
@@ -38,7 +40,7 @@ const meta: Meta<typeof Table<Product>> = {
     docs: {
       description: {
         component:
-          'Tabela de dados configurada por colunas (`type`: text, link, badge, avatar, toggle, actions). Renderiza dentro de um `Card`. Linhas alternam em escala de cinza: a primeira fica cinza (separando-se do cabeçalho) e a seguinte usa a cor da tabela. Para paginar, combine com `Pagination`; sem linhas, exibe um `EmptyState` (personalize com `empty`).',
+          'Tabela de dados configurada por colunas (`type`: text, link, badge, avatar, toggle, actions). Renderiza dentro de um `Card`. Linhas alternam em escala de cinza: a primeira fica cinza (separando-se do cabeçalho) e a seguinte usa a cor da tabela. Para paginar, use a prop `pagination` (rodapé dentro da tabela, com "Mostrando X–Y de Z" e `Pagination`); sem linhas, exibe um `EmptyState` (personalize com `empty`).',
       },
     },
   },
@@ -52,9 +54,9 @@ export const Default: Story = {
 
     const columns = [
       { key: 'avatar' as const, label: 'Foto', type: 'avatar' as const, nameKey: 'name' as const, width: 60 },
-      { key: 'name' as const, label: 'Produto' },
+      { key: 'name' as const, label: 'Equipamento' },
       { key: 'category' as const, label: 'Categoria' },
-      { key: 'price' as const, label: 'Preço' },
+      { key: 'price' as const, label: 'Valor' },
       { key: 'status' as const, label: 'Status', type: 'badge' as const, statusMap },
       {
         key: 'active' as const,
@@ -77,7 +79,7 @@ export const Default: Story = {
       },
     ];
 
-    return <Table title="Produtos" subtitle={`Mostrando ${data.length} produtos`} columns={columns} rows={data} />;
+    return <Table title="Equipamentos" subtitle={`${data.length} equipamentos da cozinha`} columns={columns} rows={data} />;
   },
 };
 
@@ -98,16 +100,16 @@ export const Sortable: Story = {
     };
 
     const columns = [
-      { key: 'name' as const, label: 'Produto', sortable: true },
+      { key: 'name' as const, label: 'Equipamento', sortable: true },
       { key: 'category' as const, label: 'Categoria', sortable: true },
-      { key: 'price' as const, label: 'Preço', sortable: true },
-      { key: 'stock' as const, label: 'Estoque', sortable: true, align: 'right' as const },
+      { key: 'price' as const, label: 'Valor', sortable: true },
+      { key: 'stock' as const, label: 'Unidades', sortable: true, align: 'right' as const },
       { key: 'status' as const, label: 'Status', type: 'badge' as const, statusMap },
     ];
 
     return (
       <Table
-        title="Produtos" subtitle="Clique no cabeçalho para ordenar"
+        title="Equipamentos" subtitle="Clique no cabeçalho para ordenar"
         columns={columns} rows={data} onSort={handleSort} sortKey={sortKey} sortDir={sortDir}
       />
     );
@@ -117,7 +119,7 @@ export const Sortable: Story = {
 export const WithLinks: Story = {
   render: () => {
     const columns = [
-      { key: 'name' as const, label: 'Produto' },
+      { key: 'name' as const, label: 'Equipamento' },
       { key: 'category' as const, label: 'Categoria' },
       { key: 'link' as const, label: 'Link', type: 'link' as const, onLinkClick: (r: Product) => alert(`Abrir: ${r.name}`) },
       { key: 'status' as const, label: 'Status', type: 'badge' as const, statusMap },
@@ -126,24 +128,24 @@ export const WithLinks: Story = {
         actionItems: [{ icon: <IconDots size={16} />, label: 'Mais opções', onClick: (r: Product) => alert(r.name) }],
       },
     ];
-    return <Table title="Produtos" columns={columns} rows={rows} />;
+    return <Table title="Equipamentos" columns={columns} rows={rows} />;
   },
 };
 
 const simpleColumns = [
-  { key: 'name' as const, label: 'Produto' },
+  { key: 'name' as const, label: 'Equipamento' },
   { key: 'category' as const, label: 'Categoria' },
-  { key: 'price' as const, label: 'Preço' },
+  { key: 'price' as const, label: 'Valor' },
 ];
 
 export const Loading: Story = {
-  render: () => <Table title="Produtos" columns={simpleColumns} rows={[]} loading />,
+  render: () => <Table title="Equipamentos" columns={simpleColumns} rows={[]} loading />,
 };
 
 export const Empty: Story = {
   render: () => (
     <Table
-      title="Produtos" subtitle="Nenhum produto cadastrado ainda"
+      title="Equipamentos" subtitle="Nenhum equipamento cadastrado ainda"
       columns={simpleColumns} rows={[]}
     />
   ),
@@ -153,12 +155,69 @@ export const EmptyCustom: Story = {
   name: 'Empty personalizado',
   render: () => (
     <Table
-      title="Produtos" columns={simpleColumns} rows={[]}
+      title="Equipamentos" columns={simpleColumns} rows={[]}
       empty={{
-        title: 'Nenhum produto cadastrado',
-        description: 'Cadastre o primeiro produto para vê-lo aqui.',
-        action: <Button>Novo produto</Button>,
+        title: 'Nenhum equipamento cadastrado',
+        description: 'Cadastre o primeiro equipamento da cozinha para vê-lo aqui.',
+        action: <Button>Novo equipamento</Button>,
       }}
     />
   ),
+};
+
+/** Paginação no rodapé da tabela: `rows` recebe só a página atual. */
+export const WithPagination: Story = {
+  render: () => {
+    const all = Array.from({ length: 23 }, (_, i) => ({ ...rows[i % rows.length], name: `Equipamento ${i + 1}` }));
+    const [page, setPage] = useState(1);
+    const pageSize = 5;
+    const columns = [
+      { key: 'name' as const, label: 'Equipamento' },
+      { key: 'category' as const, label: 'Categoria' },
+      { key: 'price' as const, label: 'Valor' },
+      { key: 'status' as const, label: 'Status', type: 'badge' as const, statusMap },
+    ];
+    return (
+      <Table
+        title="Equipamentos"
+        columns={columns}
+        rows={all.slice((page - 1) * pageSize, page * pageSize)}
+        pagination={{ page, pageSize, total: all.length, onPageChange: setPage }}
+      />
+    );
+  },
+};
+
+/** Busca e filtro dentro da tabela (`toolbar`), com paginação no rodapé. */
+export const WithToolbar: Story = {
+  render: () => {
+    const [query, setQuery] = useState('');
+    const [status, setStatus] = useState('todos');
+    const filtered = rows.filter((r) =>
+      r.name.toLowerCase().includes(query.toLowerCase()) && (status === 'todos' || r.status === status));
+    const columns = [
+      { key: 'name' as const, label: 'Equipamento' },
+      { key: 'category' as const, label: 'Categoria' },
+      { key: 'status' as const, label: 'Status', type: 'badge' as const, statusMap },
+    ];
+    return (
+      <Table
+        title="Equipamentos"
+        columns={columns}
+        rows={filtered}
+        empty={{ title: 'Nenhum equipamento encontrado' }}
+        toolbar={(
+          <>
+            <div style={{ flex: '1 1 calc(var(--spacing-3xl) * 4)' }}>
+              <Input type="search" aria-label="Buscar equipamento" placeholder="Buscar equipamento" iconLeft={<IconSearch size={20} />} value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            <div style={{ flex: '0 0 calc(var(--spacing-3xl) * 3)' }}>
+              <Dropdown aria-label="Status" value={status} onChange={setStatus}
+                options={[{ label: 'Todos os status', value: 'todos' }, { label: 'Ativo', value: 'active' }, { label: 'Pendente', value: 'warning' }, { label: 'Inativo', value: 'inactive' }]} />
+            </div>
+          </>
+        )}
+      />
+    );
+  },
 };

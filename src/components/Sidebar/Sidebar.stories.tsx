@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { IconLayoutDashboard, IconUsers, IconFileText, IconSettings } from '@tabler/icons-react';
+import { IconLayoutDashboard, IconToolsKitchen2, IconFridge, IconMessageReport, IconSettings, IconCategory, IconTool, IconFlag } from '@tabler/icons-react';
 import { Sidebar, NavItemDef } from './Sidebar';
 import { Card } from '../Card/Card';
 import { Stack } from '../Stack/Stack';
 
 const items: NavItemDef[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <IconLayoutDashboard size={20} /> },
-  { id: 'users',     label: 'Usuários',  icon: <IconUsers size={20} />, dot: true, dotLabel: 'Novos usuários' },
-  { id: 'reports',   label: 'Relatórios', icon: <IconFileText size={20} /> },
-  { id: 'settings',  label: 'Configurações', icon: <IconSettings size={20} /> },
+  { id: 'restaurants', label: 'Restaurantes', icon: <IconToolsKitchen2 size={20} /> },
+  { id: 'equipments',  label: 'Equipamentos', icon: <IconFridge size={20} /> },
+  { id: 'tickets',     label: 'Chamados',     icon: <IconMessageReport size={20} />, dot: true, dotLabel: 'Novos chamados' },
 ];
 
 /** A Sidebar é sempre navy (secundária): usa as versões claras da logo em ambos os temas.
@@ -19,7 +19,7 @@ const logo = {
   icon: <img src="maglev-symbol-dark.svg" alt="Maglev" />,
 };
 
-const user = { name: 'Maria Silva', email: 'maria@exemplo.com' };
+const user = { name: 'Ana Souza', email: 'ana.souza@cantinadonarosa.com.br' };
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -111,4 +111,43 @@ export const WithRealLinks: Story = {
       <Content title="Dashboard" />
     </AppLayout>
   ),
+};
+
+const itemsWithGroup: NavItemDef[] = [
+  ...items,
+  {
+    id: 'settings', label: 'Configurações', icon: <IconSettings size={20} />,
+    children: [
+      { id: 'settings-categories', label: 'Categorias', icon: <IconCategory size={16} /> },
+      { id: 'settings-types', label: 'Tipos de manutenção', icon: <IconTool size={16} /> },
+      { id: 'settings-priorities', label: 'Prioridades', icon: <IconFlag size={16} /> },
+    ],
+  },
+];
+
+export const WithSubmenu: Story = {
+  name: 'Com submenu (accordion)',
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Um item com `children` vira um grupo recolhível: clicar nele só expande/recolhe e a navegação acontece nos subitens (recuados, em fonte menor e com ícone opcional). ' +
+          'O grupo que contém o item ativo começa aberto. Com o menu recolhido, clicar no grupo abre o menu e expande o grupo. Subitens aceitam `href` como os itens comuns.',
+      },
+    },
+  },
+  render: () => {
+    const [open, setOpen] = useState(true);
+    const [active, setActive] = useState('settings-types');
+    const flat = itemsWithGroup.flatMap(i => [i, ...(i.children ?? [])]);
+    return (
+      <AppLayout>
+        <Sidebar
+          items={itemsWithGroup} logo={logo} user={user} onLogout={() => undefined}
+          open={open} onToggle={() => setOpen(o => !o)} activeItem={active} onNavClick={setActive}
+        />
+        <Content title={flat.find(i => i.id === active)?.label ?? ''} />
+      </AppLayout>
+    );
+  },
 };

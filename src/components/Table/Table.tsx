@@ -4,6 +4,7 @@ import { Avatar } from '../Avatar/Avatar';
 import { Badge, BadgeStatus } from '../Badge/Badge';
 import { Card } from '../Card/Card';
 import { EmptyState, EmptyStateProps } from '../EmptyState/EmptyState';
+import { Pagination, PaginationProps } from '../Pagination/Pagination';
 import { Spinner } from '../Spinner/Spinner';
 import { Toggle } from '../Toggle/Toggle';
 import { cx } from '../../utils/cx';
@@ -45,7 +46,15 @@ export type TableColumn<T> = {
   onLinkClick?: (row: T) => void;
   /** type='avatar': coluna cujo valor é o nome exibido/iniciais (padrão: o próprio valor da célula) */
   nameKey?: keyof T;
+  /**
+   * Fixa a coluna na borda direita durante a rolagem horizontal (o restante rola por baixo).
+   * Regra: colunas de ações ficam sempre fixas à direita — `type: 'actions'` já assume `'right'`;
+   * use `sticky: 'right'` também em colunas de ações com `render` próprio.
+   */
+  sticky?: 'right';
 };
+
+const isStickyRight = <T,>(col: TableColumn<T>) => col.sticky === 'right' || col.type === 'actions';
 
 export type TableProps<T extends Record<string, unknown>> = {
   title?: string;
@@ -61,7 +70,34 @@ export type TableProps<T extends Record<string, unknown>> = {
   onSort?: (key: keyof T) => void;
   sortKey?: keyof T;
   sortDir?: 'asc' | 'desc';
+  /**
+   * Paginação no rodapé da tabela (dentro do Card): "Mostrando X–Y de Z" à esquerda e
+   * `Pagination` à direita. `rows` deve conter só as linhas da página atual.
+   */
+  pagination?: TablePagination;
+  /**
+   * Busca e filtros da tabela, dentro do Card (entre o título e o cabeçalho das colunas).
+   * Use os controles do Storybook (`Input` `type="search"`, `Dropdown`…), com 44px de altura.
+   */
+  toolbar?: ReactNode;
+  /** Ações no cabeçalho do Card, no lado oposto ao título (ex.: escolher colunas). */
+  actions?: ReactNode;
 };
+
+export type TablePagination = {
+  /** Página atual (começa em 1). */
+  page: number;
+  pageSize: number;
+  /** Total de registros (todas as páginas). */
+  total: number;
+  onPageChange: (page: number) => void;
+  /** Texto do intervalo (i18n). Padrão: "Mostrando 1–10 de 42". */
+  rangeLabel?: (from: number, to: number, total: number) => string;
+  /** Textos do `Pagination` (i18n). */
+  labels?: PaginationProps['labels'];
+};
+
+const defaultRange = (from: number, to: number, total: number) => `Mostrando ${from}–${to} de ${total}`;
 
 /* ── Cell renderer ──────────────────────────────────────────────────────── */
 
@@ -143,6 +179,9 @@ export function Table<T extends Record<string, unknown>>({
   onSort,
   sortKey,
   sortDir,
+  pagination,
+  toolbar,
+  actions,
 }: TableProps<T>) {
   const ariaSort = (col: TableColumn<T>): 'ascending' | 'descending' | 'none' | undefined => {
     if (!col.sortable) return undefined;
@@ -151,7 +190,8 @@ export function Table<T extends Record<string, unknown>>({
   };
 
   return (
-    <Card title={title} subtitle={subtitle} padding="none">
+    <Card title={title} subtitle={subtitle} actions={actions} padding="none">
+      {toolbar && <div className={styles.toolbar}>{toolbar}</div>}
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           {caption && <caption className={styles.srOnly}>{caption}</caption>}
@@ -161,7 +201,7 @@ export function Table<T extends Record<string, unknown>>({
                 <th
                   key={String(col.key)}
                   scope="col"
-                  className={styles.th}
+                  className={cx(styles.th, isStickyRight(col) && styles.stickyRight)}
                   style={{ width: col.width ?? undefined, textAlign: col.align ?? 'left' }}
                   aria-sort={ariaSort(col)}
                 >
@@ -203,7 +243,7 @@ export function Table<T extends Record<string, unknown>>({
                   {columns.map(col => (
                     <td
                       key={String(col.key)}
-                      className={cx(styles.td, col.type === 'actions' && styles.tdActions)}
+                      className={cx(styles.td, col.type === 'actions' && styles.tdActions, isStickyRight(col) && styles.stickyRight)}
                       style={{ textAlign: col.align ?? 'left' }}
                     >
                       {renderCell(col, row)}
@@ -215,6 +255,19 @@ export function Table<T extends Record<string, unknown>>({
           </tbody>
         </table>
       </div>
+
+      {pagination && pagination.total > 0 && (() => {
+        const { page, pageSize, total, onPageChange, rangeLabel = defaultRange, labels } = pagination;
+        const pageCount = Math.max(1, Math.ceil(total / pageSize));
+        const from = (page - 1) * pageSize + 1;
+        const to = Math.min(page * pageSize, total);
+        return (
+          <div className={styles.footer}>
+            <span className={styles.range} aria-live="polite">{rangeLabel(from, to, total)}</span>
+            {pageCount > 1 && <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} labels={labels} />}
+          </div>
+        );
+      })()}
     </Card>
   );
 }

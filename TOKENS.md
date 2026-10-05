@@ -29,6 +29,7 @@ A identidade de um projeto é trocada **somente em `src/tokens/brand.css`**.
 - **Espaçamento:** `--spacing-2xs … 4xl`. **Controles:** `--control-*`.
 - **Forma:** `--radius-*`, `--border-width-*`, `--shadow-*`, `--opacity-*`, `--transition-*`.
 - **Foco:** `--focus-ring-*`, `--focus-glow`, `--focus-glow-error`.
+- **Barra de rolagem:** `--scrollbar-size-x` (horizontal, 24px), `--scrollbar-size-y` (vertical, 16px), `--scrollbar-thickness` (8px visível), `--scrollbar-thumb(-hover)`. Aplicada globalmente a todo elemento com rolagem (ver `Foundations/Scrollbar`).
 - **Camadas:** `--z-dropdown/sticky/overlay/toast/tooltip`.
 - **Breakpoints:** `--breakpoint-sm/md/lg/xl` (640/768/1024/1280) e `breakpoints.ts`. Media queries não aceitam `var()`; escreva `@media (min-width: 768px)` com o valor literal.
 
@@ -43,3 +44,24 @@ A identidade de um projeto é trocada **somente em `src/tokens/brand.css`**.
 1. Edite `brand.css`; rode `npm run storybook`.
 2. Confira `Foundations/Colors`, `Typography` e `Border Radius`, alterne claro/escuro e abra a aba **Accessibility** das stories principais (contraste).
 3. Rode `npm run check:tokens`.
+
+## Paleta Maglev: Navy + Ink + tokens semânticos (`brand.css`)
+
+Direção cromática: **navy (#051730) + neutros frios** constroem a base; o **laranja é accent** (CTA, indicador do item ativo).
+No dark mode os neutros têm a mesma matiz do navy do Sidebar, para a interface parecer um sistema só. Light mode: valores inalterados.
+
+Três camadas — componentes só usam a terceira:
+
+| Camada | Tokens | Para quê |
+|---|---|---|
+| 1. Escalas cruas | `--color-navy-50…950` (900 = #051730), `--color-ink-50…950` (neutros frios do dark) | Matéria-prima; ajustadas à mão, não interpoladas |
+| 2. Semânticos | `--background-page / -sidebar / -surface / -surface-raised / -surface-hover / -selected / -stripe`, `--border-subtle / -card / -control / -strong`, `--text-primary / -secondary / -tertiary`, `--action-primary / -hover / -pressed` | Mudam de valor por tema (`:root` e `:root[data-theme="dark"]`) |
+| 3. Componente | `--color-bg-*`, `--color-border-*`, `--color-text-*`, `--color-action-*`, `--color-nav-*` | Já existentes; apontam para a camada 2 |
+
+Regras:
+- Contorno de Card/KPI/tabela: `--color-border-card` (light `gray-200` a 64%, mais visível que o divisor `border-subtle`, que fica para linhas internas).
+- Superfícies flutuantes (Dialog, menu do Dropdown, calendário, Toast) usam `--color-bg-raised`; cards e tabelas usam `--color-bg-surface`.
+- `--color-bg-brand` = `background/selected`: no light é a tinta laranja de sempre; no dark é uma tinta navy (hover de linha, chip de ícone, item selecionado).
+- Sidebar: default `navy-200` · hover `navy-800` a 55% · selecionado `navy-800` + barra laranja · foco = anel da marca.
+- Contrastes validados (WCAG): texto ≥ 4,5:1 (menor caso: terciário sobre hover, 4,78:1); bordas de campo e foco ≥ 3:1; texto navy sobre o laranja do botão 6,49:1.
+- Para trocar o tema de um componente, mude o **semântico** em `brand.css`, nunca o valor dentro do componente.

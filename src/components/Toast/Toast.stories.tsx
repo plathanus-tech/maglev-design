@@ -20,7 +20,7 @@ const meta: Meta = {
   parameters: {
     docs: {
       description: {
-        component: `Notificação efêmera no canto da tela. Envolva o app com \`<ToastProvider>\` e chame \`useToast().show(...)\`. Para mensagens permanentes na página, use \`Feedback\`.
+        component: `Notificação efêmera no topo da tela, centralizada. Envolva o app com \`<ToastProvider>\` e chame \`useToast().show(...)\`. Para mensagens permanentes na página, use \`Feedback\`.
 
 O tempo de exibição é calculado a partir do texto (\`5000ms + 300ms por palavra\` de \`title\` + \`message\`), para dar tempo de leitura proporcional ao conteúdo. A contagem pausa enquanto o mouse está sobre o toast ou o foco do teclado está em qualquer elemento dentro dele (inclusive um botão de ação como "Desfazer"), e só retoma quando o ponteiro/foco sai. Toasts \`type="error"\` nunca somem sozinhos — precisam do botão de fechar.
 

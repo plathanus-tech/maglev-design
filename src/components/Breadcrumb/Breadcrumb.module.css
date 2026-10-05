@@ -12,19 +12,18 @@
   align-items: center;
 }
 
-/* Link padrão — text-tertiary */
+/* Link — text-primary em semibold (mesma cor do “Esqueci minha senha”), para ler como clicável */
 .link {
   display: inline-flex;
   align-items: center;
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-body);
-  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
   text-decoration: none;
   border-radius: var(--radius-control-sm);
   transition: color var(--transition-fast);
 }
 .link:hover {
-  color: var(--color-text-secondary);
   text-decoration: underline;
 }
 .link:focus-visible {

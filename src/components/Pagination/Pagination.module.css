@@ -3,6 +3,23 @@
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-2xs);
 }
 .gap { padding: 0 var(--spacing-xs); color: var(--color-text-tertiary); }
+
+/* Botões compactos 24 × 24 com texto Body/XS (12px, regular) */
+.btn {
+  min-height: 0;
+  min-width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-control-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--letter-spacing-normal);
+}
+.btn[aria-current="page"] { font-weight: var(--font-weight-label); }
+/* Setas: quadradas, sem o padding lateral do texto */
+.arrow { width: var(--spacing-lg); padding: 0; }

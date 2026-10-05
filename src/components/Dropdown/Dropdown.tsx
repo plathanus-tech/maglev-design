@@ -1,4 +1,5 @@
-import { KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { CSSProperties, KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconChevronDown } from '@tabler/icons-react';
 import { FormField } from '../FormField/FormField';
 import { cx } from '../../utils/cx';
@@ -18,30 +19,31 @@ export interface DropdownProps {
   helperText?: string;
   error?: string;
   required?: boolean;
+  /** Campo opcional: mostra “(opcional)” ao lado do rótulo. */
+  optional?: boolean;
   className?: string;
 }
 
 /** Igual a `--breakpoint-sm` (media queries e matchMedia não aceitam var()). */
 const MOBILE_QUERY = '(max-width: 640px)';
-/** Altura aproximada do menu (15rem) usada para decidir se abre para cima. */
-const MENU_SPACE = 260;
 
 /**
  * Seleção de uma opção em lista (padrão ARIA select-only combobox, com teclado).
- * No desktop abre um menu abaixo do campo (ou acima, se faltar espaço); em telas pequenas
+ * No desktop abre sempre um menu abaixo do campo (a página rola se faltar espaço); em telas pequenas
  * (≤ 640px) abre como folha inferior com fundo escurecido e itens maiores para o toque.
  */
 export function Dropdown({
   options, value, onChange, placeholder = 'Selecione...', disabled = false,
-  label, 'aria-label': ariaLabel, helperText, error, required, className,
+  label, 'aria-label': ariaLabel, helperText, error, required, optional, className,
 }: DropdownProps) {
   if (import.meta.env.DEV && !label && !ariaLabel) {
     console.warn('Dropdown: forneça `label` ou `aria-label` para que o campo tenha um nome acessível.');
   }
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>();
   const listId = useId();
   const selectedIndex = options.findIndex(o => o.value === value);
   const selected = options[selectedIndex];
@@ -49,9 +51,28 @@ export function Dropdown({
   // Fecha ao clicar fora (a folha mobile fecha pelo próprio fundo escurecido).
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // O menu é renderizado em um portal no <body> (posição fixa sob o campo): assim não é cortado por
+  // containers com overflow, como o corpo rolável de um Dialog ou um Card. Na folha mobile o CSS cuida da posição.
+  useLayoutEffect(() => {
+    if (!open || window.matchMedia(MOBILE_QUERY).matches) { setMenuStyle(undefined); return; }
+    const place = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (!r) return;
+      const room = window.innerHeight - r.bottom - 16;
+      setMenuStyle({ top: r.bottom + 4, left: r.left, width: r.width, maxHeight: Math.max(room, 128) });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
   }, [open]);
 
   // Na folha mobile, trava o scroll do fundo enquanto está aberta.
@@ -68,11 +89,6 @@ export function Dropdown({
   }, [open, active, listId]);
 
   const openMenu = () => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) {
-      const below = window.innerHeight - rect.bottom;
-      setPlacement(below < MENU_SPACE && rect.top > below ? 'top' : 'bottom');
-    }
     setActive(selectedIndex >= 0 ? selectedIndex : 0);
     setOpen(true);
   };
@@ -97,7 +113,7 @@ export function Dropdown({
   };
 
   return (
-    <FormField label={label} helperText={helperText} error={error} required={required} className={className}>
+    <FormField label={label} helperText={helperText} error={error} required={required} optional={optional} className={className}>
       {(control) => (
         <div ref={ref} className={cx(styles.anchor, open && styles.open)}>
           <button
@@ -117,10 +133,10 @@ export function Dropdown({
             <span className={selected ? undefined : styles.placeholder}>{selected?.label ?? placeholder}</span>
             <span className={styles.chevron} aria-hidden="true"><IconChevronDown size={16} /></span>
           </button>
-          {open && (
+          {open && createPortal(
             <>
               <div className={styles.backdrop} aria-hidden="true" onClick={() => setOpen(false)} />
-              <ul id={listId} role="listbox" aria-label={label ?? ariaLabel} data-placement={placement} className={styles.menu}>
+              <ul ref={menuRef} id={listId} role="listbox" aria-label={label ?? ariaLabel} className={styles.menu} style={menuStyle}>
                 {options.map((opt, i) => (
                   <li
                     key={opt.value}
@@ -137,7 +153,8 @@ export function Dropdown({
                   </li>
                 ))}
               </ul>
-            </>
+            </>,
+            document.body,
           )}
         </div>
       )}

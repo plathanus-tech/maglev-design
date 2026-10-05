@@ -18,6 +18,8 @@
   background: currentColor;
 }
 
+.icon { display: inline-flex; flex-shrink: 0; }
+
 .neutral { background: var(--color-bg-subtle);         color: var(--color-text-secondary); }
 .brand   { background: var(--color-bg-brand);          color: var(--color-text-brand); }
 .success { background: var(--color-status-success-bg); color: var(--color-status-success-fg); }

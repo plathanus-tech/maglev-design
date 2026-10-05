@@ -6,8 +6,9 @@
 
 .input { composes: control from '../FormField/FormField.module.css'; }
 
-.hasLeft .input  { padding-left: var(--spacing-2xl); }
-.hasRight .input { padding-right: var(--spacing-2xl); }
+/* ícone (20px) a --spacing-sm da borda e --spacing-sm do texto */
+.hasLeft .input  { padding-left: calc(var(--spacing-sm) * 2 + 20px); }
+.hasRight .input { padding-right: calc(var(--spacing-sm) * 2 + 20px); }
 
 .iconLeft, .iconRight {
   position: absolute;
@@ -26,3 +27,4 @@
   right: var(--spacing-xs);
   color: var(--color-text-tertiary);
 }
+

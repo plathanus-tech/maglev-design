@@ -130,6 +130,8 @@ export interface DatePickerProps {
   helperText?: string;
   error?: string;
   required?: boolean;
+  /** Campo opcional: mostra “(opcional)” ao lado do rótulo. */
+  optional?: boolean;
   disabled?: boolean;
   /** Menor data permitida (ISO). */
   min?: string;
@@ -156,7 +158,7 @@ export interface DatePickerProps {
  * e não segue a identidade visual.
  */
 export function DatePicker({
-  value = '', onChange, label, 'aria-label': ariaLabel, helperText, error, required, disabled = false,
+  value = '', onChange, label, 'aria-label': ariaLabel, helperText, error, required, optional, disabled = false,
   min, max, locale = 'pt-BR', weekStartsOn = 0, placeholder = 'dd/mm/aaaa', showShortcuts = true,
   labels: labelsProp, className, autoComplete,
 }: DatePickerProps) {
@@ -309,7 +311,7 @@ export function DatePicker({
   return (
     <FormField
       label={label} helperText={helperText} error={error ?? touchedInvalid ?? undefined}
-      required={required} className={className}
+      required={required} optional={optional} className={className}
     >
       {(control) => (
         <div ref={anchorRef} className={styles.anchor} onKeyDown={onAnchorKeyDown}>

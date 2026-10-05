@@ -27,8 +27,10 @@ export interface FormFieldProps {
    */
   error?: string;
   success?: string;
-  /** Mostra o asterisco e repassa `required` ao controle. */
+  /** Repassa `required` ao controle. Campo obrigatório não leva marcação visual: é o padrão. */
   required?: boolean;
+  /** Campo opcional: mostra “(opcional)” ao lado do rótulo. Os opcionais são minoria, por isso só eles são marcados. */
+  optional?: boolean;
   /** Oculta o ícone da mensagem de erro (quando outro elemento já sinaliza o erro). */
   hideErrorIcon?: boolean;
   /** Use quando precisar de um id previsível; caso contrário é gerado. */
@@ -43,7 +45,7 @@ export interface FormFieldProps {
  * Todo campo novo deve ser composto com FormField em vez de reimplementar label/erro.
  */
 export function FormField({
-  label, helperText, error, success, required, hideErrorIcon = false, id, className, children,
+  label, helperText, error, success, required, optional, hideErrorIcon = false, id, className, children,
 }: FormFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
@@ -62,7 +64,7 @@ export function FormField({
       {label && (
         <label className={styles.label} htmlFor={fieldId}>
           {label}
-          {required && <span className={styles.required} aria-hidden="true">*</span>}
+          {optional && !required && <span className={styles.optional}> (opcional)</span>}
         </label>
       )}
       {children(control)}

@@ -6,7 +6,11 @@
   line-height: var(--line-height-snug);
   color: var(--color-text-primary);
 }
-.required { color: var(--color-text-error); margin-left: var(--spacing-2xs); }
+.optional {
+  font: var(--text-body-xs);
+  letter-spacing: var(--text-body-xs-tracking);
+  color: var(--color-text-tertiary);
+}
 
 .helper {
   font-size: var(--font-size-sm);
@@ -53,5 +57,8 @@
   color: var(--color-text-disabled);
   cursor: not-allowed;
 }
+/* Somente leitura: segue com a aparência de campo, só com o fundo diferente */
+.control[readonly] { background: var(--color-bg-subtle); }
+.control[readonly]:hover { border-color: var(--color-border-muted); }
 .control[aria-invalid="true"] { border-color: var(--color-action-error); }
 .control[aria-invalid="true"]:focus-visible { box-shadow: var(--focus-glow-error); }

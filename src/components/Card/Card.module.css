@@ -1,7 +1,7 @@
 .card {
   width: 100%;
   background: var(--color-bg-surface);
-  border: var(--border-width-thin) solid var(--color-border-subtle);
+  border: var(--border-width-thin) solid var(--color-border-card);
   border-radius: var(--radius-card);
   overflow: hidden;
 }
@@ -16,7 +16,7 @@
 .headings { display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; }
 .title {
   margin: 0;
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-heading);
   line-height: var(--line-height-snug);
   color: var(--color-text-secondary);
@@ -40,3 +40,11 @@
   padding: var(--spacing-md) var(--spacing-lg);
   border-top: var(--border-width-thin) solid var(--color-border-subtle);
 }
+
+/* Mobile (< 768px): 16px entre a borda do Card e o conteúdo */
+@media (max-width: 767px) {
+  .header  { padding: var(--spacing-md); }
+  .pad-md, .pad-lg { padding: var(--spacing-md); }
+  .footer  { padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md); }   /* 8px entre o divisor e as ações */
+}
+

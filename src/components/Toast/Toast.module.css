@@ -1,12 +1,14 @@
 .region {
+  /* Topo da tela, centralizado (mesma posição e largura do aviso de erro de formulário) */
   position: fixed;
-  right: var(--spacing-md);
-  bottom: var(--spacing-md);
+  top: var(--spacing-md);
+  left: 50%;
+  transform: translateX(-50%);
   z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  width: min(24rem, calc(100vw - var(--spacing-xl)));
+  width: min(32rem, calc(100vw - var(--spacing-xl)));
   pointer-events: none;
 }
 
@@ -14,5 +16,5 @@
   pointer-events: auto;
   border-radius: var(--radius-control);
   box-shadow: var(--shadow-lg);
-  background: var(--color-bg-surface);
+  background: var(--color-bg-raised);
 }

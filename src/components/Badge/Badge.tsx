@@ -9,14 +9,16 @@ export interface BadgeProps {
   status?: BadgeStatus;
   /** Mostra um ponto antes do texto (reforça o estado sem depender só da cor). */
   dot?: boolean;
+  /** Ícone (Tabler, ~14px) no lugar do ponto: reforça o significado sem depender só da cor. Tem prioridade sobre `dot`. */
+  icon?: ReactNode;
   children: ReactNode;
 }
 
 /** Rótulo pequeno de estado ou categoria (ex.: "Ativo", "Pendente"). Não é clicável. */
-export function Badge({ status = 'neutral', dot = false, children }: BadgeProps) {
+export function Badge({ status = 'neutral', dot = false, icon, children }: BadgeProps) {
   return (
     <span className={cx(styles.badge, styles[status])}>
-      {dot && <span className={styles.dot} aria-hidden="true" />}
+      {icon ? <span className={styles.icon} aria-hidden="true">{icon}</span> : dot && <span className={styles.dot} aria-hidden="true" />}
       {children}
     </span>
   );

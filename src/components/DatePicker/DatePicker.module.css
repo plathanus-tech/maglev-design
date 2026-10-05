@@ -37,7 +37,7 @@
   width: 20.5rem;
   max-width: calc(100vw - var(--spacing-xl));
   padding: var(--spacing-md);
-  background: var(--color-bg-surface);
+  background: var(--color-bg-raised);
   border: var(--border-width-thin) solid var(--color-border-subtle);
   border-radius: var(--radius-overlay);
   box-shadow: var(--shadow-lg);

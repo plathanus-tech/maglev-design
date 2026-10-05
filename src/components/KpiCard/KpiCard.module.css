@@ -1,0 +1,149 @@
+/* Superfície e borda vêm do Card; aqui só o conteúdo do indicador. */
+.kpi { height: 100%; }
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+.label {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-label);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-secondary);
+}
+
+/* Ícone: primária da marca sobre o fundo brand sutil (identidade, não status) */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--spacing-xl);
+  height: var(--spacing-xl);
+  border-radius: var(--radius-control);
+  background: var(--color-bg-brand);
+  color: var(--brand-primary);
+}
+
+.main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+/* Um só tamanho para todo valor (número, moeda ou nome): cabe no card sem competir entre KPIs */
+.value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+/* Comparativo: secundário ao valor; a cor segue o significado (sentiment), não a seta */
+.trend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-label);
+  line-height: var(--line-height-snug);
+  font-variant-numeric: tabular-nums;
+}
+.trend svg { align-self: center; }
+.positive { color: var(--color-text-success); }
+.negative { color: var(--color-text-error); }
+.neutral  { color: var(--color-text-tertiary); }
+
+.compare {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.main + .reference { margin-top: calc(var(--spacing-xs) * -1); }
+
+.reference {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-tertiary);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Ranking compacto (top N) no lugar do valor, com a mesma altura dos demais KPIs.
+   Três linhas do mesmo nível, em fonte menor que o label do card (sm < md), para o label
+   seguir lido como título e as linhas como conteúdo. Nome em texto primário (o 1º com peso
+   um pouco maior), posição em texto secundário, quantidade em semibold à direita.
+   O nome só trunca quando realmente não cabe. */
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+.rankItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+.rankPos {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.rankLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+}
+.rankValue {
+  flex-shrink: 0;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+.rankTop .rankLabel { font-weight: var(--font-weight-label); }
+
+/* Mobile (< 768px): 16px entre a borda do card e o conteúdo */
+@media (max-width: 767px) {
+  .body { padding: var(--spacing-md); }
+}
+
+/* Clicável (`href`): o label é o link e se estende por todo o card */
+.kpi.clickable { position: relative; cursor: pointer; transition: border-color var(--transition-fast); }
+.kpi.clickable:hover { border-color: var(--color-border-muted); }
+.kpi.clickable:has(.link:focus-visible) { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.link { text-decoration: none; outline: none; }
+.link::after { content: ""; position: absolute; inset: 0; }
+.kpi.clickable:hover .link { text-decoration: underline; }

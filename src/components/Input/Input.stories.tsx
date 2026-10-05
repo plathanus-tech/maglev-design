@@ -18,7 +18,7 @@ export const WithHelper: Story = { args: { label: 'E-mail', placeholder: 'seu@em
 export const WithError: Story = { args: { label: 'Senha', type: 'password', value: '123', error: 'Senha deve ter ao menos 8 caracteres.', readOnly: true } };
 export const WithIcons: Story = { args: { label: 'Buscar', iconLeft: <span>🔍</span>, iconRight: <span>✕</span>, placeholder: 'Pesquisar...' } };
 export const Disabled: Story = { args: { label: 'Campo desabilitado', value: 'Valor fixo', disabled: true, readOnly: true } };
-export const Search: Story = { args: { type: 'search', iconLeft: <span>🔍</span>, placeholder: 'Pesquisar produtos...' } };
+export const Search: Story = { args: { type: 'search', iconLeft: <span>🔍</span>, placeholder: 'Pesquisar equipamentos...' } };
 
 /** Senha com mostrar/ocultar: `iconRightAction` renderiza um botão clicável dentro do campo. */
 export const PasswordToggle: Story = {

@@ -39,7 +39,7 @@ export function Pagination({ page, pageCount, onPageChange, siblings = 1, labels
   return (
     <nav aria-label={labels.nav} className={styles.nav}>
       <Button
-        variant="ghost" size="sm" iconOnly iconLeft={<IconChevronLeft size={16} />}
+        variant="ghost" iconOnly className={`${styles.btn} ${styles.arrow}`} iconLeft={<IconChevronLeft size={16} />}
         aria-label={labels.previous} disabled={page <= 1} onClick={() => onPageChange(page - 1)}
       />
       {pageItems(page, pageCount, siblings).map((item, i) =>
@@ -47,7 +47,8 @@ export function Pagination({ page, pageCount, onPageChange, siblings = 1, labels
           ? <span key={`gap-${i}`} className={styles.gap} aria-hidden="true">…</span>
           : (
             <Button
-              key={item} size="sm"
+              key={item}
+              className={styles.btn}
               variant={item === page ? 'primary' : 'ghost'}
               aria-label={labels.page(item)}
               aria-current={item === page ? 'page' : undefined}
@@ -58,7 +59,7 @@ export function Pagination({ page, pageCount, onPageChange, siblings = 1, labels
           ),
       )}
       <Button
-        variant="ghost" size="sm" iconOnly iconLeft={<IconChevronRight size={16} />}
+        variant="ghost" iconOnly className={`${styles.btn} ${styles.arrow}`} iconLeft={<IconChevronRight size={16} />}
         aria-label={labels.next} disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}
       />
     </nav>

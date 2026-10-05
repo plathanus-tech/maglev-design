@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Tab } from './Tab';
 
 const tabs = [
-  { label: 'Visão geral', content: <p>Conteúdo da aba Visão geral. Aqui ficam as informações gerais do produto.</p> },
-  { label: 'Especificações', content: <p>Conteúdo das Especificações técnicas detalhadas do produto.</p> },
-  { label: 'Avaliações', content: <p>Conteúdo das Avaliações de clientes sobre este produto.</p> },
+  { label: 'Visão geral', content: <p>Dados gerais do equipamento: modelo, unidade do restaurante e data de instalação.</p> },
+  { label: 'Manutenções', content: <p>Histórico de ordens de serviço e manutenções preventivas do equipamento.</p> },
+  { label: 'Chamados', content: <p>Solicitações abertas para este equipamento.</p> },
 ];
 
 const meta: Meta<typeof Tab> = { title: 'Components/Tab', component: Tab, tags: ['autodocs'],
@@ -17,11 +17,11 @@ export const SecondTabActive: Story = { args: { tabs, defaultIndex: 1 } };
 export const ManyTabs: Story = {
   args: {
     tabs: [
-      { label: 'Início', content: <p>Início</p> },
-      { label: 'Produtos', content: <p>Produtos</p> },
-      { label: 'Serviços', content: <p>Serviços</p> },
-      { label: 'Sobre', content: <p>Sobre nós</p> },
-      { label: 'Contato', content: <p>Contato</p> },
+      { label: 'Visão geral', content: <p>Visão geral</p> },
+      { label: 'Unidades', content: <p>Unidades do restaurante</p> },
+      { label: 'Equipamentos', content: <p>Equipamentos da cozinha</p> },
+      { label: 'Chamados', content: <p>Chamados</p> },
+      { label: 'Preventivas', content: <p>Planos preventivos</p> },
     ],
   },
 };

@@ -25,15 +25,12 @@
 .backdrop { display: none; }
 
 .menu {
-  position: absolute;
-  top: calc(100% + var(--spacing-xs));
-  left: 0;
-  right: 0;
-  z-index: var(--z-dropdown);
+  position: fixed;   /* portal no <body>; top/left/width vêm do campo (inline) */
+  z-index: calc(var(--z-overlay) + 1);   /* acima de Dialog e demais camadas */
   margin: 0;
   padding: 0;
   list-style: none;
-  background: var(--color-bg-surface);
+  background: var(--color-bg-raised);
   border: var(--border-width-thin) solid var(--color-border-subtle);
   border-radius: var(--radius-control);
   box-shadow: var(--shadow-md);
@@ -41,8 +38,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-/* Sem espaço abaixo: abre para cima */
-.menu[data-placement="top"] { top: auto; bottom: calc(100% + var(--spacing-xs)); }
 
 .option {
   display: flex;
@@ -72,8 +67,7 @@
     background: var(--color-overlay);
   }
 
-  .menu,
-  .menu[data-placement="top"] {
+  .menu {
     position: fixed;
     top: auto;
     bottom: 0;
@@ -89,3 +83,4 @@
 
   .option { min-height: 3rem; font-size: var(--font-size-lg); }
 }
+

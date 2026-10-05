@@ -23,12 +23,13 @@
 .th {
   padding: var(--spacing-sm);
   font-family: var(--font-display);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-label);
   color: var(--color-text-secondary);
   white-space: nowrap;
   border-right: var(--border-width-thin) solid var(--color-border-subtle);
   text-align: left;
+  background: var(--color-bg-surface);
 }
 .th:last-child { border-right: none; }
 
@@ -62,7 +63,7 @@
   padding: var(--spacing-sm);
   height: 3.25rem;
   vertical-align: middle;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-body);
   color: var(--color-text-primary);
   border-right: var(--border-width-thin) solid var(--color-border-subtle);
@@ -70,9 +71,25 @@
 .td:last-child { border-right: none; }
 .tdActions { padding: 0 var(--spacing-sm); }
 
+/* Primeira e última coluna alinhadas ao título, toolbar e rodapé do card (--spacing-lg) */
+.th:first-child, .td:first-child { padding-left: var(--spacing-lg); }
+.th:last-child,  .td:last-child  { padding-right: var(--spacing-lg); }
+
+/* ── Coluna fixa à direita (ações) ─────────────────────────────────────
+   Fica visível durante a rolagem horizontal; o fundo acompanha a linha (zebra/hover)
+   e a divisória à esquerda é um box-shadow (bordas de tabela colapsada não acompanham o sticky). */
+.stickyRight {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  border-right: none;
+  box-shadow: inset var(--border-width-thin) 0 0 var(--color-gray-200);   /* separador da coluna fixa: um tom acima do subtle */
+}
+:global(:root[data-theme="dark"]) .stickyRight { box-shadow: inset var(--border-width-thin) 0 0 var(--color-gray-700); }
+
 /* ── Cell — Link ─────────────────────────────────────────────────────────*/
 .cellLink {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-body);
   color: var(--color-text-brand);
   text-decoration: none;
@@ -123,3 +140,42 @@
   color: var(--color-text-tertiary);
   font-size: var(--font-size-base);
 }
+
+/* ── Rodapé com paginação (dentro do Card) ─────────────────────── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: var(--border-width-thin) solid var(--color-border-subtle);
+}
+.range {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Toolbar (busca/filtros) dentro do card ───────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
+}
+/* Controles da toolbar: 36px visíveis dentro de área clicável de 44px, texto Body/S (token --text-body-s) */
+.toolbar input, .toolbar button {
+  height: calc(var(--control-height-md) - var(--spacing-sm));
+  min-height: 0;
+  padding-block: 0;
+  font: var(--text-body-s);
+  letter-spacing: var(--text-body-s-tracking);
+}
+.toolbar button { position: relative; }
+.toolbar button::after { content: ""; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; }
+
+/* Barra de rolagem: padrão global (tokens --scrollbar-*), ver tokens.css. */

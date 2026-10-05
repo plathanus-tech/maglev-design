@@ -9,10 +9,15 @@ export interface DialogProps {
   onClose: () => void;
   /** Título (também é o nome acessível do diálogo). */
   title: string;
-  children: ReactNode;
+  /** Texto de apoio sob o título (descreve o diálogo para leitores de tela). */
+  subtitle?: string;
+  /** Conteúdo do corpo. Pode ser omitido (`null`) quando título e subtítulo bastam. */
+  children?: ReactNode;
   /** Botões do rodapé, normalmente `<Button>`s (ação principal à direita). */
   actions?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  /** Ajuste pontual de largura/aparência (ex.: `max-width` entre dois tamanhos). */
+  className?: string;
   /** Rótulo do botão de fechar (i18n). */
   closeLabel?: string;
 }
@@ -21,8 +26,9 @@ export interface DialogProps {
  * Diálogo modal: prende o foco, fecha com Esc/clique fora, trava o scroll do fundo
  * e devolve o foco ao elemento que o abriu.
  */
-export function Dialog({ open, onClose, title, children, actions, size = 'md', closeLabel = 'Fechar' }: DialogProps) {
+export function Dialog({ open, onClose, title, subtitle, children, actions, size = 'md', className, closeLabel = 'Fechar' }: DialogProps) {
   const titleId = useId();
+  const subtitleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -64,14 +70,18 @@ export function Dialog({ open, onClose, title, children, actions, size = 'md', c
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={subtitle ? subtitleId : undefined}
         tabIndex={-1}
-        className={cx(styles.dialog, styles[size])}
+        className={cx(styles.dialog, styles[size], className)}
       >
         <div className={styles.header}>
-          <h2 id={titleId} className={styles.title}>{title}</h2>
+          <div className={styles.headings}>
+            <h2 id={titleId} className={styles.title}>{title}</h2>
+            {subtitle && <p id={subtitleId} className={styles.subtitle}>{subtitle}</p>}
+          </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label={closeLabel} type="button"><IconX size={18} aria-hidden="true" /></button>
         </div>
-        <div className={styles.body}>{children}</div>
+        {children != null && <div className={styles.body}>{children}</div>}
         {actions && <div className={styles.footer}>{actions}</div>}
       </div>
     </div>

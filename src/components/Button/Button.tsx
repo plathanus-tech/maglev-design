@@ -3,8 +3,9 @@ import styles from './Button.module.css';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** primary: ação principal da tela (use 1 por área) · secondary: ação alternativa ·
-   *  destructive: ações irreversíveis · ghost: ações de baixa ênfase. */
-  variant?: 'primary' | 'secondary' | 'destructive' | 'ghost';
+   *  destructive: ações irreversíveis · ghost: ações de baixa ênfase · outline: ação secundária de
+   *  configuração da tela (ex.: personalizar colunas), com borda neutra e sem cor da marca. */
+  variant?: 'primary' | 'secondary' | 'destructive' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   iconLeft?: ReactNode;
   iconRight?: ReactNode;

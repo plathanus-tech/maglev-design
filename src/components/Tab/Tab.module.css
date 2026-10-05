@@ -1,7 +1,10 @@
 .wrapper { width: 100%; }
 
+/* A linha base é um inset shadow: com overflow-x o container corta tudo que sai dele, então a borda da aba
+   ativa (que antes sobrepunha a linha com margem negativa) ficava cortada. */
 .list {
-  display: flex; border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
+  display: flex;
+  box-shadow: inset 0 calc(var(--border-width-thin) * -1) 0 var(--color-gray-200);
   gap: 0; overflow-x: auto;
 }
 
@@ -14,7 +17,6 @@
   color: var(--color-text-secondary);
   cursor: pointer; white-space: nowrap;
   transition: color var(--transition-fast), border-color var(--transition-fast);
-  margin-bottom: calc(var(--border-width-thin) * -1);
 }
 .tab:hover { color: var(--color-text-primary); }
 .tab:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
@@ -26,3 +28,4 @@
 
 .panel { padding: var(--spacing-md) 0; color: var(--color-text-secondary); line-height: var(--line-height-normal); }
 .panel:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+:global(:root[data-theme="dark"]) .list { box-shadow: inset 0 calc(var(--border-width-thin) * -1) 0 var(--color-gray-700); }

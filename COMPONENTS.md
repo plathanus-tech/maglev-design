@@ -4,13 +4,13 @@ Ponto único de importação: `import { Button, Input } from '<caminho>/src'` (v
 Cada componente tem story com props e exemplos em `Components/<Nome>`; composições prontas em `Patterns/Composições`.
 Tudo abaixo está em ordem alfabética.
 
-**Índice A–Z:** Accordion · AppHeader · Avatar · Badge · Breadcrumb · Button · Card · Checkbox · DatePicker · Dialog · Dropdown · EmptyState · Feedback · FormField · Input · Pagination · RadioButton · Sidebar · Spinner · Stack · Tab · Table · Textarea · Toast · Toggle · Tooltip
+**Índice A–Z:** Accordion · AppHeader · Avatar · Badge · Breadcrumb · Button · Card · Checkbox · DatePicker · Dialog · Dropdown · EmptyState · Feedback · FormField · Input · KpiCard · Pagination · RadioButton · Sidebar · Spinner · Stack · Tab · Table · Textarea · Toast · Toggle · Tooltip
 
 ## Como escolher (por necessidade)
 
 | Preciso de… | Use | Não use / observação |
 |---|---|---|
-| Ação clicável | `Button` (`primary` 1 por área · `secondary` tonal, sem borda, para ações alternativas/voltar · `destructive` · `ghost`) | Não crie `CustomButton`. Só ícone → `iconOnly` + `aria-label`. |
+| Ação clicável | `Button` (`primary` 1 por área · `secondary` tonal, sem borda, para ações alternativas/voltar · `destructive` · `ghost` · `outline` branco com borda neutra, para configuração da tela como "Colunas") | Não crie `CustomButton`. Só ícone → `iconOnly` + `aria-label`. |
 | Agrupar conteúdo relacionado | `Card` (`padding="none"` p/ tabelas) | Não faça `div` com borda/sombra própria |
 | Alternar seções de conteúdo | `Tab` | — |
 | Barra superior | `AppHeader` (recebe `logo`, `actions`) | — |
@@ -29,11 +29,13 @@ Tudo abaixo está em ordem alfabética.
 | Foto/iniciais de pessoa | `Avatar` | — |
 | Lista de dados tabulares | `Table` (colunas por `type`) | Não crie `NewTable` |
 | Lista/seção sem dados | `EmptyState` | Em tabela: já usa `EmptyState`; personalize com a prop `empty` |
+| Indicador numérico de dashboard (KPI) | `KpiCard` (`trend` opcional: comparativo com período anterior) | Não invente tendência sem histórico real; a cor do `trend` vem de `sentiment`, não da seta |
 | Ligar/desligar com efeito imediato | `Toggle` | — |
 | Marcar/desmarcar (envia depois) | `Checkbox` | Consentimento: nunca pré-marcado |
-| Menu lateral de área logada | `Sidebar` (recebe `items`, `logo`, `user`) | Permissões por papel ficam no produto |
+| Menu lateral de área logada | `Sidebar` (recebe `items`, `logo`, `user`) | Permissões por papel ficam no produto. Seção com páginas filhas → `children` no item (accordion), um nível, ícone opcional |
 | Mensagem permanente na página | `Feedback` | — |
-| Muitas páginas de dados | `Pagination` + `Table` | — |
+| Muitas páginas de dados | `Table` com prop `pagination` (rodapé dentro da tabela) | Fora de tabela: `Pagination` |
+| Busca/filtros de uma tabela | `Table` com prop `toolbar` (dentro do card, campos de 44px) | Não coloque os filtros soltos acima da tabela |
 | Perguntas/seções expansíveis | `Accordion` | — |
 | Trilha de navegação | `Breadcrumb` | — |
 
@@ -46,7 +48,7 @@ Tudo abaixo está em ordem alfabética.
 | **Avatar** | `name` `src` `size` | `--color-bg-brand`, `--color-text-brand` |
 | **Badge** | `status` neutral/brand/success/error/warning/info · `dot` | `--color-status-*`, `--radius-pill` |
 | **Breadcrumb** | `items` (label, href, icon) | `--color-text-*` |
-| **Button** | `variant` primary/secondary/destructive/ghost · `size` sm/md/lg · `iconLeft/Right` · `iconOnly` | `--color-action-*`, `--color-on-action-*`, `--radius-control(-sm)`, `--control-*`, `--font-display` |
+| **Button** | `variant` primary/secondary/destructive/ghost/outline · `size` sm/md/lg · `iconLeft/Right` · `iconOnly` | `--color-action-*`, `--color-on-action-*`, `--radius-control(-sm)`, `--control-*`, `--font-display` |
 | **Card** | `title` `subtitle` `actions` `footer` `padding` none/md/lg | `--color-bg-surface`, `--radius-card` |
 | **Checkbox** | `label` `checked` `indeterminate` `disabled` | `--color-action-primary`, `--radius-control-sm` |
 | **DatePicker** | `value` (ISO) `onChange` `label` `min` `max` `locale` `weekStartsOn` `showShortcuts` `labels` (teclado: setas, Home/End, PageUp/Down, Esc) | idem Input + `--radius-overlay`, `--z-dropdown` |
@@ -56,13 +58,14 @@ Tudo abaixo está em ordem alfabética.
 | **Feedback** | `type` success/error/warning/info · `title` `message` `dismissible` | `--color-status-*` |
 | **FormField** | `label` `helperText` `error` `success` `required` · children = `(control) => …` | `--color-text-*`, `--color-status-*` |
 | **Input** | props de `<input>` + `label` `helperText` `error` `success` `iconLeft/Right` (decorativos) · `iconRightAction` (ícone clicável: mostrar/ocultar senha, limpar) | `--radius-control`, `--focus-glow*`, `--color-border-*` |
+| **KpiCard** | `label` `value` (número, moeda ou texto; mesmo tamanho) · `ranking` (top N compacto, trunca nomes) `icon` · `description` (linha complementar) · `trend` { direction up/down/flat, percent, sentiment positive/negative/neutral, reference } · `locale` `labels` | Card + `--color-bg-brand`/`--brand-primary` (ícone), `--color-text-success/error/tertiary` (trend) |
 | **Pagination** | `page` `pageCount` `onPageChange` | herda de Button |
 | **RadioButton** | `options` `value` `onChange` `name` `label` `orientation` | `--color-action-primary` |
-| **Sidebar** | `items` `logo` `activeItem` `onNavClick` `user` `onLogout` `open` `onToggle` `labels` | `--color-nav-*` |
+| **Sidebar** | `items` (com `children` vira grupo recolhível/accordion) `logo` `activeItem` `onNavClick` `user` `onLogout` `open` `onToggle` `labels` | `--color-nav-*` |
 | **Spinner** | `size` `label` | `--color-action-primary` |
 | **Stack** | `direction` `gap` (escala `--spacing-*`) `align` `justify` `wrap` `as` | `--spacing-*` |
 | **Tab** | `tabs` `defaultIndex` `onChange` | `--color-action-primary`, `--font-display` |
-| **Table** | `columns` (`type`: text/link/badge/avatar/toggle/actions) `rows` `loading` `empty` `sortKey/sortDir/onSort` | `--color-bg-surface`, `--color-bg-stripe` (linhas alternadas, escala de cinza; a 1ª linha é cinza), `--font-display` (cabeçalho) |
+| **Table** | `columns` (`type`: text/link/badge/avatar/toggle/actions · `sticky: 'right'`) `rows` `loading` `empty` `sortKey/sortDir/onSort` `pagination` `toolbar` · **Regra:** ações sempre fixas à direita (só as demais colunas rolam); 1ª/última coluna com `--spacing-lg` da borda; scrollbar segue o padrão global (`--scrollbar-*`) | `--color-bg-surface`, `--color-bg-stripe` (linhas alternadas, escala de cinza; a 1ª linha é cinza), `--font-display` (cabeçalho) |
 | **Textarea** | props de `<textarea>` + `label` `helperText` `error` | idem Input |
 | **Toast** | `useToast().show({ type, message, title, duration })` | herda de Feedback, `--z-toast` |
 | **Toggle** | `label` `checked` `size` sm/md | `--color-action-primary`, `--radius-pill` |

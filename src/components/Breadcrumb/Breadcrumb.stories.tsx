@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { IconHome, IconShirt } from '@tabler/icons-react';
+import { IconCooker, IconHome } from '@tabler/icons-react';
 import { Breadcrumb } from './Breadcrumb';
 
 const meta: Meta<typeof Breadcrumb> = {
@@ -14,8 +14,8 @@ export const Default: Story = {
   args: {
     items: [
       { label: 'Home', href: '#' },
-      { label: 'Produtos', href: '#' },
-      { label: 'Camiseta' },
+      { label: 'Equipamentos', href: '#' },
+      { label: 'Forno combinado 01' },
     ],
   },
 };
@@ -24,8 +24,8 @@ export const WithIcon: Story = {
   args: {
     items: [
       { label: 'Home', href: '#' },
-      { label: 'Loja', href: '#' },
-      { label: 'Camiseta Branca', icon: <IconShirt size={16} /> },
+      { label: 'Restaurantes', href: '#' },
+      { label: 'Forno combinado 01', icon: <IconCooker size={16} /> },
     ],
   },
 };
@@ -34,10 +34,10 @@ export const LongPath: Story = {
   args: {
     items: [
       { label: 'Home', href: '#' },
-      { label: 'Loja', href: '#' },
-      { label: 'Roupas', href: '#' },
-      { label: 'Feminino', href: '#' },
-      { label: 'Camiseta Branca', icon: <IconShirt size={16} /> },
+      { label: 'Restaurantes', href: '#' },
+      { label: 'Cantina Dona Rosa', href: '#' },
+      { label: 'Unidade Centro', href: '#' },
+      { label: 'Forno combinado 01', icon: <IconCooker size={16} /> },
     ],
   },
 };
@@ -46,7 +46,7 @@ export const TwoItems: Story = {
   args: {
     items: [
       { label: 'Home', href: '#' },
-      { label: 'Sobre' },
+      { label: 'Chamados' },
     ],
   },
 };

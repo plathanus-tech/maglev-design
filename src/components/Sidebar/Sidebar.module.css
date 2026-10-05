@@ -16,6 +16,15 @@
 
 .open   { width: 15.375rem; }
 .closed { width: 4.875rem; }
+/* Variante menu (mobile): só os links, largura total, altura do conteúdo, separada do header por borda */
+.menu {
+  width: 100%;
+  height: auto;
+  border-right: none;
+  border-bottom: var(--border-width-thin) solid var(--color-nav-border);
+  padding: var(--spacing-sm) 0;
+  gap: 0;
+}
 
 /* Logo + botão de recolher alinhados; o botão sobrepõe a borda direita */
 .logoRow {
@@ -62,9 +71,9 @@
   background: transparent;
   color: var(--color-nav-text);
   font-family: inherit;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-body);
-  line-height: var(--line-height-normal);
+  line-height: var(--line-height-snug);
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
@@ -190,4 +199,91 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ─── Grupo recolhível (accordion) ─────────────────────────────── */
+.group { display: flex; flex-direction: column; gap: var(--spacing-xs); flex-shrink: 0; }
+.subList { display: flex; flex-direction: column; gap: var(--spacing-2xs); }
+
+/* Grupo com subitem ativo: rótulo em destaque, sem fundo (o fundo é do subitem) */
+.navItemParentActive { color: var(--color-nav-active-text); }
+
+.chevron {
+  display: inline-flex;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--color-nav-text-muted);
+  transition: transform var(--transition-fast);
+}
+.chevronOpen { transform: rotate(180deg); }
+
+/* Subitem: hierarquia menor — recuado em relação ao grupo, mais baixo e em fonte menor.
+   Com ícone, o ícone fica sob o rótulo do grupo; sem ícone, o texto é que fica recuado. */
+.subItem {
+  height: 2.25rem;
+  padding-left: var(--spacing-lg);
+  font-size: var(--font-size-md);
+  color: var(--color-nav-text-muted);
+  text-decoration: none;
+}
+.subItemPlain { padding-left: calc(var(--spacing-xl) + var(--spacing-md)); }
+.subItem:hover:not(.navItemActive) { color: var(--color-nav-text); }
+.subItem.navItemActive { color: var(--color-nav-active-text); }
+
+/* Versão do produto: texto pequeno e discreto no fim do menu */
+.version {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-nav-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Usuário + seletor de tema agrupados (o seletor fica logo abaixo do nome) */
+.userGroup {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-sm) + var(--spacing-xs));
+  margin-bottom: var(--spacing-xs);   /* respiro até o "Sair" */
+}
+
+/* Seletor de tema: controle segmentado (Claro | Escuro) de 32px de altura; recolhido, só os ícones */
+.themeSwitch {
+  display: flex;
+  gap: var(--spacing-2xs);
+  height: 2rem;
+  padding: var(--spacing-2xs);
+  margin: 0 var(--spacing-sm);
+  border: var(--border-width-thin) solid var(--color-nav-border);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-nav-hover-bg);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.themeSeg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  padding: 0 var(--spacing-xs);
+  border: none;
+  border-radius: calc(var(--radius-control-sm) - var(--spacing-2xs));
+  background: transparent;
+  color: var(--color-nav-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.themeSeg .navIcon { width: 12px; height: 12px; }
+.themeSeg:hover:not(.themeSegActive) { color: var(--color-nav-text); }
+.themeSegActive { background: var(--color-nav-active-bg); color: var(--color-nav-active-text); }
+.themeSeg:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
