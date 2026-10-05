@@ -1,6 +1,7 @@
 name: Storybook (GitHub Pages)
 
 # Publica o Storybook em  https://plathanus-tech.github.io/maglev-design/storybook/
+# Publica o protótipo do Admin em  https://plathanus-tech.github.io/maglev-design/sistema/
 # A raiz do site (/maglev-design/) fica livre para o produto.
 on:
   push:
@@ -38,6 +39,11 @@ jobs:
         env:
           STORYBOOK_BASE: /maglev-design/storybook/
         run: npx storybook build -o _site/storybook
+
+      - name: Build do sistema (protótipo do Admin) em /sistema/
+        run: |
+          npx tsc -p sistema/tsconfig.json
+          npx vite build --config sistema/vite.config.ts --outDir ../_site/sistema --emptyOutDir
 
       - name: Desativar Jekyll
         run: touch _site/.nojekyll

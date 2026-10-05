@@ -145,7 +145,7 @@ export function PrototypeNav() {
         <div className="pn-sidebar-header">
           <div className="pn-brand">
             <IconShield size={16} aria-hidden="true" />
-            <span>Protótipo v2 - Admin da plataforma</span>
+            <span>Sistema - Admin da plataforma</span>
           </div>
 
           <div className="pn-device-switch" role="group" aria-label="Alternar dispositivo">

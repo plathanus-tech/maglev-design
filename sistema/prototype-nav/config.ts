@@ -1,5 +1,5 @@
 /**
- * Config do Navegador de Protótipo v2 - MAGLEV, Admin da plataforma.
+ * Config do Navegador de Protótipo do Sistema - MAGLEV, Admin da plataforma.
  * Serve só para navegar entre as telas do protótipo; não faz parte da interface final.
  * Cada tela é uma página real do produto (admin/screens/*.html, React + Storybook MAGLEV).
  * Tela nova: adicione aqui (caminho com query/hash da variante) e em SCREENS no vite.config.ts.

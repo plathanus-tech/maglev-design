@@ -1,5 +1,5 @@
 /**
- * DADOS DE DEMONSTRAÇÃO - Admin da plataforma (protótipo v2). A MAGLEV atende só restaurantes:
+ * DADOS DE DEMONSTRAÇÃO - Admin da plataforma (sistema). A MAGLEV atende só restaurantes:
  * assinantes, unidades e equipamentos são de cozinha profissional.
  * Tipos e carga inicial seguem a Especificação Funcional (v0.4) - só o que é do Admin e está no contrato.
  */

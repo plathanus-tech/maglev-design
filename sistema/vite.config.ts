@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
-// Protótipo v2 - Jornada do Admin da plataforma.
+// Sistema (protótipo do Admin) - Jornada do Admin da plataforma.
 // Fonte da verdade: o Storybook na raiz deste repositório (../src). Componentes, tokens e ícones são importados de lá -
 // nunca copiados. As dependências (React, Tabler) vêm do node_modules da raiz (instância única de React).
 const sb = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url));
@@ -41,8 +41,10 @@ const screenNotFound = (): Plugin => ({
   },
 });
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: here('.'),
+  // Publicado em subpasta (GitHub Pages): caminhos relativos funcionam em qualquer endereço. No dev, raiz.
+  base: command === 'build' ? './' : '/',
   // Cache de dependências por instância: vários servidores (v1, v2, outras sessões) no mesmo
   // node_modules/.vite reotimizam entre si e geram React duplicado ("Invalid hook call").
   cacheDir: here(`../node_modules/.vite-v2-${process.env.PORT || '5176'}`),
@@ -66,4 +68,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

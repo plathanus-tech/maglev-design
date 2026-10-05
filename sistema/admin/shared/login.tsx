@@ -66,7 +66,7 @@ function LoginScreen() {
   const clearErrors = () => { if (['invalid', 'required', 'domain', 'inactive'].includes(mode)) setMode('idle'); };
 
   return (
-    <AuthLayout title="Acesse sua conta" subtitle="Entre com seu e-mail corporativo para acessar o painel da Maglev">
+    <AuthLayout title="Acesse o painel administrativo" subtitle="Entre com seu e-mail corporativo para acessar o painel da Maglev">
       {mode === 'passwordchanged' && (
         <Feedback type="success" title="Senha alterada com sucesso" message="Faça login com sua nova senha." />
       )}
