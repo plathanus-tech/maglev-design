@@ -1,0 +1,207 @@
+/* equipamento.css - SOMENTE o que o Storybook MAGLEV não oferece como componente e o módulo Equipamentos precisa:
+   QR Code (SVG), etiqueta para impressão, barra de progresso dos custos, linha do tempo e a grade de indicadores.
+   Estrutura, espaçamento e superfícies continuam vindo de Stack, Card, Table, Tab, Dialog… Nenhum token novo. */
+
+/* ── Indicadores: 5 KpiCard na mesma linha quando couberem ── */
+.eq-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--spacing-3xl) * 3), 1fr)); gap: var(--spacing-md); }
+.eq-kpis > * { min-width: 0; display: flex; }
+.eq-kpis > * > * { flex: 1; min-width: 0; }
+
+/* ── Próxima preventiva vencida (RF303-RGN004) ── */
+.eq-overdue { color: var(--color-text-error); font-weight: var(--font-weight-label); }
+
+/* ── QR Code: módulos sempre escuros sobre fundo claro (em qualquer tema, para manter o contraste) ── */
+.qr-code { display: block; width: 100%; height: auto; }
+.qr-bg { fill: var(--color-gray-white); }
+.qr-fg { fill: var(--color-gray-900); }
+.eq-qr { width: calc(var(--spacing-3xl) * 2.5); flex-shrink: 0; border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control); overflow: hidden; }
+.eq-qr--lg { width: calc(var(--spacing-3xl) * 4); max-width: 100%; }
+
+/* ── Etiqueta (prévia e impressão): sempre clara, como o papel ──
+   Todas as medidas internas usam cqw (% da largura da etiqueta): a prévia e a impressão têm exatamente as mesmas proporções;
+   só a largura muda (17rem na tela, 70mm no papel). */
+.eq-label {
+  container-type: inline-size; width: 17rem; max-width: 100%; box-sizing: border-box; padding: 6cqw;
+  display: flex; flex-direction: column; align-items: center; gap: 3.5cqw; text-align: center;
+  background: var(--color-gray-white); color: var(--color-gray-900);
+  border: var(--border-width-thin) dashed var(--color-border-muted); border-radius: var(--radius-control);
+}
+.eq-label .eq-qr { border: none; width: 68%; }
+.eq-label-logo { height: 11.5cqw; width: auto; margin-block: -1.25cqw; }   /* +28% no logo; as margens negativas mantêm a área vertical de 9cqw */
+.eq-label-name {
+  margin: 0; max-width: 100%; font-size: 6.4cqw; font-weight: var(--font-weight-heading); line-height: 1.2; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.eq-label-code { margin: 0; max-width: 100%; font-size: 4.6cqw; line-height: 1.2; color: var(--color-gray-900); overflow-wrap: anywhere; }
+.eq-label-hint { margin: 0; font-size: 3.8cqw; line-height: 1.25; color: var(--color-gray-900); }
+.eq-label-fallback { margin: 0; display: flex; flex-direction: column; gap: 0.8cqw; padding-top: 3cqw; width: 100%; border-top: 1px solid var(--color-gray-300); }
+.eq-label-fallback span { font-size: 3.4cqw; line-height: 1.25; color: var(--color-gray-700); }
+.eq-label-fallback strong { font-size: 4.2cqw; line-height: 1.25; font-weight: var(--font-weight-heading); color: var(--color-gray-900); }
+@media print {
+  body * { visibility: hidden; }
+  .eq-label, .eq-label * { visibility: visible; }
+  .eq-label { position: fixed; top: 0; left: 0; width: 70mm; border-style: solid; }
+}
+
+/* ── Custos do ativo: barra de progresso manutenção ÷ valor de aquisição (RF304-RGN004) ── */
+.eq-bar { height: var(--spacing-sm); width: 100%; border-radius: var(--radius-pill); background: var(--color-bg-subtle); border: var(--border-width-thin) solid var(--color-border-subtle); overflow: hidden; box-sizing: content-box; }
+.eq-bar-fill { height: 100%; border-radius: var(--radius-pill); background: var(--color-bg-brand-strong); }
+.eq-bar-fill.is-over { background: var(--color-text-error); }
+
+/* ── Histórico de manutenções: linha do tempo ── */
+.eq-timeline { list-style: none; margin: 0; padding: 0; }
+.eq-timeline-item { position: relative; margin: 0; padding: 0 0 var(--spacing-lg) var(--spacing-lg); border-left: var(--border-width-medium) solid var(--color-border-subtle); margin-left: var(--spacing-xs); }
+.eq-timeline-item:last-child { padding-bottom: 0; border-left-color: transparent; }
+.eq-timeline-item.is-warning::before { background: var(--color-status-warning-fg); }
+.eq-timeline-item.is-info::before { background: var(--color-status-info-fg); }   /* o ponto acompanha a cor do badge do tipo (Corretiva = atenção, Preventiva = info) */
+.eq-timeline-item::before {
+  content: ''; position: absolute; left: calc((var(--spacing-sm) / 2 + var(--border-width-medium) / 2) * -1); top: var(--spacing-xs);
+  width: var(--spacing-sm); height: var(--spacing-sm); border-radius: var(--radius-pill); background: var(--color-bg-brand-strong);
+}
+
+/* "(opcional)" no título de uma seção: mesmo padrão dos campos opcionais (Body/XS, regular, cor terciária) */
+.title-optional { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+
+/* Copiar dicas: select e botão na mesma linha, botão alinhado ao campo (não ao rótulo); no mobile, um sobre o outro */
+.copy-row { display: flex; align-items: flex-end; gap: var(--spacing-md); }
+.copy-row > :first-child { flex: 1; min-width: 0; }
+@media (max-width: 767px) {
+  .copy-row { flex-direction: column; align-items: stretch; }
+  .copy-row > button { width: 100%; }
+}
+
+/* Dicas de troubleshooting: alça de arrastar + título, textarea com lixeira ao lado, Subir/Descer abaixo */
+.tip-row { border-radius: var(--radius-control); border-top: var(--border-width-medium) solid transparent; transition: opacity var(--transition-fast); }
+.tip-row.is-dragging { opacity: 0.5; }
+.tip-row.is-over { border-top-color: var(--color-action-primary); }
+.tip-head { display: flex; align-items: center; gap: var(--spacing-xs); }
+.tip-handle { display: inline-flex; align-items: center; color: var(--color-text-tertiary); cursor: grab; border-radius: var(--radius-control-sm); touch-action: auto; }
+.tip-handle:active { cursor: grabbing; }
+.tip-title { font-size: var(--font-size-base); font-weight: var(--font-weight-label); line-height: var(--line-height-snug); color: var(--color-text-primary); }
+.tip-field { display: flex; align-items: flex-start; gap: var(--spacing-xs); }
+.tip-field > :first-child { flex: 1; min-width: 0; }
+.tip-field textarea { resize: none; min-height: 4.25rem; }
+/* Lixeira: neutra por padrão, destrutiva no hover/foco; área de toque de 44x44px sem aumentar o visual */
+.tip-remove { position: relative; color: var(--color-text-tertiary); flex-shrink: 0; }
+.tip-remove::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2.75rem; height: 2.75rem; transform: translate(-50%, -50%); }
+.tip-remove:hover:not(:disabled), .tip-remove:focus-visible { color: var(--color-action-error); }
+
+/* Miniatura de equipamento nas opções do Dropdown (placeholder neutro quando não há foto); o tamanho vem do Dropdown (--option-leading-size) */
+.eq-thumb {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: var(--option-leading-size, 2.5rem); height: var(--option-leading-size, 2.5rem); overflow: hidden;
+  background: var(--color-bg-subtle); color: var(--color-text-tertiary);
+  border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control-sm);
+}
+.eq-thumb svg { width: 60%; height: 60%; }
+
+/* Árvore de equipamentos: apoio visual do nível (neutro, sem cor por nível). 2rem = 32px; o equipamento usa miniatura/placeholder do mesmo tamanho */
+.tree-lead {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: var(--spacing-xl); height: var(--spacing-xl); color: var(--color-text-secondary);
+}
+.tree-lead--eq {
+  overflow: hidden; background: var(--color-bg-subtle); color: var(--color-text-tertiary);
+  border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control-sm);
+}
+.tree-lead--eq img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tree-title { display: inline-flex; align-items: center; gap: var(--spacing-xs); min-width: 0; }
+
+/* Árvore no mobile: uma superfície por unidade; ambientes e equipamentos entram como linhas indentadas com divisores sutis (sem card por nível) */
+.hit-44 { position: relative; }
+.hit-44::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2.75rem; height: 2.75rem; transform: translate(-50%, -50%); }
+.mtree { display: flex; flex-direction: column; }
+.mtree-row { display: flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) var(--spacing-xs); min-width: 0; }
+.mtree-row--env { padding-left: var(--spacing-lg); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.mtree-row--eq { padding-left: calc(var(--spacing-lg) * 2); }
+.mtree-text { display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing-2xs); flex: 1; min-width: 0; }
+.mtree-name { font-size: var(--font-size-base); line-height: var(--line-height-snug); overflow-wrap: anywhere; }
+.mtree-spacer { width: var(--spacing-xl); flex-shrink: 0; }
+
+
+/* Código do QR no cabeçalho do detalhe: link com ícone que abre a etiqueta */
+.qr-link { display: inline-flex; align-items: center; gap: var(--spacing-2xs); padding: 0; background: none; border: 0; font: inherit; cursor: pointer; vertical-align: bottom; }
+
+.eq-photo-line { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
+
+/* Identificação + fotos no mesmo card: dados (~58%) e fotos (~42%) sem divisor; em largura menor as fotos descem para baixo dos dados */
+.eq-ident-wrap { container-type: inline-size; }
+.eq-ident { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--spacing-xl); align-items: start; }
+.eq-photos-row { min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--spacing-md); align-items: end; }
+@container (max-width: 44rem) {
+  .eq-ident { grid-template-columns: minmax(0, 1fr); gap: var(--spacing-lg); }
+}
+.eq-photo { display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; max-width: 12.5rem; }
+.eq-photo-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing-2xs); width: 100%; aspect-ratio: 4 / 3; padding: var(--spacing-sm);
+  background: var(--color-bg-subtle); color: var(--color-text-tertiary); font: inherit; text-align: center;
+  border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control); overflow: hidden;
+}
+.eq-photo-tile.is-empty { background: var(--color-bg-subtle); border-color: transparent; cursor: default; }
+button.eq-photo-tile { cursor: pointer; padding: 0; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
+button.eq-photo-tile:hover { border-color: var(--color-border-muted); box-shadow: var(--shadow-sm); }
+button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.eq-photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.eq-photo-name { max-width: 100%; font-size: var(--font-size-sm); line-height: var(--line-height-snug); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+
+/* Localização: Unidade → Ambiente, com conexão vertical sutil (sem timeline, sem cards/badges/cores) */
+.eq-loc { display: flex; flex-direction: column; justify-content: center; height: 100%; }
+.eq-loc-item { display: flex; align-items: center; gap: var(--spacing-sm); min-width: 0; }
+.eq-loc-text { display: flex; flex-direction: column; min-width: 0; }
+.eq-loc-name { font-size: var(--font-size-base); line-height: var(--line-height-snug); overflow-wrap: anywhere; }
+.eq-loc { gap: var(--spacing-xs); }
+/* Conexão vertical curta e sutil entre os ícones (centro do ícone de 2rem), sem tocar nos ícones */
+.eq-loc-link { width: 0; height: var(--spacing-lg); margin-left: calc(var(--spacing-xl) / 2); border-left: var(--border-width-thin) solid var(--color-gray-300); }
+:root[data-theme="dark"] .eq-loc-link { border-left-color: var(--color-gray-600); }
+.eq-photo-zoom { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3; background: var(--color-bg-subtle); color: var(--color-text-tertiary); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control); }
+.eq-photo-zoom img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* Card dentro de uma coluna "fill" mas envolvido pela nota para desenvolvimento: o wrapper também ocupa a altura toda */
+.eq-fill, .eq-fill > .dev-anchor, .eq-fill > .dev-anchor > * { height: 100%; }
+
+/* Fotos da manutenção no histórico: miniaturas compactas lado a lado, quebram de linha no mobile */
+.eq-hist-photos { list-style: none; margin: 0; padding: var(--spacing-xs) 0 0; display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.eq-hist-thumb { width: 5rem; height: 5rem; aspect-ratio: 1; }
+
+/* Pontos de atenção agrupados: divisores sutis; severidade só no ícone de cada item */
+.eq-attn { list-style: none; margin: calc(var(--spacing-xs) * -2) 0 0; padding: 0; display: flex; flex-direction: column; }
+.eq-attn-item { display: flex; gap: var(--spacing-sm); align-items: flex-start; padding: var(--spacing-md) 0; border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.eq-attn-item:first-child { border-top: 0; padding-top: 0; }
+.eq-attn-item:last-child { padding-bottom: 0; }
+.eq-attn-icon { flex-shrink: 0; }
+.eq-attn-item.is-warning .eq-attn-icon { color: var(--color-status-warning-fg); }
+.eq-attn-item.is-error .eq-attn-icon { color: var(--color-status-error-fg); }
+.eq-attn-item.is-info .eq-attn-icon { color: var(--color-status-info-fg); }
+.eq-attn-body { display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; }
+.eq-attn-title { font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.eq-attn-text { color: var(--color-text-secondary); }
+
+/* Impressão em lote de etiquetas: prévia em grade; a folha com todas só aparece na impressão */
+.eq-batch-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: var(--spacing-md); justify-items: center; max-height: 24rem; overflow-y: auto; padding: var(--spacing-xs); }
+.eq-batch-preview .eq-label { width: 100%; }
+.eq-print-sheet { display: none; }
+@media print {
+  .eq-label--preview { display: none !important; }
+  .eq-print-sheet { display: flex; flex-wrap: wrap; gap: 5mm; position: absolute; top: 0; left: 0; }
+  .eq-print-sheet, .eq-print-sheet * { visibility: visible; }
+  .eq-print-sheet .eq-label { position: static; break-inside: avoid; }
+}
+
+/* Barra contextual de seleção (convive com a barra de busca e filtros) */
+.eq-selbar {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md); background: var(--color-bg-subtle); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control);
+}
+.eq-selbar-info { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs) var(--spacing-sm); font: var(--text-body-s); color: var(--color-text-primary); }
+.eq-selbar-info strong { font-weight: var(--font-weight-semibold); }
+.eq-selbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); }
+
+
+/* Modo de seleção (mobile): versão compacta da barra contextual do desktop (uma superfície neutra única); contador é informação, Todos e Cancelar são ações textuais */
+.eq-selmobile { display: flex; flex-direction: column; gap: var(--spacing-2xs); padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs) var(--spacing-sm); background: var(--color-bg-subtle); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control); }
+.eq-selmobile-row { display: flex; align-items: center; gap: var(--spacing-2xs); min-width: 0; }
+.eq-selchip { flex: 1 1 auto; white-space: nowrap; font: var(--text-body-s); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.eq-selmobile-row button { flex-shrink: 0; white-space: nowrap; color: var(--color-text-secondary); background: transparent; text-decoration: none; padding-inline: var(--spacing-xs); }
+.eq-selmobile-row button:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-bg-surface); }
+.eq-selmobile-row button:active:not(:disabled) { color: var(--color-text-primary); }
+.eq-selmobile-note { font: var(--text-body-xs); color: var(--color-text-secondary); padding-bottom: var(--spacing-2xs); }

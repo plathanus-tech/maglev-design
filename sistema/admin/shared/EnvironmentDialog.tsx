@@ -50,6 +50,7 @@ export function EnvironmentDialog({ subscriber, onClose }: { subscriber: Subscri
     <Dialog
       open
       onClose={onClose}
+      size="sm" className="dialog-confirm"
       title={deactivate ? `Inativar o ambiente de ${name}?` : `Ativar o ambiente de ${name}?`}
       subtitle={deactivate ? 'Os administradores da plataforma serão notificados sobre a inativação' : undefined}
       actions={(

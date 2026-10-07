@@ -1,0 +1,11 @@
+/* Empresa: link de contato com o suporte (ação contextual secundária, ao lado do subtítulo do card Plano e contratação).
+   Só tokens existentes; mesmo padrão de link do produto (.text-link), com área de toque de 44px e foco visível. */
+.support-link {
+  display: inline-flex; align-items: center; gap: var(--spacing-xs);
+  min-height: var(--control-height-md); padding: 0 var(--spacing-xs);
+  font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);
+  text-decoration: underline; border-radius: var(--radius-control-sm);
+}
+.support-link:hover { color: var(--color-text-primary); }
+.support-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+

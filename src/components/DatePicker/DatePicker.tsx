@@ -1,4 +1,4 @@
-import { ChangeEvent, KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, KeyboardEvent, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconCalendar, IconChevronDown, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { Button } from '../Button/Button';
 import { FormField } from '../FormField/FormField';
@@ -150,6 +150,8 @@ export interface DatePickerProps {
   className?: string;
   /** Atributo `autocomplete` do campo (ex.: `bday` para data de nascimento). */
   autoComplete?: string;
+  /** `sm`: campo compacto de 36px com texto de 14px, para filtros de tabela. */
+  size?: 'md' | 'sm';
 }
 
 /**
@@ -160,7 +162,7 @@ export interface DatePickerProps {
 export function DatePicker({
   value = '', onChange, label, 'aria-label': ariaLabel, helperText, error, required, optional, disabled = false,
   min, max, locale = 'pt-BR', weekStartsOn = 0, placeholder = 'dd/mm/aaaa', showShortcuts = true,
-  labels: labelsProp, className, autoComplete,
+  labels: labelsProp, className, autoComplete, size = 'md',
 }: DatePickerProps) {
   if (import.meta.env.DEV && !label && !ariaLabel) {
     console.warn('DatePicker: forneça `label` ou `aria-label` para que o campo tenha um nome acessível.');
@@ -179,6 +181,9 @@ export function DatePicker({
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  // Posição do calendário: abre para cima quando falta espaço embaixo (e há mais em cima) e alinha à direita quando passaria da borda da tela
+  const [dropUp, setDropUp] = useState(false);
+  const [alignEnd, setAlignEnd] = useState(false);
   const focusDay = useRef(false);
 
   // Mantém o texto sincronizado quando `value` muda por fora.
@@ -241,6 +246,15 @@ export function DatePicker({
     if (!parsed) setTouchedInvalid(labels.invalid);
     else if (!inRange(parsed)) setTouchedInvalid(labels.outOfRange);
   };
+
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current || !popupRef.current) return;
+    const a = anchorRef.current.getBoundingClientRect();
+    const p = popupRef.current.getBoundingClientRect();
+    const gap = 16;
+    setDropUp(window.innerHeight - a.bottom < p.height + gap && a.top > window.innerHeight - a.bottom);
+    setAlignEnd(a.left + p.width > window.innerWidth - gap && a.right - p.width >= gap);
+  }, [open]);
 
   const openCalendar = () => {
     setCursor(selected ?? clampDate(today, minDate, maxDate));
@@ -311,7 +325,7 @@ export function DatePicker({
   return (
     <FormField
       label={label} helperText={helperText} error={error ?? touchedInvalid ?? undefined}
-      required={required} optional={optional} className={className}
+      required={required} optional={optional} className={className} size={size}
     >
       {(control) => (
         <div ref={anchorRef} className={styles.anchor} onKeyDown={onAnchorKeyDown}>
@@ -320,7 +334,7 @@ export function DatePicker({
               {...control}
               type="text"
               inputMode="numeric"
-              className={styles.input}
+              className={cx(styles.input, size === 'sm' && styles.inputSm)}
               value={text}
               placeholder={placeholder}
               disabled={disabled}
@@ -344,7 +358,7 @@ export function DatePicker({
           </div>
 
           {open && (
-            <div ref={popupRef} role="dialog" aria-modal="true" aria-label={labels.calendar} className={styles.popup}>
+            <div ref={popupRef} role="dialog" aria-modal="true" aria-label={labels.calendar} className={cx(styles.popup, dropUp && styles.popupUp, alignEnd && styles.popupEnd)}>
               <div className={styles.header}>
                 <button
                   type="button" className={styles.navBtn} aria-label={labels.previousMonth}

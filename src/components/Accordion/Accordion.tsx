@@ -3,7 +3,16 @@ import { IconChevronDown } from '@tabler/icons-react';
 import { cx } from '../../utils/cx';
 import styles from './Accordion.module.css';
 
-export interface AccordionItem { title: string; content: ReactNode; }
+export interface AccordionItem {
+  title: string;
+  content: ReactNode;
+  /** Texto de apoio sob o título (descreve o conteúdo do item). */
+  subtitle?: string;
+  /** Texto de apoio quando o item está recolhido (ex.: resumo do conteúdo). Sem ele, usa `subtitle`. */
+  collapsedSubtitle?: string;
+  /** Informação secundária à direita do cabeçalho, antes do chevron (ex.: “2 dicas”). Menor e em cor de apoio. */
+  meta?: string;
+}
 
 export interface AccordionProps {
   items: AccordionItem[];
@@ -46,8 +55,16 @@ export function Accordion({ items, allowMultiple = false, defaultOpenIndex = [],
                 aria-controls={`${baseId}-panel-${i}`}
                 type="button"
               >
-                <span>{item.title}</span>
-                <span className={styles.chevron} aria-hidden="true"><IconChevronDown size={16} /></span>
+                <span className={styles.heads}>
+                  <span>{item.title}</span>
+                  {(isOpen ? item.subtitle : item.collapsedSubtitle ?? item.subtitle) && (
+                    <span className={styles.subtitle}>{isOpen ? item.subtitle : item.collapsedSubtitle ?? item.subtitle}</span>
+                  )}
+                </span>
+                <span className={styles.end}>
+                  {item.meta && <span className={styles.meta}>{item.meta}</span>}
+                  <span className={styles.chevron} aria-hidden="true"><IconChevronDown size={16} /></span>
+                </span>
               </button>
             </Heading>
             <div

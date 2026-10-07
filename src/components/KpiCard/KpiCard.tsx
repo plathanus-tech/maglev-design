@@ -47,6 +47,11 @@ export interface KpiCardProps {
    * (nome acessível) e se estende por todo o card.
    */
   href?: string;
+  /**
+   * Semântica de cor do indicador (ícone e valor): `neutral` (cinza), `error` (crítico), `warning` (atenção), `info`.
+   * A superfície do card continua neutra. Sem `tone`, o ícone segue a identidade da marca.
+   */
+  tone?: 'neutral' | 'error' | 'warning' | 'info';
   className?: string;
 }
 
@@ -58,7 +63,7 @@ const DEFAULT_LABELS = { up: 'Aumento de', down: 'Redução de', flat: 'Sem vari
  * o comparativo com o período anterior. A cor do comparativo vem de `trend.sentiment`.
  */
 export function KpiCard({
-  label, value, ranking, icon, trend, description, locale = 'pt-BR', labels = DEFAULT_LABELS, href, className,
+  label, value, ranking, icon, trend, description, locale = 'pt-BR', labels = DEFAULT_LABELS, href, tone, className,
 }: KpiCardProps) {
   const Arrow = trend && ARROW[trend.direction];
   const pct = trend
@@ -71,7 +76,7 @@ export function KpiCard({
           {href
             ? <a className={cx(styles.label, styles.link)} href={href}>{label}</a>
             : <span className={styles.label}>{label}</span>}
-          {icon && <span className={styles.icon} aria-hidden="true">{icon}</span>}
+          {icon && <span className={cx(styles.icon, tone && styles[`tone-${tone}`])} aria-hidden="true">{icon}</span>}
         </div>
 
         {ranking ? (
@@ -87,7 +92,7 @@ export function KpiCard({
           </ol>
         ) : (
         <div className={styles.main}>
-          <span className={styles.value}>{typeof value === 'number' ? value.toLocaleString(locale) : value}</span>
+          <span className={cx(styles.value, tone && styles[`valueTone-${tone}`])}>{typeof value === 'number' ? value.toLocaleString(locale) : value}</span>
           {trend && Arrow && (
             // Percentual e referência lado a lado; se faltar espaço, quebram juntos abaixo do valor.
             <span className={styles.compare}>

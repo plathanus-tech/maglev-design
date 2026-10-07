@@ -1,22 +1,35 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  IconChevronLeft, IconChevronRight, IconCode, IconDeviceDesktop, IconDeviceMobile,
+  IconChevronDown, IconChevronLeft, IconChevronRight, IconCode, IconDeviceDesktop, IconDeviceMobile,
   IconExternalLink, IconGitBranch, IconMoon, IconRefresh, IconRoute, IconSearch, IconShield, IconSun,
 } from '@tabler/icons-react';
 import { useDevNotesEnabled } from '../admin/shared/dev-notes/devNotesFlag';
 import { useTheme } from '../admin/shared/theme';
 import { resetDb } from '../admin/shared/store';
 import { HoverPreview, Thumb, type Device } from './Thumb';
-import { journeys, type FlowNode, type ScreenNode } from './config';
+import { type FlowNode, type Journey, type ScreenNode } from './config';
+import { actors, type Actor, type ActorId } from './actors';
+import { resetSubDb } from '../assinante/shared/store';
 
 interface Entry { id: string; label: string; path: string; mobilePath?: string; trail: string; groups: string[] }
 
 const STORAGE_KEY = 'maglev.v2.protoNav.state';
 const isFlow = (n: ScreenNode | FlowNode): n is FlowNode => 'type' in n && n.type === 'flow';
 
+/** Ids únicos entre atores: os do Admin ficam como estão (links antigos #login continuam valendo); os demais ganham o prefixo do ator. */
+function scoped(a: Actor): Journey[] {
+  if (a.id === 'admin') return a.journeys;
+  const p = (id: string) => `${a.id}:${id}`;
+  const sc = (s: ScreenNode): ScreenNode => ({ ...s, id: p(s.id), variants: s.variants?.map((v) => ({ ...v, id: p(v.id) })) });
+  return a.journeys.map((j) => ({ ...j, id: p(j.id), items: j.items.map((n) => (isFlow(n) ? { ...n, id: p(n.id), screens: n.screens.map(sc) } : sc(n))) }));
+}
+const scopedByActor = actors.map((a) => ({ actor: a, journeys: scoped(a) }));
+const journeysOf = (id: ActorId) => scopedByActor.find((x) => x.actor.id === id)?.journeys ?? [];
+
 /** Achata a config em uma lista de telas/variantes navegáveis. */
 function flatten(): Entry[] {
   const out: Entry[] = [];
+  const journeys = scopedByActor.flatMap((x) => x.journeys);
   const addScreen = (s: ScreenNode, trail: string, groups: string[]) => {
     out.push({ id: s.id, label: s.label, path: s.path, mobilePath: s.mobilePath, trail, groups });
     s.variants?.forEach((v) =>
@@ -29,8 +42,8 @@ function flatten(): Entry[] {
   return out;
 }
 
-function load(): { open: string[]; collapsed: boolean; device: Device } {
-  const base = { open: [] as string[], collapsed: false, device: 'desktop' as Device };
+function load(): { open: string[]; collapsed: boolean; device: Device; actor: ActorId } {
+  const base = { open: [] as string[], collapsed: false, device: 'desktop' as Device, actor: 'admin' as ActorId };
   try { return { ...base, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') }; }
   catch { return base; }
 }
@@ -40,22 +53,26 @@ export function PrototypeNav() {
   const saved = useMemo(load, []);
   const [device, setDevice] = useState<Device>(saved.device);
   const [collapsed, setCollapsed] = useState(saved.collapsed);
-  const [open, setOpen] = useState<string[]>(saved.open.length ? saved.open : journeys.flatMap((j) => [j.id, ...j.items.filter(isFlow).map((f) => f.id)]));
+  const startEntry = entries.find((e) => e.id === location.hash.slice(1));
+  const [actorId, setActorId] = useState<ActorId>(() => (startEntry ? actors.find((a) => startEntry.id.startsWith(`${a.id}:`))?.id ?? 'admin' : saved.actor));
+  const journeys = journeysOf(actorId);
+  const [open, setOpen] = useState<string[]>(saved.open.length ? saved.open : scopedByActor.flatMap((x) => x.journeys.flatMap((j) => [j.id, ...j.items.filter(isFlow).map((f) => f.id)])));
   const [query, setQuery] = useState('');
   const [notesOn, setNotesOn] = useDevNotesEnabled();
   const [theme, setTheme] = useTheme();
   const [hover, setHover] = useState<{ src: string; rect: DOMRect } | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const hideTimer = useRef<number>();
-  const [currentId, setCurrentId] = useState(() => entries.find((e) => e.id === location.hash.slice(1))?.id ?? entries[0]?.id);
+  const firstOf = (id: ActorId) => entries.find((e) => e.id === (journeysOf(id)[0]?.items[0] && ('screens' in journeysOf(id)[0].items[0] ? (journeysOf(id)[0].items[0] as FlowNode).screens[0].id : journeysOf(id)[0].items[0].id)));
+  const [currentId, setCurrentId] = useState(() => startEntry?.id ?? firstOf(actorId)?.id ?? entries[0]?.id);
   const [frameSrc, setFrameSrc] = useState(() => (entries.find((e) => e.id === currentId) ?? entries[0])?.path ?? '');
 
   const current = entries.find((e) => e.id === currentId);
   const srcFor = (e: Entry | undefined, d: Device) => (d === 'mobile' && e?.mobilePath) || e?.path || '';
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ open, collapsed, device })); } catch { /* sem storage */ }
-  }, [open, collapsed, device]);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ open, collapsed, device, actor: actorId })); } catch { /* sem storage */ }
+  }, [open, collapsed, device, actorId]);
 
   // A tela dentro do iframe avisa qual página/variante está aberta (admin/shared/nav-sync.ts).
   useEffect(() => {
@@ -82,6 +99,13 @@ export function PrototypeNav() {
   }, [currentId, entries]);
 
   const select = (e: Entry) => { setCurrentId(e.id); setFrameSrc(srcFor(e, device)); };
+  /** Ator = frente do produto (Admin, Assinante…): troca a árvore de telas e abre a primeira tela do ator. */
+  const changeActor = (id: ActorId) => {
+    const first = firstOf(id);
+    setActorId(id);
+    setOpen((o) => [...new Set([...o, ...journeysOf(id).map((j) => j.id)])]);
+    if (first) select(first);
+  };
   const changeDevice = (d: Device) => { setDevice(d); setFrameSrc(srcFor(current, d)); };
   const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
   const matches = (label: string) => !query.trim() || label.toLowerCase().includes(query.trim().toLowerCase());
@@ -145,8 +169,18 @@ export function PrototypeNav() {
         <div className="pn-sidebar-header">
           <div className="pn-brand">
             <IconShield size={16} aria-hidden="true" />
-            <span>Sistema - Admin da plataforma</span>
+            <span>Protótipo v2 - MAGLEV</span>
           </div>
+
+          <label className="pn-actor">
+            <span className="pn-actor-label">Ator</span>
+            <span className="pn-select">
+              <select value={actorId} onChange={(e) => changeActor(e.target.value as ActorId)} aria-label="Ator: define qual área do produto está sendo exibida">
+                {actors.map((a) => <option key={a.id} value={a.id} disabled={!a.available}>{a.label}</option>)}
+              </select>
+              <IconChevronDown size={14} aria-hidden="true" />
+            </span>
+          </label>
 
           <div className="pn-device-switch" role="group" aria-label="Alternar dispositivo">
             <button type="button" className={`pn-device-btn${device === 'desktop' ? ' is-active' : ''}`}
@@ -184,7 +218,7 @@ export function PrototypeNav() {
           </label>
         </div>
 
-        <nav className="pn-tree" aria-label="Telas do protótipo do administrador">
+        <nav className="pn-tree" aria-label={`Telas do protótipo: ${actors.find((a) => a.id === actorId)?.label}`}>
           {journeys.map((j) => group(j.id, j.label, <IconRoute size={14} aria-hidden="true" />, j.items.map((n) =>
             isFlow(n)
               ? group(n.id, n.label, <IconGitBranch size={14} aria-hidden="true" />, n.screens.map(screen), 'pn-flow')
@@ -201,7 +235,7 @@ export function PrototypeNav() {
         <div className="pn-topbar">
           <span className="pn-current">{current ? `${current.trail} / ${current.label}` : '-'}</span>
           <span className="pn-topbar-actions">
-            <button type="button" className="pn-open-raw" onClick={() => { resetDb(); frameRef.current?.contentWindow?.location.reload(); }}
+            <button type="button" className="pn-open-raw" onClick={() => { resetDb(); resetSubDb(); frameRef.current?.contentWindow?.location.reload(); }}
               title="Desfaz cadastros e edições feitos no protótipo">
               <IconRefresh size={12} aria-hidden="true" /> Restaurar dados de demonstração
             </button>

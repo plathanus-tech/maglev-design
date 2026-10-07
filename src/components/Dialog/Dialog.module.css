@@ -21,7 +21,7 @@
 .lg { max-width: 45rem; }
 
 .header {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: flex-start; justify-content: space-between;
   gap: var(--spacing-md);
   padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
   border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
@@ -74,6 +74,7 @@
     align-items: center;
   }
   .footer > * { width: 100%; }   /* botões empilhados sempre ocupam toda a largura */
+  .footer > * > button { width: 100%; }   /* botão dentro de um wrapper (ex.: nota para desenvolvimento) também ocupa toda a largura */
   .footer > :first-child { order: 2; }
   .footer > :last-child { order: 1; }
 }

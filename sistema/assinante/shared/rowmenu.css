@@ -1,0 +1,11 @@
+/* Menu ⋮ de ações por linha (RowMenu): só layout do conteúdo do Popover, com tokens existentes. */
+.row-menu { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 10rem; }
+@media (max-width: 767px) { .row-menu { min-width: 0; } }
+.row-menu .btn-menu { justify-content: flex-start; width: 100%; }
+.row-menu .menu-danger { color: var(--color-text-error); }
+.row-menu .menu-danger:hover:not(:disabled) { background: var(--color-status-error-bg); color: var(--color-text-error); }
+
+/* Botão ⋮: área de toque de 44x44px sem aumentar o visual; aberto = fundo de hover mantido */
+.row-menu-btn { position: relative; }
+.row-menu-btn::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2.75rem; height: 2.75rem; transform: translate(-50%, -50%); }
+.row-menu-btn[aria-expanded="true"] { background: var(--color-bg-subtle); color: var(--color-text-primary); }

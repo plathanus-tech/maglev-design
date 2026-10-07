@@ -26,6 +26,9 @@ function UsuarioFormScreen() {
   const [notifyEmail, setNotifyEmail] = useState(editing?.notifyEmail ?? true);
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(editing?.notifyWhatsapp ?? false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const hasPhone = !!onlyDigits(phone);
+  // Sem telefone cadastrado, o WhatsApp fica indisponível (e desmarcado)
+  useEffect(() => { if (!hasPhone && notifyWhatsapp) setNotifyWhatsapp(false); }, [hasPhone, notifyWhatsapp]);
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
   // Aviso no topo (mesmo padrão do Novo assinante): só com campos obrigatórios vazios ou mais de um erro; some ao editar
@@ -66,7 +69,7 @@ function UsuarioFormScreen() {
     if (!messages.length) return;
     const empty = messages.filter((m) => /é obrigatório$/.test(m)).length;
     // só vazios: aviso de obrigatórios · um único erro de outro tipo: só foco no campo · tipos misturados ou vários erros: aviso genérico
-    setBanner(empty === messages.length ? 'required' : messages.length === 1 ? null : 'multiple');
+    setBanner(messages.length === 1 ? null : empty === messages.length ? 'required' : 'multiple');
     const first = document.querySelector<HTMLElement>('form [aria-invalid="true"]');
     first?.scrollIntoView({ block: 'center' });
     first?.focus({ preventScroll: true });
@@ -169,7 +172,8 @@ function UsuarioFormScreen() {
                   <div className="card-body-tight">
                     <Stack gap="sm">
                       <Checkbox label="E-mail" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} />
-                      <Checkbox label="WhatsApp" checked={notifyWhatsapp} onChange={(e) => setNotifyWhatsapp(e.target.checked)} />
+                      <Checkbox label="WhatsApp" checked={notifyWhatsapp} disabled={!hasPhone} onChange={(e) => setNotifyWhatsapp(e.target.checked)} />
+                      {!hasPhone && <p className="field-note">Informe um celular para receber notificações por WhatsApp</p>}
                     </Stack>
                   </div>
                 </Card>

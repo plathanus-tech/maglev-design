@@ -147,3 +147,12 @@
 .link { text-decoration: none; outline: none; }
 .link::after { content: ""; position: absolute; inset: 0; }
 .kpi.clickable:hover .link { text-decoration: underline; }
+
+/* Semântica (prop tone): só ícone e valor; superfície e textos secundários seguem neutros */
+.tone-neutral { background: var(--color-bg-subtle); color: var(--color-text-secondary); }
+.tone-error   { background: var(--color-status-error-bg);   color: var(--color-status-error-fg); }
+.tone-warning { background: var(--color-status-warning-bg); color: var(--color-status-warning-fg); }
+.tone-info    { background: var(--color-status-info-bg);    color: var(--color-status-info-fg); }
+.valueTone-error   { color: var(--color-status-error-fg); }
+.valueTone-warning { color: var(--color-status-warning-fg); }
+.valueTone-info    { color: var(--color-status-info-fg); }

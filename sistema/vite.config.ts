@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import type { Plugin } from 'vite';
 
 // Sistema (protótipo do Admin) - Jornada do Admin da plataforma.
@@ -22,6 +22,12 @@ export const SCREENS = [
 ];
 
 /**
+ * Telas da Área do assinante: todo assinante/screens/*.html vira uma entrada (sem lista para manter).
+ * Tela nova = criar o .html em assinante/screens/ e registrá-la no Navegador de Protótipo (prototype-nav/assinante/*.ts).
+ */
+const SUBSCRIBER_SCREENS = readdirSync(here('./assinante/screens')).filter((f) => f.endsWith('.html')).map((f) => f.replace(/\.html$/, ''));
+
+/**
  * Tela inexistente em /admin/screens/ responde 404. Sem isto o Vite devolve o index.html (o próprio
  * Navegador de Protótipo) e ele aparece dentro do quadro, repetindo a barra lateral.
  */
@@ -30,7 +36,7 @@ const screenNotFound = (): Plugin => ({
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       const path = decodeURIComponent((req.url ?? '').split('?')[0].split('#')[0]);
-      if (path.startsWith('/admin/screens/') && path.endsWith('.html') && !existsSync(here(`.${path}`))) {
+      if ((path.startsWith('/admin/screens/') || path.startsWith('/assinante/screens/')) && path.endsWith('.html') && !existsSync(here(`.${path}`))) {
         res.statusCode = 404;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.end('<!doctype html><meta charset="utf-8"><title>Tela não encontrada</title><p>Tela não encontrada. Escolha outra tela no Navegador de Protótipo.</p>');
@@ -64,6 +70,7 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: {
         ...Object.fromEntries(SCREENS.map((n) => [n, here(`./admin/screens/${n}.html`)])),
+        ...Object.fromEntries(SUBSCRIBER_SCREENS.map((n) => [`assinante-${n}`, here(`./assinante/screens/${n}.html`)])),
         nav: here('./index.html'),
       },
     },

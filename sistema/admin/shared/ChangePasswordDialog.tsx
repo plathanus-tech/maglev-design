@@ -10,7 +10,12 @@ import { logActivity, useSession } from './store';
  * Alteração da própria senha (edição da própria conta em Usuários): senha atual, nova senha e confirmação.
  * Modal, porque é uma ação curta e pontual dentro de uma tela que já tem outro "Salvar" (não mistura os dois fluxos).
  */
-export function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
+export function ChangePasswordDialog({ onClose, onSaved, successMessage = 'Use a nova senha no próximo acesso ao painel' }: {
+  onClose: () => void;
+  /** Quando informado, substitui o registro de atividade do Admin (ex.: Área do assinante). */
+  onSaved?: () => void;
+  successMessage?: string;
+}) {
   const toast = useToast();
   const { user: me } = useSession();
   const [current, setCurrent] = useState('');
@@ -41,8 +46,8 @@ export function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
     setTried(true);
     if (invalid) return;
     setPrototypePassword(next);
-    logActivity(me.id, 'Usuários', 'edicao', 'Alterou a própria senha');
-    toast.show({ type: 'success', title: 'Senha alterada', message: 'Use a nova senha no próximo acesso ao painel' });
+    if (onSaved) onSaved(); else logActivity(me.id, 'Usuários', 'edicao', 'Alterou a própria senha');
+    toast.show({ type: 'success', title: 'Senha alterada', message: successMessage });
     onClose();
   };
 

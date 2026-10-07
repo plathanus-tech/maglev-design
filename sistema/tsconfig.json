@@ -13,6 +13,7 @@
   },
   "include": [
     "admin",
+    "assinante",
     "prototype-nav",
     "vite-env.d.ts",
     "../src/css-modules.d.ts"

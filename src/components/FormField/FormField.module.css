@@ -6,6 +6,10 @@
   line-height: var(--line-height-snug);
   color: var(--color-text-primary);
 }
+/* Compacto (filtros de tabela): rótulo 14px e menos espaço entre rótulo e controle */
+.fieldSm { gap: var(--spacing-2xs); }
+.fieldSm .label { font: var(--text-body-s); font-weight: var(--font-weight-label); }
+.labelRow { display: flex; align-items: center; gap: var(--spacing-2xs); }
 .optional {
   font: var(--text-body-xs);
   letter-spacing: var(--text-body-xs-tracking);

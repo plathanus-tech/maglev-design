@@ -1,0 +1,34 @@
+/* os.css - SOMENTE o que o Storybook MAGLEV não oferece como componente na tela de acompanhamento da OS (RF503):
+   a linha de progresso (stepper). Estrutura, superfícies e espaçamento continuam vindo de Stack, Card, Tab, Badge…
+   Só tokens existentes (storybook-maglev/src/tokens/tokens.css). */
+
+.os-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: var(--spacing-md); }
+.os-step { position: relative; display: flex; flex-direction: row; align-items: center; gap: var(--spacing-sm); }
+.os-step-text { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
+.os-step-label { font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-primary); }
+.os-step-hint { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
+.os-step.is-pending .os-step-label { color: var(--color-text-tertiary); font-weight: var(--font-weight-regular); }
+
+.os-step-mark {
+  position: relative; z-index: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: var(--spacing-lg); height: var(--spacing-lg); border-radius: var(--radius-pill);
+  background: var(--color-bg-subtle); color: var(--color-text-tertiary);
+  border: var(--border-width-medium) solid var(--color-border-subtle);
+}
+.os-step.is-done .os-step-mark { background: var(--color-status-success-bg); color: var(--color-status-success-fg); border-color: var(--color-status-success-fg); }
+.os-step.is-skipped .os-step-mark { background: var(--color-bg-subtle); color: var(--color-text-tertiary); border-color: var(--color-border-muted); }
+.os-step.is-current .os-step-mark { background: var(--color-bg-brand-strong); color: var(--color-text-inverse); border-color: var(--color-bg-brand-strong); }
+.os-step.is-blocked .os-step-mark { background: var(--color-status-error-bg); color: var(--color-status-error-fg); border-color: var(--color-status-error-fg); }
+
+@media (min-width: 768px) {
+  .os-steps { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0; }
+  .os-step { flex-direction: column; text-align: center; gap: var(--spacing-xs); }
+  .os-step-text { align-items: center; }
+  /* conector entre marcadores: da borda do marcador anterior até o atual */
+  .os-step + .os-step::before {
+    content: ''; position: absolute; z-index: 0; top: calc(var(--spacing-lg) / 2 - var(--border-width-medium) / 2);
+    right: calc(50% + var(--spacing-lg) / 2); width: calc(100% - var(--spacing-lg)); height: var(--border-width-medium);
+    background: var(--color-border-subtle);
+  }
+  .os-step.is-done + .os-step::before, .os-step.is-skipped + .os-step::before { background: var(--color-status-success-fg); }
+}

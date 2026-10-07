@@ -12,6 +12,7 @@ export const Warning: Story = { args: { type: 'warning', message: 'Atenção: es
 export const Info: Story = { args: { type: 'info', message: 'Uma atualização está disponível.' } };
 export const WithTitle: Story = { args: { type: 'error', title: 'Erro de autenticação', message: 'Suas credenciais são inválidas. Por favor, verifique e tente novamente.' } };
 export const Dismissible: Story = { args: { type: 'info', message: 'Clique no X para fechar este aviso.', dismissible: true } };
+export const WithLink: Story = { args: { type: 'error', title: 'Acesso indisponível', message: 'Não foi possível acessar a plataforma no momento. Entre em contato com o suporte Maglev para obter ajuda', link: { label: 'Falar com o suporte', href: 'mailto:suporte@maglev.com.br' } } };
 export const AllTypes: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

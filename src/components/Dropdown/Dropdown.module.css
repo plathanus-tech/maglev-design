@@ -13,6 +13,13 @@
 .open .trigger[aria-invalid="true"] { box-shadow: var(--focus-glow-error); }
 
 .placeholder { color: var(--color-text-placeholder); }
+.value { display: flex; align-items: center; gap: var(--spacing-sm); min-width: 0; }
+.valueText { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; }
+.valueLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.valueDesc { font-size: var(--font-size-sm); color: var(--color-text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
+.triggerLeading, .optionLeading { display: inline-flex; flex-shrink: 0; }
+.triggerLeading { --option-leading-size: var(--spacing-lg); }
+.optionLeading { --option-leading-size: 2.5rem; }
 .chevron {
   display: flex;
   flex-shrink: 0;
@@ -48,6 +55,16 @@
   color: var(--color-text-primary);
   cursor: pointer;
 }
+.optionText { display: flex; flex-direction: column; min-width: 0; }
+.optionDesc { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.option { gap: var(--spacing-sm); }
+.menuSearchable { display: flex; flex-direction: column; overflow: hidden; }
+.list { margin: 0; padding: 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; flex: 1; min-height: 0; }
+.search { display: flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-md); border-bottom: var(--border-width-thin) solid var(--color-border-subtle); }
+.searchIcon { flex-shrink: 0; color: var(--color-text-tertiary); }
+.searchInput { flex: 1; min-width: 0; min-height: 2.5rem; border: 0; outline: none; background: transparent; font: inherit; font-size: var(--font-size-base); color: var(--color-text-primary); }
+.searchInput::placeholder { color: var(--color-text-placeholder); }
+.empty { margin: 0; padding: var(--spacing-md); font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 .option[data-active="true"] { background: var(--color-bg-subtle); }
 .option[aria-selected="true"] {
   background: var(--color-bg-brand);
@@ -84,3 +101,14 @@
   .option { min-height: 3rem; font-size: var(--font-size-lg); }
 }
 
+
+/* ── Compacto (filtros de tabela): 36px visíveis, texto Body/S; a área clicável de 44px é mantida por um pseudo-elemento ── */
+.triggerSm {
+  position: relative;
+  min-height: calc(var(--control-height-md) - var(--spacing-sm));
+  padding-block: 0;
+  padding-inline: var(--spacing-sm);
+  font: var(--text-body-s);
+  letter-spacing: var(--text-body-s-tracking);
+}
+.triggerSm::after { content: ""; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; }

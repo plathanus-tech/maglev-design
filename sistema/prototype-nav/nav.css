@@ -209,3 +209,20 @@ button, input { font-family: inherit; }
 }
 .pn-topbar-actions { display: flex; align-items: center; gap: var(--spacing-md); }
 button.pn-open-raw { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; }
+
+/* Ator: seletor da frente do produto exibida (Admin, Assinante…) */
+.pn-actor { display: flex; flex-direction: column; gap: var(--spacing-2xs); }
+.pn-actor-label { font-size: var(--font-size-sm); font-weight: var(--font-weight-label); color: var(--color-text-tertiary); }
+.pn-select {
+  position: relative; display: flex; align-items: center;
+  background: var(--color-bg-surface); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control);
+  color: var(--color-text-tertiary);
+}
+.pn-select:focus-within { border-color: var(--color-border-focus); box-shadow: var(--focus-glow); }
+.pn-select select {
+  appearance: none; width: 100%; padding: var(--spacing-xs) calc(var(--spacing-md) + var(--spacing-sm)) var(--spacing-xs) var(--spacing-sm);
+  border: 0; outline: 0; background: transparent; cursor: pointer;
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-label); color: var(--color-text-primary);
+}
+.pn-select select option:disabled { color: var(--color-text-tertiary); }
+.pn-select svg { position: absolute; right: var(--spacing-sm); pointer-events: none; }

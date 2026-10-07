@@ -27,6 +27,8 @@ export { Feedback } from './components/Feedback/Feedback';
 export type { FeedbackProps } from './components/Feedback/Feedback';
 export { FormField, fieldControlClass } from './components/FormField/FormField';
 export type { FormFieldProps, FieldControlProps } from './components/FormField/FormField';
+export { ImageUpload } from './components/ImageUpload/ImageUpload';
+export type { ImageUploadProps, ImageUploadLabels } from './components/ImageUpload/ImageUpload';
 export { Input } from './components/Input/Input';
 export type { InputProps } from './components/Input/Input';
 export { KpiCard } from './components/KpiCard/KpiCard';

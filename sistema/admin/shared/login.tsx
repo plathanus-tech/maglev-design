@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
-import { Button, Feedback, Input, Stack } from '@maglev/ds';
+import { Button, Feedback, Input, Stack, useToast } from '@maglev/ds';
 import { AuthLayout, mountScreen } from './AuthLayout';
 import { useHashState } from './useHashState';
 import { getPrototypePassword } from './recovery';
@@ -21,6 +21,7 @@ const INVALID_MESSAGE = 'E-mail ou senha incorretos. Esqueceu a sua senha? Cliqu
 const DOMAIN_MESSAGE = `Use seu e-mail corporativo ${CORPORATE_DOMAIN}`;
 
 function LoginScreen() {
+  const toast = useToast();
   const [mode, go, setMode] = useHashState<Mode>(STATES, 'idle');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +33,12 @@ function LoginScreen() {
   useEffect(() => {
     if (mode === 'domain') setEmail((v) => (v && !isCorporateEmail(v) ? v : 'ana.ribeiro@gmail.com'));
     if (mode === 'inactive') setEmail((v) => v || 'kleber.antunes@maglev.com.br');
+  }, [mode]);
+
+  // Retorno da recuperação de senha: aviso temporário (Toast), some sozinho
+  useEffect(() => {
+    if (mode === 'passwordchanged') toast.show({ type: 'success', title: 'Senha alterada com sucesso', message: 'Faça login com sua nova senha.' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   const invalid = mode === 'invalid';
@@ -67,9 +74,6 @@ function LoginScreen() {
 
   return (
     <AuthLayout title="Acesse o painel administrativo" subtitle="Entre com seu e-mail corporativo para acessar o painel da Maglev">
-      {mode === 'passwordchanged' && (
-        <Feedback type="success" title="Senha alterada com sucesso" message="Faça login com sua nova senha." />
-      )}
       {mode === 'inactive' && (
         <DevNote note="RF001-RGN001 / CTA003: só usuários Ativos acessam. O aviso aparece apenas depois de e-mail e senha corretos, para não revelar contas a quem não tem a senha.">
           <Feedback type="error" title="Seu acesso está inativo" message="Fale com um administrador da plataforma para reativar o seu usuário." />

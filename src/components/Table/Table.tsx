@@ -24,6 +24,8 @@ export type ActionItem<T> = {
 export type TableColumn<T> = {
   key: keyof T;
   label: string;
+  /** Conteúdo do cabeçalho no lugar do texto (ex.: `Checkbox` de “selecionar todos”). `label` continua sendo o nome acessível. */
+  headerContent?: ReactNode;
   sortable?: boolean;
   width?: string | number;
   align?: 'left' | 'center' | 'right';
@@ -214,7 +216,7 @@ export function Table<T extends Record<string, unknown>>({
                           : <IconSelector size={12} />}
                       </span>
                     </button>
-                  ) : col.label}
+                  ) : (col.headerContent ?? col.label)}
                 </th>
               ))}
             </tr>

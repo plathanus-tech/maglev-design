@@ -17,6 +17,8 @@ export interface FieldControlProps {
 export interface FormFieldProps {
   /** Rótulo visível, associado ao controle via `htmlFor`. */
   label?: string;
+  /** Ação ao lado do rótulo (ex.: botão de ajuda que abre um modal). Fica fora do `<label>`. */
+  labelAction?: ReactNode;
   helperText?: string;
   /**
    * Mensagem de erro de validação inline — tem prioridade sobre `success` e `helperText`.
@@ -33,6 +35,8 @@ export interface FormFieldProps {
   optional?: boolean;
   /** Oculta o ícone da mensagem de erro (quando outro elemento já sinaliza o erro). */
   hideErrorIcon?: boolean;
+  /** `sm`: rótulo em Body/S (14px) e espaçamento menor, para filtros de tabela e outros campos compactos. */
+  size?: 'md' | 'sm';
   /** Use quando precisar de um id previsível; caso contrário é gerado. */
   id?: string;
   className?: string;
@@ -45,7 +49,7 @@ export interface FormFieldProps {
  * Todo campo novo deve ser composto com FormField em vez de reimplementar label/erro.
  */
 export function FormField({
-  label, helperText, error, success, required, optional, hideErrorIcon = false, id, className, children,
+  label, labelAction, helperText, error, success, required, optional, hideErrorIcon = false, size = 'md', id, className, children,
 }: FormFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
@@ -60,13 +64,21 @@ export function FormField({
   };
 
   return (
-    <div className={cx(styles.field, className)}>
-      {label && (
+    <div className={cx(styles.field, size === 'sm' && styles.fieldSm, className)}>
+      {label && (labelAction ? (
+        <div className={styles.labelRow}>
+          <label className={styles.label} htmlFor={fieldId}>
+            {label}
+            {optional && !required && <span className={styles.optional}> (opcional)</span>}
+          </label>
+          {labelAction}
+        </div>
+      ) : (
         <label className={styles.label} htmlFor={fieldId}>
           {label}
           {optional && !required && <span className={styles.optional}> (opcional)</span>}
         </label>
-      )}
+      ))}
       {children(control)}
       {error && (
         <span id={messageId} className={styles.error} aria-live="polite">

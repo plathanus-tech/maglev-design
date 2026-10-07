@@ -96,9 +96,23 @@ export const Text = ({ children, center }: { children: ReactNode; center?: boole
  * Ação de linha: Button ghost sm só-ícone + Tooltip à esquerda (a coluna fica colada na borda
  * direita; acima, seria cortado). O nome acessível inclui a ação e o registro.
  */
-export function RowAction({ icon, label, target, onClick, disabled }: {
+export function RowAction({ icon, label, target, onClick, disabled, unavailableReason }: {
   icon: ReactElement; label: string; target: string; onClick: () => void; disabled?: boolean;
+  /** Ação indisponível neste registro: visual de desabilitado, mas focável (`aria-disabled`) e com o motivo no tooltip e no nome acessível. O clique não executa `onClick`. */
+  unavailableReason?: string;
 }) {
+  if (unavailableReason) {
+    return (
+      <span className="row-unavailable">
+        <Tooltip content={unavailableReason} placement="left">
+          <Button
+            variant="ghost" size="sm" iconOnly iconLeft={icon} className="btn-unavailable" aria-disabled="true"
+            aria-label={`${label} ${target}: ${unavailableReason}`} onClick={() => undefined}
+          />
+        </Tooltip>
+      </span>
+    );
+  }
   return (
     <Tooltip content={label} placement="left">
       <Button variant="ghost" size="sm" iconOnly iconLeft={icon} aria-label={`${label} ${target}`} onClick={onClick} disabled={disabled} />

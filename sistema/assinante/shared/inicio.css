@@ -1,0 +1,65 @@
+/* inicio.css - peças do Início sem componente no Storybook: linhas de "Requer ação" (com tom de criticidade),
+   gráfico de rosca (SVG) e linha do tempo do dia. Só tokens existentes; estrutura vem de Stack, Card, Table, KpiCard. */
+
+/* ── Requer ação: linha clicável com tom por criticidade (reaproveita .attention-* do Admin: critical e warning) ── */
+.action-row { position: relative; flex: 1 1 auto; }
+.attention-info    { background: var(--color-status-info-bg); color: var(--color-status-info-fg); }
+.attention-neutral { background: var(--color-bg-subtle); color: var(--color-text-secondary); }
+.action-row .attention-value { min-width: var(--spacing-xl); }
+.action-row .attention-text { flex: 1; }
+.action-links { display: flex; flex-wrap: wrap; gap: var(--spacing-xs) var(--spacing-md); }
+.action-link { color: var(--color-text-primary); font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); text-decoration: none; border-radius: var(--radius-control-sm); }
+.action-link:hover { text-decoration: underline; }
+.action-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.action-link.is-stretched::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius-control); }
+.action-link.is-stretched:focus-visible { outline: none; }
+.action-link.is-stretched:focus-visible::after { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.action-row:has(.is-stretched):hover { filter: brightness(0.97); }
+.action-chevron { display: inline-flex; flex-shrink: 0; }
+
+/* ── Rosca (SVG) ── */
+.donut-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); }
+.donut { inline-size: 100%; max-inline-size: calc(var(--spacing-4xl) * 2); block-size: auto; }
+.donut-track { fill: none; stroke: var(--color-bg-subtle); }
+.donut-seg { fill: none; }
+.donut-total { fill: var(--color-text-primary); font-weight: var(--font-weight-heading); }
+.donut-caption { fill: var(--color-text-secondary); }
+/* Cores do donut e da legenda: as mesmas famílias semânticas dos status (Success, Warning, Error, Info, Neutral), em tom médio da escala
+   (500 no claro, 400 no escuro - o mesmo degrau que os tokens -fg usam no escuro), menos saturado que o -fg do claro (700), que é pensado para texto. */
+.dn-running { --dn: var(--color-green-500); }
+.dn-alert   { --dn: var(--color-yellow-500); }
+.dn-stopped { --dn: var(--color-red-500); }
+.dn-maint   { --dn: var(--color-blue-500); }
+.dn-inactive { --dn: var(--color-gray-400); }
+:root[data-theme="dark"] .dn-running { --dn: var(--color-green-400); }
+:root[data-theme="dark"] .dn-alert   { --dn: var(--color-yellow-400); }
+:root[data-theme="dark"] .dn-stopped { --dn: var(--color-red-400); }
+:root[data-theme="dark"] .dn-maint   { --dn: var(--color-blue-400); }
+:root[data-theme="dark"] .dn-inactive { --dn: var(--color-gray-500); }
+.donut-seg { stroke: var(--dn); }
+.donut-legend { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.donut-legend a {
+  display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-control-sm);
+  color: var(--color-text-primary); text-decoration: none; font-size: var(--font-size-md);
+}
+.donut-legend a:hover { background: var(--color-bg-subtle); }
+.donut-legend a:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
+.dot-key { inline-size: var(--spacing-md); block-size: var(--spacing-md); border-radius: var(--radius-pill); background: currentColor; display: inline-block; }
+.dot-key { color: var(--dn); }
+.dn-pct { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.dn-count { font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+
+/* ── Linha do tempo do dia ── */
+.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.tl-item { display: grid; grid-template-columns: var(--spacing-3xl) auto 1fr; gap: var(--spacing-md); align-items: start; }
+.tl-time { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); font-variant-numeric: tabular-nums; padding-block: var(--spacing-xs); }
+.tl-marker { display: flex; flex-direction: column; align-items: center; align-self: stretch; }
+.tl-dot { inline-size: var(--spacing-sm); block-size: var(--spacing-sm); margin-block: var(--spacing-sm); border-radius: var(--radius-pill); background: var(--color-border-muted); flex-shrink: 0; }
+.tl-item.is-upcoming .tl-dot { background: var(--color-bg-brand-strong); }
+.tl-line { flex: 1; inline-size: var(--border-width-thin); background: var(--color-border-subtle); }
+.tl-item:last-child .tl-line { display: none; }
+.tl-body { padding-block: var(--spacing-xs) var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; }
+.tl-item.is-past .tl-time, .tl-item.is-past .tl-who { color: var(--color-text-tertiary); }
+.tl-who { font-size: var(--font-size-md); color: var(--color-text-secondary); }
+.tl-text { font-size: var(--font-size-md); color: var(--color-text-primary); overflow-wrap: anywhere; }

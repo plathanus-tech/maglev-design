@@ -1,0 +1,4 @@
+/* solicitacao-form.css - só a barra de progresso das dicas de troubleshooting (RF403-FLU002), que o Storybook não oferece.
+   Tokens existentes, nenhum valor fixo de cor/espaço. */
+.tip-progress { height: var(--spacing-xs); border-radius: var(--radius-pill); background: var(--color-bg-subtle); overflow: hidden; }
+.tip-progress-bar { height: 100%; border-radius: var(--radius-pill); background: var(--color-action-primary); transition: width 0.2s ease; }

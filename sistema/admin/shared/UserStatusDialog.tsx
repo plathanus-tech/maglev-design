@@ -27,24 +27,19 @@ export function UserStatusDialog({ user, onClose }: { user: AdminUser | null; on
     <Dialog
       open
       onClose={onClose}
-      size="sm"
+      size="sm" className="dialog-confirm"
       title={deactivate ? `Inativar ${user.name}?` : `Ativar ${user.name}?`}
+      subtitle={deactivate
+        ? 'O usuário perderá o acesso ao painel administrativo imediatamente. Seu histórico de ações será mantido'
+        : 'O usuário poderá entrar novamente no painel com o e-mail cadastrado'}
       actions={(
         <>
           <Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button>
           {deactivate
-            ? <Button size="sm" variant="destructive" onClick={confirm}>Inativar usuário</Button>
+            ? <DevNote note="RF301-RGN003: o usuário inativo perde o acesso imediatamente (sessões encerradas). RGN006 / CTA003: notificação (plataforma e e-mail) apenas aos usuários com perfil Administrador; a notificação não aparece no modal."><Button size="sm" variant="destructive" onClick={confirm}>Inativar usuário</Button></DevNote>
             : <Button size="sm" onClick={confirm}>Ativar usuário</Button>}
         </>
       )}
-    >
-      {deactivate ? (
-        <DevNote note="RF301-RGN003: o usuário inativo perde o acesso imediatamente (sessões encerradas). RGN006 / CTA003: notificação (plataforma e e-mail) apenas aos usuários com perfil Administrador; a notificação não aparece no modal.">
-          <Text>O usuário perderá o acesso ao painel administrativo imediatamente. Seu histórico de ações será mantido.</Text>
-        </DevNote>
-      ) : (
-        <Text>O usuário poderá entrar novamente no painel com o e-mail cadastrado.</Text>
-      )}
-    </Dialog>
+    />
   );
 }

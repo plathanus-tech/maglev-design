@@ -155,3 +155,18 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* Compacto (filtros de tabela): 36px visíveis, texto Body/S; área clicável de 44px por pseudo-elemento */
+.input.inputSm {
+  min-height: calc(var(--control-height-md) - var(--spacing-sm));
+  padding-block: 0;
+  padding-left: var(--spacing-sm);
+  font: var(--text-body-s);
+  letter-spacing: var(--text-body-s-tracking);
+}
+.inputWrap:has(.inputSm) { position: relative; }
+.inputWrap:has(.inputSm)::after { content: ""; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; pointer-events: none; }
+
+/* Posição adaptativa: para cima quando falta espaço abaixo do campo; à direita quando passaria da borda da tela */
+.popupUp { top: auto; bottom: calc(100% + var(--spacing-xs)); }
+.popupEnd { left: auto; right: 0; }

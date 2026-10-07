@@ -1,0 +1,74 @@
+/* assinante.css - SOMENTE o que o Storybook MAGLEV não oferece como componente e que a Área do assinante precisa
+   (sino de notificações, e as peças visuais sem componente no DS: gráfico de rosca, linha do tempo, QR Code).
+   Estrutura, espaçamento e superfícies continuam vindo de Stack, Card, Table, Tab, Dialog… Nenhum token novo. */
+
+/* ── Sino de notificações (cabeçalho): botão do tema + contador + painel no padrão do menu da conta ── */
+.bell-root { position: relative; display: inline-flex; }
+.bell-count {
+  position: absolute; top: calc(var(--spacing-2xs) * -1); right: calc(var(--spacing-2xs) * -1);
+  min-width: var(--spacing-md); height: var(--spacing-md); padding: 0 var(--spacing-xs);
+  display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-pill);
+  background: var(--color-status-error-fg); color: var(--color-text-inverse);
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-heading); line-height: 1; pointer-events: none;
+}
+.bell-panel {
+  position: absolute; top: calc(100% + var(--spacing-xs)); right: 0; z-index: var(--z-dropdown);
+  width: min(22rem, calc(100vw - var(--spacing-xl))); padding: var(--spacing-xs);
+  background: var(--color-bg-raised); border: var(--border-width-thin) solid var(--color-border-subtle);
+  border-radius: var(--radius-control); box-shadow: var(--shadow-md);
+}
+.bell-head { padding: var(--spacing-sm); }
+.bell-empty { margin: 0; padding: var(--spacing-md) var(--spacing-sm); font-size: var(--font-size-md); color: var(--color-text-tertiary); }
+.bell-item {
+  display: flex; flex-direction: column; gap: var(--spacing-2xs); padding: var(--spacing-sm);
+  border-radius: var(--radius-control-sm); text-decoration: none; color: var(--color-text-primary);
+}
+.bell-item:hover { background: var(--color-bg-subtle); }
+.bell-item:focus-visible, .bell-all:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
+.bell-item.is-unread { background: var(--color-bg-brand); }
+.bell-item-title { font-size: var(--font-size-md); font-weight: var(--font-weight-label); }
+.bell-item-text { font-size: var(--font-size-sm); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.bell-all { display: block; padding: var(--spacing-sm); text-align: center; }
+
+/* Troubleshooting (notas): lista numerada sem marcadores */
+.ts-list { list-style: none; margin: 0; padding: 0; }
+.ts-item { margin: 0; }
+
+/* ── Busca global (cabeçalho): campo + lista de resultados agrupados ── */
+.gsearch { position: relative; width: min(24rem, 32vw); min-width: 14rem; }
+.gsearch input { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); }
+.gsearch-panel {
+  position: absolute; top: calc(100% + var(--spacing-xs)); right: 0; z-index: var(--z-dropdown);
+  width: max(100%, min(28rem, calc(100vw - var(--spacing-xl)))); max-height: 70vh; overflow-y: auto; padding: var(--spacing-xs);
+  background: var(--color-bg-raised); border: var(--border-width-thin) solid var(--color-border-subtle);
+  border-radius: var(--radius-control); box-shadow: var(--shadow-md);
+}
+.gsearch-state { display: flex; align-items: center; gap: var(--spacing-sm); margin: 0; padding: var(--spacing-md) var(--spacing-sm); font-size: var(--font-size-md); color: var(--color-text-tertiary); }
+.gsearch-group {
+  padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-xs);
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-label); letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase; color: var(--color-text-tertiary);
+}
+.gsearch-option { display: flex; align-items: center; gap: var(--spacing-sm); min-height: var(--control-height-md); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-control-sm); cursor: pointer; }
+.gsearch-option.is-active { background: var(--color-bg-subtle); outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
+.gsearch-icon { display: inline-flex; flex-shrink: 0; color: var(--color-text-tertiary); }
+.gsearch-text { display: flex; flex-direction: column; min-width: 0; }
+.gsearch-title { font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-primary); overflow-wrap: anywhere; }
+
+/* Mobile: segunda linha do cabeçalho só com a busca (largura toda) */
+.app-topbar-search {
+  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-sm);
+  background: var(--color-bg-surface); border-bottom: var(--border-width-thin) solid var(--color-gray-200); box-shadow: var(--shadow-xs);
+}
+:root[data-theme="dark"] .app-topbar-search { border-bottom-color: var(--color-gray-700); }
+.app-topbar-search .gsearch { width: 100%; min-width: 0; }
+.app-topbar-search .gsearch-panel { left: 0; right: 0; width: auto; }
+
+/* Cards mobile: badge dentro de um campo (ex.: Status do equipamento) com +2px de distância do rótulo */
+.field-badge { display: inline-flex; margin-top: var(--spacing-2xs); }
+
+
+/* Botão de ajuda ao lado do rótulo (ex.: Perfil de acesso): ícone compacto, área de toque de 44x44px (--control-height-lg) sem aumentar o layout */
+.info-btn { position: relative; }
+.info-btn::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2.75rem; height: 2.75rem; transform: translate(-50%, -50%); }
+

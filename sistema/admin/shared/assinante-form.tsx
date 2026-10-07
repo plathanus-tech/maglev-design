@@ -108,7 +108,7 @@ function AssinanteFormScreen() {
     if (!messages.length) return;
     const empty = messages.filter((m) => /é obrigatório$/.test(m)).length;
     // só vazios: aviso de obrigatórios · um único erro de outro tipo: só foco no campo · tipos misturados ou vários erros: aviso genérico
-    setBanner(empty === messages.length ? 'required' : messages.length === 1 ? null : 'multiple');
+    setBanner(messages.length === 1 ? null : empty === messages.length ? 'required' : 'multiple');
     const first = document.querySelector<HTMLElement>('form [aria-invalid="true"]');
     first?.scrollIntoView({ block: 'center' });
     first?.focus({ preventScroll: true });

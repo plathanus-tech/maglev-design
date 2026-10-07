@@ -13,6 +13,8 @@ export interface FeedbackProps {
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
   title?: string;
+  /** Link de ação dentro da mensagem, logo abaixo do texto (ex.: "Falar com o suporte"). Com `href` é um `<a>`; só com `onClick`, um botão. */
+  link?: { label: string; href?: string; onClick?: () => void };
   dismissible?: boolean;
   onDismiss?: () => void;
   /** Rótulo do botão de fechar (i18n). */
@@ -22,7 +24,7 @@ export interface FeedbackProps {
 }
 
 /** Mensagem de status inline (banner). Para confirmações efêmeras use `Toast`. */
-export function Feedback({ type, message, title, dismissible, onDismiss, dismissLabel = 'Fechar', role }: FeedbackProps) {
+export function Feedback({ type, message, title, link, dismissible, onDismiss, dismissLabel = 'Fechar', role }: FeedbackProps) {
   const liveRole = role ?? (type === 'error' || type === 'warning' ? 'alert' : 'status');
   return (
     <div className={cx(styles.alert, styles[type])} role={liveRole}>
@@ -30,6 +32,9 @@ export function Feedback({ type, message, title, dismissible, onDismiss, dismiss
       <div className={styles.body}>
         {title && <div className={styles.title}>{title}</div>}
         <div className={styles.message}>{message}</div>
+        {link && (link.href
+          ? <a className={styles.link} href={link.href} onClick={link.onClick}>{link.label}</a>
+          : <button className={styles.link} type="button" onClick={link.onClick}>{link.label}</button>)}
       </div>
       {dismissible && (
         <button className={styles.dismiss} onClick={onDismiss} aria-label={dismissLabel} type="button">

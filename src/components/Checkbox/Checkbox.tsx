@@ -1,11 +1,11 @@
-import { InputHTMLAttributes, useEffect, useId, useRef } from 'react';
+import { InputHTMLAttributes, ReactNode, useEffect, useId, useRef } from 'react';
 import { IconCheck, IconMinus, IconCircleX } from '@tabler/icons-react';
 import { cx } from '../../utils/cx';
 import styles from './Checkbox.module.css';
 
 export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  /** Rótulo visível. Sem `label`, passe `aria-label`. */
-  label?: string;
+  /** Rótulo visível (texto ou conteúdo com links/botões, que não alternam o campo ao serem acionados). Sem `label`, passe `aria-label`. */
+  label?: ReactNode;
   checked?: boolean;
   /** Estado misto (ex.: "selecionar todos" com seleção parcial). */
   indeterminate?: boolean;

@@ -53,3 +53,11 @@ export const WithError: Story = {
     );
   },
 };
+
+/** `size="sm"`: campo de 36px com texto de 14px, para filtros de tabela (popover Filtros). Formulários usam o padrão. */
+export const CompactFilter: Story = {
+  render: () => {
+    const [val, setVal] = useState('react');
+    return <Dropdown size="sm" options={options} value={val} onChange={setVal} label="Framework" />;
+  },
+};

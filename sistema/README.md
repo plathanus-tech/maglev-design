@@ -1,6 +1,6 @@
-# Sistema · Admin MAGLEV
+# Sistema · Admin e Área do assinante MAGLEV
 
-Protótipo navegável de referência do Admin da plataforma (RF001–RF407, Especificação Funcional v0.4). React + TypeScript + Vite.
+Protótipo navegável de referência do Admin da plataforma (RF001–RF407) e da Área do assinante (RF001–RF801, ver `assinante/README.md`), Especificação Funcional v0.4. O seletor Ator do Navegador de Protótipo alterna entre as duas frentes. React + TypeScript + Vite.
 Os componentes, tokens e ícones vêm do Storybook deste repositório (`@maglev/ds` → `../src`); nada é copiado.
 
 ```bash

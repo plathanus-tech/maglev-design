@@ -1,6 +1,6 @@
 import { ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Card, Stack } from '@maglev/ds';
+import { Card, Stack, ToastProvider } from '@maglev/ds';
 import logoLight from '../../../public/maglev-logo.svg';
 import logoDark from '../../../public/maglev-logo-dark.svg';
 import { DevNote } from './dev-notes/DevNote';
@@ -17,14 +17,15 @@ import './page.css';
  */
 export function AuthLayout({ title, subtitle, subtitleNote, children }: {
   title: string;
-  subtitle: ReactNode;
+  /** Sem subtítulo (ex.: estados de exceção em que a tela não oferece a ação do subtítulo), só o título. */
+  subtitle?: ReactNode;
   subtitleNote?: ReactNode;
   children: ReactNode;
 }) {
   const header = (
     <Stack gap="xs" as="header">
       <h1 className="page-title page-text--center">{title}</h1>
-      <p className="page-text page-text--center">{subtitle}</p>
+      {subtitle && <p className="page-text page-text--center">{subtitle}</p>}
     </Stack>
   );
 
@@ -45,5 +46,5 @@ export function AuthLayout({ title, subtitle, subtitleNote, children }: {
 }
 
 export function mountScreen(screen: ReactNode) {
-  createRoot(document.getElementById('root')!).render(<StrictMode>{screen}</StrictMode>);
+  createRoot(document.getElementById('root')!).render(<StrictMode><ToastProvider>{screen}</ToastProvider></StrictMode>);
 }

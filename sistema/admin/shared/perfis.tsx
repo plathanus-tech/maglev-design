@@ -99,21 +99,20 @@ function PerfisScreen() {
 
       {pending?.kind === 'blocked' && p && (
         <Dialog
-          open size="sm" onClose={() => setPending(null)}
+          open size="sm" className="dialog-confirm" onClose={() => setPending(null)}
           title="Não é possível excluir este perfil"
+          subtitle={`O perfil ${p.name} está vinculado a ${p.users} ${p.users === 1 ? 'usuário' : 'usuários'}. Para deixar de usá-lo, você pode inativá-lo ou alterar o perfil ${p.users === 1 ? 'desse usuário' : 'desses usuários'}`}
           actions={(
             <>
               <Button size="sm" variant="secondary" onClick={() => setPending(null)}>Fechar</Button>
               {p.status === 'ativo' && can('perfis', 'ativar') && <Button size="sm" onClick={() => doToggle(p)}>Inativar perfil</Button>}
             </>
           )}
-        >
-          <Text>{`O perfil ${p.name} está vinculado a ${p.users} ${p.users === 1 ? 'usuário' : 'usuários'}. Para deixar de usá-lo, você pode inativá-lo ou alterar o perfil ${p.users === 1 ? 'desse usuário' : 'desses usuários'}.`}</Text>
-        </Dialog>
+        />
       )}
       {pending?.kind === 'delete' && p && (
         <Dialog
-          open size="sm" onClose={() => setPending(null)} title={`Excluir o perfil ${p.name}?`}
+          open size="sm" className="dialog-confirm" onClose={() => setPending(null)} title={`Excluir o perfil ${p.name}?`}
           actions={<><Button size="sm" variant="secondary" onClick={() => setPending(null)}>Cancelar</Button><Button size="sm" variant="destructive" onClick={() => doDelete(p)}>Excluir perfil</Button></>}
         >
           <Text>O perfil não tem usuários vinculados. A exclusão não pode ser desfeita.</Text>
@@ -121,14 +120,13 @@ function PerfisScreen() {
       )}
       {pending?.kind === 'toggle' && p && (
         <Dialog
-          open size="sm" onClose={() => setPending(null)}
+          open size="sm" className="dialog-confirm" onClose={() => setPending(null)}
           title={p.status === 'ativo' ? `Inativar o perfil ${p.name}?` : `Ativar o perfil ${p.name}?`}
+          subtitle={p.status === 'ativo'
+            ? `O perfil deixa de ser oferecido no cadastro de usuários.${p.users ? ` Os ${p.users} usuários vinculados mantêm as permissões atuais até receberem outro perfil` : ''}`
+            : 'O perfil volta a ser oferecido no cadastro de usuários'}
           actions={<><Button size="sm" variant="secondary" onClick={() => setPending(null)}>Cancelar</Button><Button size="sm" variant={p.status === 'ativo' ? 'destructive' : 'primary'} onClick={() => doToggle(p)}>{p.status === 'ativo' ? 'Inativar perfil' : 'Ativar perfil'}</Button></>}
-        >
-          <Text>{p.status === 'ativo'
-            ? `O perfil deixa de ser oferecido no cadastro de usuários. ${p.users ? `Os ${p.users} usuários vinculados mantêm as permissões atuais até receberem outro perfil.` : ''}`
-            : 'O perfil volta a ser oferecido no cadastro de usuários.'}</Text>
-        </Dialog>
+        />
       )}
     </AppLayout>
   );

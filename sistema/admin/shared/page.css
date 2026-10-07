@@ -11,14 +11,14 @@
   justify-content: center;
   padding: var(--spacing-lg) var(--spacing-md);
   background-color: var(--color-bg-default);
-  background-image: url('../../../BG%20tela%20de%20login.png');
+  background-image: url('../../assets/bg-login.png');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;   /* telas longas (ex.: Primeiro acesso): o fundo fica parado e só o card rola */
 }
 [data-theme="dark"] .layout-auth {
-  background-image: linear-gradient(var(--color-overlay), var(--color-overlay)), url('../../../BG%20tela%20de%20login.png');
+  background-image: url('../../assets/fundo-acesso.png');   /* só no modo escuro */
 }
 #root.auth-root { width: 100%; display: flex; justify-content: center; }
 .auth-column { width: 100%; max-width: calc(var(--spacing-3xl) * 7); } /* 448px */
@@ -350,3 +350,26 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 
 /* Dados mascarados (asteriscos): sem as alternativas contextuais da Inter, que erguem o primeiro asterisco */
 .masked { font-feature-settings: "calt" 0; }
+
+/* Modais de confirmação (ativar/inativar, excluir, exclusão bloqueada): 460px (= 28,75rem) no desktop, entre os tamanhos sm e md do DS */
+.dialog-confirm.dialog-confirm { max-width: 28.75rem; }
+
+/* Ação de linha indisponível (RowAction com unavailableReason): cor de desabilitado, sem hover, ainda focável para mostrar o motivo */
+.btn-unavailable, .btn-unavailable:hover:not(:disabled) { color: var(--color-text-disabled); background: transparent; cursor: not-allowed; }
+
+/* Motivo de indisponibilidade no tooltip da ação de linha: quebra em linhas em vez de ser cortado (principalmente no mobile) */
+.row-unavailable { display: inline-flex; }
+.row-unavailable [role="tooltip"] { white-space: normal; width: max-content; max-width: calc(var(--spacing-3xl) * 4); text-align: left; }
+
+/* Mobile: seleção múltipla nos cards. O card selecionado ganha contorno de marca (além do Checkbox marcado, sem depender só da cor) */
+.mcl-select { cursor: pointer; border-radius: var(--radius-card, var(--radius-control)); outline: var(--border-width-medium) solid transparent; outline-offset: calc(var(--border-width-medium) * -1); }
+.mcl-select.is-selected { outline-color: var(--color-border-brand, var(--color-text-brand)); }
+.mcl-sticky {
+  position: sticky; bottom: 0; z-index: var(--z-sticky); display: flex; flex-direction: column;
+  padding: var(--spacing-md) 0 calc(var(--spacing-md) + env(safe-area-inset-bottom));
+  background: var(--color-bg-default); border-top: var(--border-width-thin) solid var(--color-border-subtle);
+}
+.mcl-sticky > button { width: 100%; }
+
+/* Toolbar embrulhada num Stack dentro da toolbar do Table: o Stack ocupa a largura toda para a busca preencher o espaço */
+.toolbar-fill { flex: 1 1 100%; min-width: 0; }

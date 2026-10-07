@@ -22,6 +22,8 @@ export function Tab({ tabs, defaultIndex = 0, onChange, 'aria-label': ariaLabel 
     setActive(i);
     onChange?.(i);
     if (focus) refs.current[i]?.focus();
+    // Com muitas abas (mobile), a selecionada nunca fica parcialmente fora da área visível
+    refs.current[i]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   };
 
   const onKeyDown = (e: KeyboardEvent, i: number) => {

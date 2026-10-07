@@ -10,3 +10,8 @@
   box-shadow: var(--shadow-lg);
   color: var(--color-text-primary);
 }
+
+/* Menu de ações (lista curta de itens): no mobile o painel se ajusta ao conteúdo em vez de ocupar 352px, sempre dentro da margem da tela */
+@media (max-width: 767px) {
+  .fit { width: max-content; min-width: calc(var(--spacing-3xl) * 2.5); max-width: calc(100vw - var(--spacing-xl)); padding: var(--spacing-xs); }
+}

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { IconChevronDown, IconFilter } from '@tabler/icons-react';
-import { Badge, Button, Dialog, Dropdown, Popover, Stack } from '@maglev/ds';
+import { IconChevronDown, IconAdjustmentsHorizontal } from '@tabler/icons-react';
+import { Badge, Button, DatePicker, Dialog, Dropdown, Popover, Stack } from '@maglev/ds';
 import { DevNote } from './dev-notes/DevNote';
 import { useIsMobile } from './useMediaQuery';
 
@@ -17,6 +17,10 @@ export interface FilterDef {
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
+  /** Valor que significa “sem filtro” (não conta como ativo e é o que “Limpar” restaura). Padrão: `todos`. */
+  defaultValue?: string;
+  /** Intervalo de datas (De/Até) que aparece quando o filtro tem o valor `when` (ex.: Período personalizado). Datas ISO `YYYY-MM-DD`. */
+  range?: { when: string; from: string; to: string; onChange: (from: string, to: string) => void };
 }
 const ALL = 'todos';
 
@@ -26,16 +30,40 @@ export function FilterControl({ filters, note }: { filters: FilterDef[]; note?: 
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
 
-  const active = filters.filter((f) => f.value !== ALL).length;
-  const openPanel = () => { setDraft(Object.fromEntries(filters.map((f) => [f.id, f.value]))); setOpen(true); };
-  const apply = () => { filters.forEach((f) => f.onChange(draft[f.id] ?? f.value)); setOpen(false); };
-  const clear = () => { filters.forEach((f) => f.onChange(ALL)); setOpen(false); };
+  const defOf = (f: FilterDef) => f.defaultValue ?? ALL;
+  const active = filters.filter((f) => f.value !== defOf(f)).length;
+  const openPanel = () => {
+    setDraft(Object.fromEntries(filters.flatMap((f) => [[f.id, f.value], ...(f.range ? [[`${f.id}:from`, f.range.from], [`${f.id}:to`, f.range.to]] : [])])));
+    setOpen(true);
+  };
+  const apply = () => {
+    filters.forEach((f) => {
+      const v = draft[f.id] ?? f.value;
+      f.onChange(v);
+      if (f.range) f.range.onChange(v === f.range.when ? draft[`${f.id}:from`] ?? '' : '', v === f.range.when ? draft[`${f.id}:to`] ?? '' : '');
+    });
+    setOpen(false);
+  };
+  const clear = () => { filters.forEach((f) => { f.onChange(defOf(f)); f.range?.onChange('', ''); }); setOpen(false); };
 
   const fields = (
-    <Stack gap="md">
-      {filters.map((f) => (
-        <Dropdown key={f.id} label={f.label} options={f.options} value={draft[f.id] ?? f.value} onChange={(v) => setDraft((d) => ({ ...d, [f.id]: v }))} />
-      ))}
+    <Stack gap="sm">
+      {filters.map((f) => {
+        const cur = draft[f.id] ?? f.value;
+        const from = draft[`${f.id}:from`] ?? '';
+        const to = draft[`${f.id}:to`] ?? '';
+        return (
+          <Stack key={f.id} gap="sm">
+            <Dropdown size="sm" label={f.label} options={f.options} value={cur} onChange={(v) => setDraft((d) => ({ ...d, [f.id]: v }))} />
+            {f.range && cur === f.range.when && (
+              <Stack direction="horizontal" gap="sm">
+                <DatePicker size="sm" label="De" value={from} max={to || undefined} onChange={(v) => setDraft((d) => ({ ...d, [`${f.id}:from`]: v }))} showShortcuts={false} />
+                <DatePicker size="sm" label="Até" value={to} min={from || undefined} onChange={(v) => setDraft((d) => ({ ...d, [`${f.id}:to`]: v }))} showShortcuts={false} />
+              </Stack>
+            )}
+          </Stack>
+        );
+      })}
     </Stack>
   );
   const buttons = (
@@ -52,7 +80,7 @@ export function FilterControl({ filters, note }: { filters: FilterDef[]; note?: 
           <Button
             variant="outline"
             className={isMobile ? 'btn-block' : undefined}
-            iconLeft={<IconFilter size={16} />}
+            iconLeft={<IconAdjustmentsHorizontal size={16} />}
             iconRight={isMobile ? undefined : <IconChevronDown size={16} />}
             aria-haspopup="dialog"
             aria-expanded={open}

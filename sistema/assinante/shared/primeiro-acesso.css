@@ -1,0 +1,26 @@
+/* Primeiro acesso: só o que o DS não oferece. Tokens existentes. */
+
+/* Links dos documentos legais no rótulo do checkbox: botões que parecem links (sublinhados, não só cor) */
+.legal-link {
+  display: inline; padding: 0; margin: 0; border: none; background: none; cursor: pointer;
+  font: inherit; font-weight: var(--font-weight-semibold); color: var(--color-text-primary);
+  text-decoration: underline; border-radius: var(--radius-control-sm);
+}
+.legal-link:hover { color: var(--color-text-brand); }
+.legal-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+
+/* Modais legais: leitura de documento (entre md e lg do DS); o corpo do Dialog já rola por dentro */
+.dialog-legal.dialog-legal { max-width: 40rem; }
+.legal-scroll { border-radius: var(--radius-control-sm); }
+.legal-scroll:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.legal-heading { margin: 0 0 var(--spacing-2xs); font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-primary); }
+
+
+/* Texto do aceite um nível abaixo do rótulo padrão do Checkbox (16px): Body/S (14px), como o texto de apoio das telas de acesso */
+.consent-text { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); }
+
+/* Seções do fluxo (Seus dados, Crie sua senha) sem card próprio: mesmo título/subtítulo do Card do DS, separados só por espaçamento */
+.flow-section { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.flow-head { display: flex; flex-direction: column; gap: var(--spacing-2xs); }
+.flow-title { margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); line-height: var(--line-height-snug); color: var(--color-text-primary); }
+.flow-subtitle { margin: 0; font-size: var(--font-size-md); line-height: var(--line-height-snug); color: var(--color-text-tertiary); }

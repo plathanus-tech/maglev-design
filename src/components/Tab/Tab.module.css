@@ -15,14 +15,14 @@
   font-family: var(--font-display);
   font-size: var(--font-size-base); font-weight: var(--font-weight-button);
   color: var(--color-text-secondary);
-  cursor: pointer; white-space: nowrap;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 .tab:hover { color: var(--color-text-primary); }
 .tab:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
 .active {
-  color: var(--color-action-primary);
-  border-bottom-color: var(--color-action-primary);
+  color: var(--color-text-brand);   /* texto e sublinhado: 6,09:1 no claro (WCAG AA); --color-action-primary dava 2,22:1 */
+  border-bottom-color: var(--color-text-brand);
   font-weight: var(--font-weight-button);
 }
 
