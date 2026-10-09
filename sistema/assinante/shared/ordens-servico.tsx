@@ -1,9 +1,9 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState, ReactElement } from 'react';
 import {
   IconAdjustmentsHorizontal, IconAlertTriangle, IconCircleCheck, IconCircleX, IconClipboardList, IconEye, IconFileInvoice,
-  IconHourglass, IconPackage, IconSearch, IconThumbUp, IconTool, IconTruck, IconChecklist, IconUserEdit,
+  IconHourglass, IconPencil, IconPackage, IconSearch, IconThumbUp, IconTool, IconTruck, IconChecklist, IconUserEdit,
 } from '@tabler/icons-react';
-import { Badge, Button, Card, EmptyState, Feedback, Input, KpiCard, Stack, Table, TableColumn, useToast } from '@maglev/ds';
+import { Badge, Button, Card, EmptyState, Feedback, Input, Stack, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { MobileCardList } from '../../admin/shared/MobileCardList';
@@ -15,23 +15,24 @@ import { formatDate, formatNumber, normalize } from '../../admin/shared/format';
 import { daysAgo, dayOnly } from './data';
 import { ordersVisible, unitName, equipmentOf, userName } from './store';
 import { useSubSession } from './store';
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, takeFlash, useRefs } from './ui';
-import { ReassignDialog, STO, executorInfo, isEditable, overdueDays } from './os-common';
+import { ClassifyDialog, ReassignDialog, STO, executorInfo, isEditable, overdueDays } from './os-common';
 import type { WorkOrder } from './data';
+import './os-summary.css';
 
 /** Estados: idle · empty (sem nenhuma OS) · noresults (busca sem resultado) · reassign (diálogo de reatribuição aberto) */
 const STATES = ['idle', 'empty', 'noresults', 'reassign'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
-type Quick = 'todos' | 'assigned-me' | 'active' | 'action' | 'awaiting-validation' | 'overdue' | 'awaiting-technician';
+type Quick = 'todos' | 'assigned-me' | 'active' | 'action' | 'awaiting-validation' | 'awaiting-technician';
 const QUICK_OPTIONS: Array<{ value: Quick; label: string }> = [
   { value: 'todos', label: 'Todas as OS' },
   { value: 'assigned-me', label: 'Atribuídas a mim' },
   { value: 'active', label: 'Ativas' },
   { value: 'action', label: 'Ação necessária' },
   { value: 'awaiting-validation', label: 'Aguardando validação' },
-  { value: 'overdue', label: 'Prazo vencido' },
   { value: 'awaiting-technician', label: 'Aguardando prestador/técnico' },
 ];
 const PERIOD_OPTIONS = [
@@ -59,13 +60,15 @@ function OrdensScreen() {
   const canPlan = can('os', 'editar') && !isExecutor;
 
   const quickParam = param('filter') as Quick | null;
-  const [quick, setQuick] = useState<Quick>(() => (QUICK_OPTIONS.some((o) => o.value === quickParam) ? (quickParam as Quick) : 'todos'));
+  // Atalhos que têm filtro próprio na tela (Status) chegam com esse filtro já selecionado; os demais vêm como aviso removível
+  const QUICK_TO_STATUS: Record<string, string> = { 'awaiting-validation': STO.VALIDACAO, 'awaiting-technician': STO.PRESTADOR };
+  const [quick, setQuick] = useState<Quick>(() => (QUICK_OPTIONS.some((o) => o.value === quickParam) && !QUICK_TO_STATUS[quickParam as string] ? (quickParam as Quick) : 'todos'));
   const SUBS = { new: 'Novas (abertas)', approval: 'Necessitam de aprovação', overdue: 'Em atraso' } as const;
   type Sub = keyof typeof SUBS;
   const subParam = param('sub') as Sub | null;
   const [sub, setSub] = useState<Sub | null>(() => (quickParam === 'assigned-me' && subParam && subParam in SUBS ? subParam : null));
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(() => param('status') ?? 'todos');
+  const [status, setStatus] = useState(() => param('status') ?? QUICK_TO_STATUS[quickParam as string] ?? 'todos');
   const [type, setType] = useState('todos');
   const [priority, setPriority] = useState('todos');
   const [unit, setUnit] = useState(() => param('unit') ?? 'todos');
@@ -74,9 +77,11 @@ function OrdensScreen() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [equipment, setEquipment] = useState<string | null>(() => param('equipment'));
-  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'createdAt', dir: 'desc' });
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'attention', dir: 'asc' });   // 'attention' = padrão “Atenção necessária”
   const [page, setPage] = useState(1);
   const [reassigning, setReassigning] = useState<WorkOrder | null>(null);
+  const [classifying, setClassifying] = useState<WorkOrder | null>(null);
+  const [hot, setHot] = useState<string | null>(null);   // status destacado (hover/foco) na barra e na legenda
 
   const visible = useMemo(() => (mode === 'empty' ? [] : ordersVisible(db, unitIds, user.id, isExecutor)), [db, unitIds, user.id, isExecutor, mode]);
 
@@ -95,8 +100,10 @@ function OrdensScreen() {
   const last30 = dayOnly(30);
   const summary = useMemo(() => {
     const recent = visible.filter((o) => o.createdAt.slice(0, 10) >= last30);
-    return refs.activeStatuses('os').map((s) => ({ id: s.id, name: s.name, count: recent.filter((o) => o.statusId === s.id).length }));
+    return refs.activeStatuses('os').map((s) => ({ id: s.id, name: s.name, visual: s.visual, count: recent.filter((o) => o.statusId === s.id).length }));
   }, [visible, refs, last30]);
+  const total30 = summary.reduce((n, s) => n + s.count, 0);
+  const pct = (n: number) => (total30 ? ((n / total30) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '0');
 
   const quickMatch = (o: WorkOrder) => {
     const base = refs.base(o.statusId);
@@ -110,12 +117,27 @@ function OrdensScreen() {
       case 'active': return base === 'aberto' || base === 'andamento' || base === 'aguardando';
       case 'action': return [STO.APROVACAO, STO.PECA, STO.VALIDACAO].includes(o.statusId as never);
       case 'awaiting-validation': return o.statusId === STO.VALIDACAO;
-      case 'overdue': return overdueDays(o, base) > 0;
       case 'awaiting-technician': return o.statusId === STO.PRESTADOR;
       default: return true;
     }
   };
   const executorKey = (o: WorkOrder) => (o.executor.kind === 'interno' ? `u:${o.executor.userId}` : `p:${o.executor.providerId}`);
+
+  /** Ordenação padrão “Atenção necessária”: 1) vencidas (prazo mais antigo primeiro); 2) não vencidas por etapa do fluxo e, dentro dela, prazo mais próximo (sem prazo por último); 3) encerradas, atualização mais recente primeiro. */
+  const FLOW = [STO.APROVACAO, STO.ABERTA, STO.VALIDACAO, STO.ANDAMENTO, STO.ORCAMENTO, STO.PECA, STO.PRESTADOR] as string[];
+  const lastUpdate = (o: WorkOrder) => o.activities[o.activities.length - 1]?.at ?? o.createdAt;
+  const attentionOrder = (a: WorkOrder, b: WorkOrder) => {
+    const group = (o: WorkOrder) => { const base = refs.base(o.statusId); return !isEditable(base) ? 2 : overdueDays(o, base) > 0 ? 0 : 1; };
+    const ga = group(a), gb = group(b);
+    if (ga !== gb) return ga - gb;
+    if (ga === 2) return lastUpdate(b).localeCompare(lastUpdate(a));
+    if (ga === 1) {
+      const fa = FLOW.indexOf(a.statusId), fb = FLOW.indexOf(b.statusId);
+      if (fa !== fb) return (fa < 0 ? FLOW.length : fa) - (fb < 0 ? FLOW.length : fb);
+      if (!a.dueAt !== !b.dueAt) return a.dueAt ? -1 : 1;
+    }
+    return (a.dueAt || '').localeCompare(b.dueAt || '');
+  };
 
   const filtered = useMemo(() => {
     const term = normalize(query);
@@ -128,6 +150,7 @@ function OrdensScreen() {
       && (executor === 'todos' || executorKey(o) === executor)
       && (period !== 'custom' || ((!from || o.createdAt.slice(0, 10) >= from) && (!to || o.createdAt.slice(0, 10) <= to)))
       && (!term || normalize(`${o.id} ${o.subject} ${eqName(o)} ${unitName(db, unitOf(o))}`).includes(term)));
+    if (sort.key === 'attention') return rows.sort(attentionOrder);
     const dir = sort.dir === 'asc' ? 1 : -1;
     return rows.sort((a, b) => {
       const va = sort.key === 'dueAt' ? a.dueAt : sort.key === 'id' ? a.id : a.createdAt;
@@ -151,34 +174,45 @@ function OrdensScreen() {
     setStatus(statusId ?? 'todos'); setPeriod(statusId ? '30' : 'todos');
   };
   const clearAll = () => { applySummary(null); };
+  /** Indicador clicado: lista só as OS criadas nos últimos 30 dias, do status escolhido (ou de todos), então o número é o total da listagem (CTA001). */
+  const applyIndicator = (statusId: string | null) => {
+    applySummary(statusId); setPeriod('custom'); setFrom(last30); setTo('');
+  };
 
   const dueNode = (r: Row) => (r.late > 0
-    ? <CellPair primary={<Badge status="error" icon={<IconAlertTriangle size={14} />}>{formatDate(r.dueAt)}</Badge>} secondary={`Vencida há ${r.late} ${r.late === 1 ? 'dia' : 'dias'}`} />
+    ? <CellPair primary={<Badge status="error" solid icon={<IconAlertTriangle size={14} />}>{formatDate(r.dueAt)}</Badge>} secondary={`Vencida há ${r.late} ${r.late === 1 ? 'dia' : 'dias'}`} />
     : formatDate(r.dueAt));
 
+  /** Desktop: olho + menu ⋮ (Editar, Classificar, Reatribuir). Cards no mobile: as quatro ações já abertas, como ícones. */
   const actions = (r: Row) => {
     const closed = !isEditable(refs.base(r.statusId));
+    const manage: RowMenuItem[] = canPlan && !closed ? [
+      { label: 'Editar', icon: <IconPencil size={16} />, onClick: () => goTo(`os-form.html?id=${r.id}`) },
+      { label: 'Classificar', icon: <IconAdjustmentsHorizontal size={16} />, onClick: () => setClassifying(r.order) },
+      { label: 'Reatribuir', icon: <IconUserEdit size={16} />, onClick: () => setReassigning(r.order) },
+    ] : [];
     return (
       <RowActions>
-        <RowAction icon={<IconEye size={16} />} label="Ver OS" target={r.id} onClick={() => goTo(`os.html?id=${r.id}`)} />
-        {canPlan && !closed && <RowAction icon={<IconAdjustmentsHorizontal size={16} />} label="Classificar OS" target={r.id} onClick={() => goTo(`os-form.html?id=${r.id}`)} />}
-        {canPlan && !closed && <RowAction icon={<IconUserEdit size={16} />} label="Reatribuir OS" target={r.id} onClick={() => setReassigning(r.order)} />}
+        <RowAction icon={<IconEye size={16} />} label="Visualizar OS" target={r.id} onClick={() => goTo(`os.html?id=${r.id}`)} />
+        {isMobile
+          ? manage.map((it) => <RowAction key={it.label} icon={it.icon as ReactElement} label={`${it.label} OS`} target={r.id} onClick={it.onClick} />)
+          : <RowMenu target={r.id} label={`Mais ações da ${r.id}`} items={manage} />}
       </RowActions>
     );
   };
 
   const columns: TableColumn<Row>[] = [
-    { key: 'statusId', label: 'Status', render: (v) => refs.statusBadge(String(v)) },
     { key: 'id', label: 'Nº da OS', sortable: true, render: (v) => <a className="text-link" href={`os.html?id=${v}`}>{String(v)}</a> },
     { key: 'subject', label: 'Assunto' },
-    { key: 'maintTypeId', label: 'Tipo de manutenção', render: (v) => refs.maintType(String(v))?.name ?? '-' },
+    { key: 'statusId', label: 'Status', render: (v) => refs.statusBadge(String(v)) },
     { key: 'priorityId', label: 'Prioridade', render: (v) => refs.priorityBadge(String(v)) },
     { key: 'unit', label: 'Unidade' },
     { key: 'equipment', label: 'Equipamento' },
-    { key: 'createdAt', label: 'Criada em', sortable: true, render: (v) => formatDate(String(v)) },
+    { key: 'maintTypeId', label: 'Tipo de manutenção', render: (v) => refs.maintType(String(v))?.name ?? '-' },
     { key: 'dueAt', label: 'Prazo', sortable: true, render: (_, r) => dueNode(r) },
     { key: 'executorName', label: 'Executor / Prestador', render: (_, r) => <CellPair primary={r.executorName} secondary={r.executorKind} /> },
     { key: 'responsible', label: 'Responsável' },
+    { key: 'createdAt', label: 'Criada em', sortable: true, render: (v) => formatDate(String(v)) },
     { key: 'actions', label: 'Ações', sticky: 'right', render: (_, r) => actions(r) },
   ];
 
@@ -194,16 +228,15 @@ function OrdensScreen() {
 
   const { columns: shownColumns, control, fieldsFor } = useColumnPrefs('sub-ordens-servico', columns, { locked: ['id'], mobileFixed: ['statusId', 'id', 'subject', 'equipment'] });
   const toolbar = (
-    <Stack gap="md">
+    <Stack gap="md" className="toolbar-fill">
       <TableToolbar
         search={(
           <Input type="search" aria-label="Buscar por número da OS, assunto, equipamento ou unidade" placeholder="Buscar por nº, assunto, equipamento ou unidade" iconLeft={<IconSearch size={20} />} value={query} onChange={(e) => setQuery(e.target.value)} />
         )}
         filters={(
           <FilterControl
-            note="RF501: filtros cumulativos agrupados - Visão rápida, Status, Tipo de manutenção, Prioridade, Unidade, Executor/Prestador e Período (data de criação; não filtra pelo prazo). A Visão rápida também vem por ?filter= nos cards do Início: Atribuídas a mim · Ativas · Ação necessária (aguardando aprovação, peça ou validação) · Aguardando validação · Prazo vencido · Aguardando prestador/técnico. ?status= e ?unit= também chegam já aplicados."
+            note="RF501: filtros cumulativos agrupados - Status, Tipo de manutenção, Prioridade, Unidade, Executor/Prestador e Período (data de criação; não filtra pelo prazo). A “Visão rápida” não é mais um filtro do popover: ela só chega por ?filter= nos cards do Início e aparece como aviso removível acima da tabela: Atribuídas a mim · Ativas · Ação necessária (aguardando aprovação, peça ou validação) · Aguardando validação · Aguardando prestador/técnico. ?status= e ?unit= também chegam já aplicados."
             filters={[
-              { id: 'quick', label: 'Visão rápida', options: QUICK_OPTIONS, value: quick, onChange: (v) => { setQuick(v as Quick); setSub(null); } },
               { id: 'status', label: 'Status', options: statusOptions, value: status, onChange: setStatus },
               { id: 'type', label: 'Tipo de manutenção', options: typeOptions, value: type, onChange: setType },
               { id: 'priority', label: 'Prioridade', options: priorityOptions, value: priority, onChange: setPriority },
@@ -215,8 +248,12 @@ function OrdensScreen() {
         )}
         columns={control}
       />
-      {quick === 'assigned-me' && sub && (
-        <Feedback type="info" title="Atribuídas a mim" message={`Refinado por: ${SUBS[sub]}. Remova o refinamento para ver todas as suas OS.`} dismissible dismissLabel="Remover refinamento" onDismiss={() => setSub(null)} />
+      {quick !== 'todos' && (
+        <Feedback
+          type="info" title={`Filtrando por: ${QUICK_OPTIONS.find((o) => o.value === quick)?.label ?? ''}`}
+          message={quick === 'assigned-me' && sub ? `Refinado por: ${SUBS[sub]}. Remova o filtro para ver todas as OS` : 'Remova o filtro para ver todas as OS'}
+          dismissible dismissLabel="Remover filtro" onDismiss={() => { setQuick('todos'); setSub(null); }}
+        />
       )}
       {equipment && (
         <Feedback type="info" title="Filtrando por equipamento" message={`Mostrando só as OS de ${equipmentOf(db, equipment)?.name ?? equipment}. Remova o filtro para ver todas.`} dismissible dismissLabel="Remover filtro de equipamento" onDismiss={() => setEquipment(null)} />
@@ -252,26 +289,50 @@ function OrdensScreen() {
           </Card>
         ) : (
           <>
-            <DevNote note="RF501: quantidade de OS por status nos últimos 30 dias + total de OS. Clicar num card filtra a tabela pelo status e pelo período de 30 dias, então o número do card é o total da listagem (CTA001). O card Total mostra todas as OS, sem filtro.">
-              {/* intercepta o clique nos cards (links) para filtrar na própria tela */}
-              <div onClickCapture={(e) => {
-                const a = (e.target as HTMLElement).closest('a[data-os-status]');
-                if (!a) return;
-                e.preventDefault();
-                const s = a.getAttribute('data-os-status');
-                applySummary(s === 'total' ? null : s);
-              }}
-              >
-                <Grid>
-                  <Col span={3} fill><KpiCard label="Total de OS" value={formatNumber(visible.length)} icon={<IconClipboardList size={20} />} description="Todas as OS · sem filtro" href="#total" /></Col>
-                  {summary.map((s) => (
-                    <Col key={s.id} span={3} fill><KpiCard label={s.name} value={formatNumber(s.count)} icon={STATUS_ICON[s.id] ?? <IconHourglass size={20} />} description="Últimos 30 dias" href={`#${s.id}`} /></Col>
-                  ))}
-                </Grid>
-              </div>
+            <DevNote note="RF501: total de OS e quantidade por status, todos nos últimos 30 dias (período identificado uma vez, no cabeçalho). Cada OS conta só no status atual, então a soma dos status é o total. Clicar no total ou num status lista as OS dos últimos 30 dias (e do status), então o número é o total da listagem (CTA001). Status sem OS continuam na relação, com zero.">
+              <Card className="os-summary" title="Resumo das ordens de serviço" subtitle="Últimos 30 dias">
+                <div className="os-summary-body">
+                  <button type="button" className="os-total" onClick={() => applyIndicator(null)}>
+                    <span className="os-total-label">Total de OS</span>
+                    <span className="os-total-value">{formatNumber(total30)}</span>
+                  </button>
+                  <div className="os-dist">
+                    <div
+                      className={`os-bar${hot ? ' has-hot' : ''}`} role="group" aria-label="Distribuição das OS dos últimos 30 dias por status"
+                      style={{ gridTemplateColumns: summary.filter((x) => x.count > 0).map((x) => `${x.count}fr`).join(' ') }}
+                    >
+                      {summary.filter((x) => x.count > 0).map((x) => (
+                        <Tooltip key={x.id} content={`${x.name}: ${x.count} OS · ${pct(x.count)}% do total`}>
+                          <button
+                            type="button" className={`os-seg is-${x.visual}${hot === x.id ? ' is-hot' : ''}`}
+                            aria-label={`${x.name}: ${x.count} OS, ${pct(x.count)}% do total. Listar`}
+                            onMouseEnter={() => setHot(x.id)} onMouseLeave={() => setHot(null)} onFocus={() => setHot(x.id)} onBlur={() => setHot(null)}
+                            onClick={() => applyIndicator(x.id)}
+                          />
+                        </Tooltip>
+                      ))}
+                    </div>
+                    {total30 === 0 && <p className="os-none">Nenhuma OS criada nos últimos 30 dias</p>}
+                    <ul className="os-legend" aria-label="OS por status">
+                      {summary.map((x) => (
+                        <li key={x.id}>
+                          <button
+                            type="button" className={`os-legend-item${x.count === 0 ? ' is-zero' : ''}${hot === x.id ? ' is-hot' : ''}`} onClick={() => applyIndicator(x.id)}
+                            onMouseEnter={() => x.count > 0 && setHot(x.id)} onMouseLeave={() => setHot(null)} onFocus={() => x.count > 0 && setHot(x.id)} onBlur={() => setHot(null)}
+                          >
+                            <span className={`os-dot is-${x.visual}`} aria-hidden="true" />
+                            <span className="os-legend-name">{x.name}</span>
+                            <span className="os-legend-count">{formatNumber(x.count)}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </Card>
             </DevNote>
 
-            <DevNote note="RF501: Executor/Prestador e Responsável são colunas separadas. Prazo vencido e não concluído é destacado em vermelho com o atraso (RGN003) - SLA configurável é FE001, fora do escopo. Ações por linha: ver/editar (RF503), classificar (RF502 - edição) e reatribuir (diálogo rápido). Ver é sempre permitido; classificar e reatribuir só para quem pode editar e enquanto a OS não estiver concluída/cancelada. Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação.">
+            <DevNote note="RF501: Executor/Prestador e Responsável são colunas separadas. Prazo vencido e não concluído é destacado em vermelho com o atraso (RGN003) - SLA configurável é FE001, fora do escopo. Ações por linha: ícone de olho (Visualizar, RF503, somente leitura, sempre permitido) e menu ⋮ com Editar (abre o formulário de edição), Classificar (diálogo rápido só com tipo de manutenção e prioridade, RF502-FLU006) e Reatribuir (diálogo rápido). O menu só aparece para quem pode editar e enquanto a OS não estiver concluída/cancelada. Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação.">
               {isMobile ? (
                 <MobileCardList
                   headingId="os-title" title="Lista de ordens de serviço" titleHidden toolbar={toolbar} emptyTitle={empty.title}
@@ -304,6 +365,7 @@ function OrdensScreen() {
         )}
       </Stack>
       <ReassignDialog order={reassigning} onClose={() => setReassigning(null)} />
+      <ClassifyDialog order={classifying} onClose={() => setClassifying(null)} />
     </AppLayout>
   );
 }

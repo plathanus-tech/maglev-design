@@ -132,7 +132,7 @@ export function PlanFields({ db, value, onChange, categoryId, unitId, errors, cu
             label="Executor interno" required placeholder="Selecione o executor"
             options={executors.map((u) => ({ value: u.id, label: u.name }))}
             value={value.userId} onChange={(v) => set({ userId: v })} error={errors.userId}
-            helperText={executors.length ? 'Usuários com perfil Executor, ativos e vinculados à unidade do equipamento' : 'Nenhum executor ativo vinculado a esta unidade'}
+            helperText={executors.length ? undefined : 'Nenhum executor ativo vinculado a esta unidade'}
           />
         </Col>
       ) : (
@@ -207,6 +207,42 @@ export function ReassignDialog({ order, onClose }: { order: WorkOrder | null; on
     >
       <Stack gap="md">
         <PlanFields db={db} value={value} onChange={setValue} categoryId={eq?.categoryId ?? ''} unitId={eq?.unitId ?? ''} errors={errors} currentProviderId={order.executor.kind === 'prestador' ? order.executor.providerId : undefined} />
+      </Stack>
+    </Dialog>
+  );
+}
+
+/** Diálogo rápido de classificação (RF501 - ação por linha; RF502-FLU006): só tipo de manutenção e prioridade. O restante da OS fica no Editar. */
+export function ClassifyDialog({ order, onClose }: { order: WorkOrder | null; onClose: () => void }) {
+  const toast = useToast();
+  const refs = useRefs();
+  const { user } = useSubSession();
+  const [typeId, setTypeId] = useState('');
+  const [priorityId, setPriorityId] = useState('');
+  const [tried, setTried] = useState(false);
+  useEffect(() => { setTypeId(order?.maintTypeId ?? ''); setPriorityId(order?.priorityId ?? ''); setTried(false); }, [order?.id]);  // eslint-disable-line react-hooks/exhaustive-deps
+  if (!order) return null;
+
+  const confirm = () => {
+    setTried(true);
+    if (!typeId || !priorityId) return;
+    const logs: string[] = [];
+    if (typeId !== order.maintTypeId) logs.push(`Reclassificou o tipo de manutenção de ${refs.maintType(order.maintTypeId)?.name} para ${refs.maintType(typeId)?.name}`);
+    if (priorityId !== order.priorityId) logs.push(`Alterou a prioridade de ${refs.priority(order.priorityId)?.name} para ${refs.priority(priorityId)?.name}`);
+    if (!logs.length) { toast.show({ type: 'info', title: 'Nada foi alterado', message: 'O tipo de manutenção e a prioridade continuam os mesmos.' }); onClose(); return; }
+    patchOrder(order.id, user.name, (o) => ({ ...o, maintTypeId: typeId, priorityId }), logs);
+    toast.show({ type: 'success', title: 'OS classificada', message: 'A alteração ficou registrada nas atividades da OS.' });
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open onClose={onClose} title={`Classificar ${order.id}`} subtitle="Defina o serviço e sua prioridade"
+      actions={<><Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button><Button size="sm" onClick={confirm}>Salvar</Button></>}
+    >
+      <Stack gap="md">
+        <Dropdown label="Tipo de manutenção" required placeholder="Selecione o tipo" options={refs.admin.maintenanceTypes.filter((t) => t.status === 'ativo' || t.id === order.maintTypeId).map((t) => ({ value: t.id, label: t.name }))} value={typeId} onChange={setTypeId} error={tried && !typeId ? requiredMessage('Tipo de manutenção') : undefined} />
+        <Dropdown label="Prioridade" required placeholder="Selecione a prioridade" options={refs.admin.priorities.map((p) => ({ value: p.id, label: p.name }))} value={priorityId} onChange={setPriorityId} error={tried && !priorityId ? requiredMessage('Prioridade') : undefined} />
       </Stack>
     </Dialog>
   );

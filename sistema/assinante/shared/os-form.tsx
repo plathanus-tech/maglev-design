@@ -50,8 +50,8 @@ function OsFormScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  const title = editing ? `Editar ${editing.id}` : 'Nova OS';
-  const crumbs = [{ label: 'Ordens de serviço', href: 'ordens-servico.html' }, { label: editing ? 'Editar' : 'Nova OS' }];
+  const title = editing ? `Editar ${editing.id}` : 'Nova ordem de serviço';
+  const crumbs = [{ label: 'Ordens de serviço', href: 'ordens-servico.html' }, { label: editing ? 'Editar' : 'Nova ordem de serviço' }];
   const wrap = (body: React.ReactNode) => <AppLayout active="os" screen="os">{body}</AppLayout>;
   const blocked = (iconTitle: string, description: string, action?: React.ReactNode) => wrap(
     <Stack gap="xl">
@@ -85,8 +85,8 @@ function OsFormScreen() {
     priorityId: !priorityId ? requiredMessage('Prioridade') : undefined,
     ...planProblems(plan),
     dueAt: !dueAt ? requiredMessage('Prazo') : undefined,
-    sFrom: hasSchedule && !sFrom ? requiredMessage('Início da janela') : undefined,
-    sTo: hasSchedule && !sTo ? requiredMessage('Fim da janela') : hasSchedule && sFrom && sTo <= sFrom ? 'O fim da janela deve ser depois do início' : undefined,
+    sFrom: sTo && !sFrom ? requiredMessage('Horário inicial') : undefined,
+    sTo: sFrom && !sTo ? requiredMessage('Horário final') : sFrom && sTo && sTo <= sFrom ? 'O horário final deve ser depois do inicial' : undefined,
     contactName: !contactName.trim() ? requiredMessage('Contato responsável na unidade') : undefined,
     contactPhone: contactPhone && !isValidPhone(contactPhone) ? 'Informe um telefone válido' : undefined,
   };
@@ -163,27 +163,27 @@ function OsFormScreen() {
       <Stack gap="xl">
         <PageHeader
           title={title} breadcrumb={crumbs}
-          subtitle={editing ? 'Reclassifique, reatribua, reagende ou altere prioridade e prazo enquanto a OS não for concluída' : 'Os dados da solicitação já vêm preenchidos; defina quem atende e até quando'}
+          subtitle={editing ? 'Reclassifique, reatribua, reagende ou altere prioridade e prazo enquanto a OS não for concluída' : 'Defina os detalhes do atendimento e os responsáveis pela ordem de serviço'}
         />
         {tried && invalid && (
           <div className="floating-feedback"><Feedback type="error" title="Preencha os campos obrigatórios" message="Revise os campos destacados para continuar" /></div>
         )}
 
         <DevNote note="RF502-RGN001: toda OS corretiva nasce de uma solicitação aprovada na triagem; sem ?request= nem ?id= esta tela é bloqueada (variante “Sem origem”). Preventivas são geradas pelo plano (RF601).">
-          <Card className="card-open" title="Origem" subtitle="Dados herdados da solicitação e do equipamento">
+          <Card className="card-open" title="Origem" subtitle="Dados da solicitação e do equipamento de origem">
             <div className="card-body-tight">
               <Grid>
                 <Col span={6}><DevNote note="Número automático e sequencial por assinante (ex.: OS-000012)."><Input label="Nº da OS" readOnly value={editing?.id ?? 'Gerado ao salvar'} /></DevNote></Col>
                 <Col span={6}><Input label={origin ? 'Solicitação de origem' : 'Plano de preventiva'} readOnly value={origin?.id ?? editing?.planId ?? '-'} /></Col>
-                <Col span={12}><Input label="Equipamento" readOnly value={eq.name} /></Col>
                 <Col span={6}><Input label="Unidade" readOnly value={unitName(db, eq.unitId)} /></Col>
                 <Col span={6}><Input label="Ambiente" readOnly value={environmentName(db, eq.environmentId)} /></Col>
+                <Col span={12}><Input label="Equipamento" readOnly value={eq.name} /></Col>
               </Grid>
             </div>
           </Card>
         </DevNote>
 
-        <Card className="card-open" title="Classificação" subtitle="O que será feito e com qual urgência">
+        <Card className="card-open" title="Classificação" subtitle="Defina o serviço e sua prioridade">
           <div className="card-body-tight">
             <Grid>
               <Col span={12}><Input label="Assunto" required autoComplete="off" value={subject} onChange={(e) => setSubject(e.target.value)} error={show('subject')} /></Col>
@@ -198,6 +198,13 @@ function OsFormScreen() {
                 </DevNote>
               </Col>
               <Col span={6}><Dropdown label="Prioridade" required placeholder="Selecione a prioridade" options={refs.admin.priorities.map((p) => ({ value: p.id, label: p.name }))} value={priorityId} onChange={setPriorityId} error={show('priorityId')} /></Col>
+              {origin?.internalNotes && (
+                <Col span={12}>
+                  <DevNote note="Observações internas registradas na triagem (RF402). Somente leitura aqui; ficam nos detalhes da OS, separadas das observações posteriores. Nunca aparecem para quem abriu a solicitação nem para o perfil Executor (prestador); esse perfil nem acessa este formulário.">
+                    <Textarea label="Observações da triagem" readOnly rows={2} value={origin.internalNotes} />
+                  </DevNote>
+                </Col>
+              )}
             </Grid>
           </div>
         </Card>
@@ -208,7 +215,7 @@ function OsFormScreen() {
           </div>
         </Card>
 
-        <Card className="card-open" title="Prazo, agendamento e contato" subtitle="Data limite, janela de atendimento e quem recebe o técnico na unidade">
+        <Card className="card-open" title="Prazo, agendamento e contato" subtitle="Data limite, período de atendimento e contato na unidade">
           <div className="card-body-tight">
             <Grid>
               <Col span={6}><DatePicker label="Prazo" required value={dueAt} onChange={setDueAt} min={editing ? undefined : TODAY} error={show('dueAt')} helperText="Data limite para conclusão" /></Col>
@@ -217,8 +224,17 @@ function OsFormScreen() {
                   <DatePicker label="Data do agendamento" optional value={sDate} onChange={setSDate} min={editing ? undefined : TODAY} />
                 </DevNote>
               </Col>
-              <Col span={6}><Input label="Início da janela" type="time" optional={!hasSchedule} required={hasSchedule} value={sFrom} onChange={(e) => setSFrom(e.target.value)} error={show('sFrom')} /></Col>
-              <Col span={6}><Input label="Fim da janela" type="time" optional={!hasSchedule} required={hasSchedule} value={sTo} onChange={(e) => setSTo(e.target.value)} error={show('sTo')} /></Col>
+              <Col span={12}>
+                <div role="group" aria-label="Horário do atendimento" aria-describedby="os-window-help">
+                  <Stack gap="xs">
+                    <Grid>
+                      <Col span={6}><Input label="Horário inicial" type="time" optional value={sFrom} onChange={(e) => setSFrom(e.target.value)} error={show('sFrom')} /></Col>
+                      <Col span={6}><Input label="Horário final" type="time" optional value={sTo} onChange={(e) => setSTo(e.target.value)} error={show('sTo')} /></Col>
+                    </Grid>
+                    <span id="os-window-help" className="cell-secondary">Período disponível para a realização da manutenção.</span>
+                  </Stack>
+                </div>
+              </Col>
               <Col span={6}>
                 <DevNote note="Contato responsável na unidade: pré-preenchido com o solicitante (RF502).">
                   <Input label="Contato responsável na unidade" required autoComplete="off" value={contactName} onChange={(e) => setContactName(e.target.value)} error={show('contactName')} />

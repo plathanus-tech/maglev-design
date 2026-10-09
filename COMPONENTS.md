@@ -48,7 +48,7 @@ Tudo abaixo está em ordem alfabética.
 | **Accordion** | `items` (`title` `subtitle` `collapsedSubtitle` `meta` `content`) `allowMultiple` `defaultOpenIndex` `headingLevel` | `--radius-control`, `--font-display` |
 | **AppHeader** | `logo` `actions` `align` | `--color-bg-surface`, `--z-sticky` |
 | **Avatar** | `name` `src` `size` | `--color-bg-brand`, `--color-text-brand` |
-| **Badge** | `status` neutral/brand/success/error/warning/info · `dot` | `--color-status-*`, `--radius-pill` |
+| **Badge** | `status` neutral/brand/success/error/warning/info · `dot` · `icon` · `solid` (só error) | `--color-status-*`, `--radius-pill` |
 | **Breadcrumb** | `items` (label, href, icon) | `--color-text-*` |
 | **Button** | `variant` primary/secondary/destructive/ghost/outline · `size` sm/md/lg · `iconLeft/Right` · `iconOnly` | `--color-action-*`, `--color-on-action-*`, `--radius-control(-sm)`, `--control-*`, `--font-display` |
 | **Card** | `title` `subtitle` `actions` `footer` `padding` none/md/lg | `--color-bg-surface`, `--radius-card` |

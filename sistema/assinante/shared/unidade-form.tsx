@@ -3,7 +3,7 @@ import { Badge, Button, Card, Dropdown, Feedback, Input, RadioButton, Stack } fr
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
 import { lookupCep } from '../../admin/shared/cep';
-import { UFS, formatCep, formatPhone, isValidPhone, onlyDigits, requiredMessage } from '../../admin/shared/format';
+import { UFS, formatCep, formatPhone, isValidPhone, normalize, onlyDigits, requiredMessage } from '../../admin/shared/format';
 import { RecordStatus } from '../../admin/shared/data';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { Unit } from './data';
@@ -11,8 +11,8 @@ import { nextSeq, updateSubDb, userName, useSubSession } from './store';
 import { useFormFeedback } from './estrutura-utils';
 import { Col, Grid, ReadField, goTo, param, setFlash } from './ui';
 
-/** Estados: idle · required (um só campo obrigatório vazio: foco direto, sem aviso) · requiredmany (vários campos obrigatórios vazios: aviso no topo) */
-const STATES = ['idle', 'required', 'requiredmany'] as const;
+/** Estados: idle · required (um só campo obrigatório vazio: foco direto, sem aviso) · requiredmany (vários campos obrigatórios vazios: aviso no topo) · duplicate (nome de unidade já existente) */
+const STATES = ['idle', 'required', 'requiredmany', 'duplicate'] as const;
 type Mode = (typeof STATES)[number];
 
 type Draft = Omit<Unit, 'id' | 'managerId'> & { managerId: string };
@@ -52,8 +52,10 @@ function UnidadeFormScreen() {
   };
 
   const req = (v: string, field: string) => (tried && !v.trim() ? requiredMessage(field) : undefined);
+  // 💡 A confirmar: a especificação não define unicidade do nome da unidade; aqui o nome é único por assinante (sem diferenciar maiúsculas e acentos)
+  const duplicate = !!d.name.trim() && db.units.some((u) => u.id !== editing?.id && normalize(u.name) === normalize(d.name));
   const errors = {
-    name: req(d.name, 'Nome da unidade'),
+    name: req(d.name, 'Nome da unidade') ?? (tried && duplicate ? 'Já existe uma unidade com este nome' : undefined),
     cep: req(d.cep, 'CEP') ?? (tried && d.cep.length !== 8 ? 'Informe um CEP válido' : undefined),
     street: req(d.street, 'Logradouro'),
     number: req(d.number, 'Número'),
@@ -63,12 +65,13 @@ function UnidadeFormScreen() {
     phone: tried && d.phone && !isValidPhone(d.phone) ? 'Informe um telefone válido' : undefined,
   };
   const feedback = useFormFeedback(Object.values(errors));
-  const invalid = !d.name.trim() || d.cep.length !== 8 || !d.street.trim() || !d.number.trim() || !d.district.trim() || !d.city.trim() || !d.uf || (!!d.phone && !isValidPhone(d.phone));
+  const invalid = !d.name.trim() || duplicate || d.cep.length !== 8 || !d.street.trim() || !d.number.trim() || !d.district.trim() || !d.city.trim() || !d.uf || (!!d.phone && !isValidPhone(d.phone));
 
   useEffect(() => {
     if (editing || mode === 'idle') return;
     const filled = { cep: '03101001', street: 'Rua da Mooca', number: '1200', district: 'Mooca', city: 'São Paulo', uf: 'SP' };
     if (mode === 'required') setD((x) => ({ ...x, ...filled }));
+    if (mode === 'duplicate') setD((x) => ({ ...x, ...filled, name: db.units[0]?.name ?? 'Cantina Dona Rosa Beira-Mar' }));
     setTried(true);
     feedback.submitted();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +122,7 @@ function UnidadeFormScreen() {
 
           {!readOnly && (
             <>
-              <DevNote note="RF202: nome e status obrigatórios; código interno e telefone opcionais. Responsável/gestor é um usuário do assinante (RF204) - só usuários ativos são ofertados.">
+              <DevNote note="RF202: nome e status obrigatórios; código interno e telefone opcionais. 💡 Nome único por assinante (a especificação não define a unicidade: a confirmar); duplicado não salva e mostra o erro no campo. Responsável/gestor é um usuário do assinante (RF204) - só usuários ativos são ofertados.">
                 <Card className="card-open" title="Dados da unidade" subtitle="Como a unidade aparece nas listagens e solicitações">
                   <div className="card-body-tight">
                     <Grid>

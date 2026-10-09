@@ -1,0 +1,64 @@
+/* Triagem da solicitação (RF402): contexto à esquerda, classificação e decisão à direita. Só tokens existentes. */
+.sol-layout { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.sol-left { display: contents; }                 /* mobile: os blocos da esquerda e da direita entram na mesma pilha, reordenados abaixo */
+.sol-left > *, .sol-right > * { min-width: 0; }
+.sol-right { order: 1; display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.sol-hist { order: 2; }
+.sol-left > .dev-anchor, .sol-left > section, .sol-left > .sol-hist { display: block; }
+
+@media (min-width: 1200px) {
+  .sol-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: var(--spacing-xl); align-items: start; }
+  .sol-left { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+  .sol-right { order: 0; position: sticky; top: var(--spacing-lg); max-height: calc(100dvh - var(--spacing-2xl)); overflow-y: auto; }   /* só o painel de triagem: as ações ficam à mão durante a consulta */
+  .sol-hist { order: 0; }
+}
+
+/* Resumo da ocorrência: tipo de problema em destaque, descrição e dados compactos */
+.sol-summary { display: flex; flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-lg); background: var(--color-bg-surface); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-card, var(--radius-control)); }
+.sol-summary-title { margin: 0; font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: var(--font-weight-heading); line-height: var(--line-height-tight); color: var(--color-text-primary); }
+.sol-summary-text { margin: 0; font-size: var(--font-size-md); line-height: var(--line-height-normal, 1.5); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.sol-meta { margin: var(--spacing-xs) 0 0; padding-top: var(--spacing-md); border-top: var(--border-width-thin) solid var(--color-border-subtle); display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--spacing-md); }
+.sol-meta dt { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.sol-meta dd { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-primary); overflow-wrap: anywhere; }
+
+/* Fotos: miniaturas compactas que ampliam */
+.sol-photos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.sol-photo { display: flex; align-items: center; justify-content: center; width: 5rem; height: 5rem; padding: 0; overflow: hidden; cursor: pointer; background: var(--color-bg-subtle); color: var(--color-text-tertiary); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control); transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
+.sol-photo:hover { border-color: var(--color-border-muted); box-shadow: var(--shadow-sm); }
+.sol-photo:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.sol-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sol-photo-zoom { display: flex; align-items: center; justify-content: center; width: 100%; background: var(--color-bg-subtle); border-radius: var(--radius-control); overflow: hidden; }
+.sol-photo-zoom img { width: 100%; max-height: 70dvh; object-fit: contain; display: block; }
+
+/* Empty state compacto das outras solicitações */
+.sol-empty { margin: 0; display: flex; align-items: center; gap: var(--spacing-xs); font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); }
+
+/* Histórico: linha do tempo compacta */
+.sol-timeline { list-style: none; margin: 0; padding: 0; }
+.sol-timeline-item { position: relative; display: flex; flex-direction: column; gap: 0; margin: 0; margin-left: var(--spacing-xs); padding: 0 0 var(--spacing-md) var(--spacing-lg); border-left: var(--border-width-medium) solid var(--color-border-subtle); }
+.sol-timeline-item:last-child { padding-bottom: 0; border-left-color: transparent; }
+.sol-timeline-item::before { content: ""; position: absolute; left: calc(var(--spacing-xs) * -1 - var(--border-width-medium) / 2 - 1px); top: var(--spacing-2xs); width: var(--spacing-sm); height: var(--spacing-sm); border-radius: var(--radius-full); background: var(--color-border-muted); }
+.sol-timeline-item:first-child::before { background: var(--color-text-brand); }
+.sol-timeline-text { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.sol-timeline-detail { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.sol-timeline-detail-label { font-weight: var(--font-weight-label); color: var(--color-text-secondary); }
+.sol-timeline-meta { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+
+/* Decisão: a principal em destaque, as demais secundárias; Rejeitar com tom de erro discreto */
+.sol-actions { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; }
+.sol-actions > button { width: 100%; }
+.sol-reject, .sol-reject:hover:not(:disabled) { color: var(--color-text-error); }
+.sol-asset-link { display: inline-flex; align-items: center; gap: var(--spacing-2xs); }
+
+/* Equipamento associado (coluna esquerda, mais larga): dados lado a lado, empilha no mobile */
+.sol-eq { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--spacing-md); }
+
+/* Histórico do equipamento: tipo da manutenção dá a cor do ponto (Corretiva = atenção, Preventiva = info) */
+.sol-timeline-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); }
+.sol-timeline-date { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); }
+.sol-timeline-item.is-corretiva::before { background: var(--color-status-warning-fg); }
+.sol-timeline-item.is-preventiva::before { background: var(--color-status-info-fg); }
+.sol-timeline-item.is-solicitacao:first-child::before, .sol-timeline-item.is-marco:first-child::before { background: var(--color-border-muted); }
+
+/* Título do accordion de notas do troubleshooting com o mesmo tamanho e cor do título dos demais cards */
+.ts-accordion button[aria-expanded] { font-size: var(--font-size-lg); line-height: var(--line-height-snug); color: var(--color-text-secondary); }

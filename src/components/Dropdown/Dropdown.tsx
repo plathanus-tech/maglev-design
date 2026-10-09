@@ -43,13 +43,10 @@ export interface DropdownProps {
   emptyText?: string;
 }
 
-/** Igual a `--breakpoint-sm` (media queries e matchMedia não aceitam var()). */
-const MOBILE_QUERY = '(max-width: 640px)';
-
 /**
  * Seleção de uma opção em lista (padrão ARIA select-only combobox, com teclado).
- * No desktop abre sempre um menu abaixo do campo (a página rola se faltar espaço); em telas pequenas
- * (≤ 640px) abre como folha inferior com fundo escurecido e itens maiores para o toque.
+ * Abre sempre um menu colado abaixo do campo, com a largura dele (a página rola se faltar espaço); em telas pequenas
+ * (≤ 640px) os itens são maiores para o toque.
  */
 export function Dropdown({
   options, value, onChange, placeholder = 'Selecione...', disabled = false,
@@ -85,9 +82,9 @@ export function Dropdown({
   }, [open]);
 
   // O menu é renderizado em um portal no <body> (posição fixa sob o campo): assim não é cortado por
-  // containers com overflow, como o corpo rolável de um Dialog ou um Card. Na folha mobile o CSS cuida da posição.
+  // containers com overflow, como o corpo rolável de um Dialog ou um Card. 
   useLayoutEffect(() => {
-    if (!open || window.matchMedia(MOBILE_QUERY).matches) { setMenuStyle(undefined); return; }
+    if (!open) { setMenuStyle(undefined); return; }
     const place = () => {
       const r = ref.current?.getBoundingClientRect();
       if (!r) return;
@@ -98,14 +95,6 @@ export function Dropdown({
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
     return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
-  }, [open]);
-
-  // Na folha mobile, trava o scroll do fundo enquanto está aberta.
-  useEffect(() => {
-    if (!open || !window.matchMedia(MOBILE_QUERY).matches) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
   }, [open]);
 
   // Mantém a opção ativa visível ao navegar por teclado.

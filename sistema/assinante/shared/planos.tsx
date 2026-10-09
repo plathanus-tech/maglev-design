@@ -97,15 +97,15 @@ function PlanosScreen() {
   const dateOrDash = (s?: string) => (s ? formatDate(s) : '-');
 
   const columns: TableColumn<Row>[] = [
-    { key: 'status', label: 'Status', render: (_, r) => statusBadge(r.plan) },
     { key: 'name', label: 'Plano', render: (_, r) => <a className="text-link" href={`plano.html?id=${r.plan.id}`}>{r.plan.name}</a> },
-    { key: 'equipments', label: 'Equipamento(s)', render: (_, r) => withMore(r.equipments) },
-    { key: 'units', label: 'Unidade(s)', render: (_, r) => withMore(r.units) },
-    { key: 'frequency', label: 'Frequência', render: (_, r) => describeFrequency(r.plan) },
-    { key: 'executorName', label: 'Executor', render: (_, r) => { const e = executorOf(db, r.plan.executor); return <CellPair primary={e.primary} secondary={e.secondary} />; } },
-    { key: 'last', label: 'Última execução', render: (_, r) => dateOrDash(r.stats.last?.doneAt ?? r.stats.last?.dueDate) },
+    { key: 'status', label: 'Status', render: (_, r) => statusBadge(r.plan) },
     { key: 'next', label: 'Próxima execução', render: (_, r) => dateOrDash(r.stats.next?.dueDate) },
     { key: 'situation', label: 'Situação', render: (_, r) => situationBadge(r.stats.situation) },
+    { key: 'frequency', label: 'Frequência', render: (_, r) => describeFrequency(r.plan) },
+    { key: 'equipments', label: 'Equipamento(s)', render: (_, r) => withMore(r.equipments) },
+    { key: 'units', label: 'Unidade(s)', render: (_, r) => withMore(r.units) },
+    { key: 'executorName', label: 'Executor', render: (_, r) => { const e = executorOf(db, r.plan.executor); return <CellPair primary={e.primary} secondary={e.secondary} />; } },
+    { key: 'last', label: 'Última execução', render: (_, r) => dateOrDash(r.stats.last?.doneAt ?? r.stats.last?.dueDate) },
     { key: 'actions', label: 'Ações', sticky: 'right', render: (_, r) => actions(r) },
   ];
 
@@ -121,7 +121,7 @@ function PlanosScreen() {
       ]}
     />
   );
-  const toolbar = <ListFilters searchLabel="Buscar plano por nome, equipamento, unidade ou executor" placeholder="Buscar por plano, equipamento ou executor" query={query} onQuery={setQuery} filterControl={filterControl} columns={control} />;
+  const toolbar = <div className="toolbar-fill"><ListFilters searchLabel="Buscar plano por nome, equipamento, unidade ou executor" placeholder="Buscar por plano, equipamento ou executor" query={query} onQuery={setQuery} filterControl={filterControl} columns={control} /></div>;
   const noPlans = plans.length === 0;
 
   return (
@@ -149,7 +149,7 @@ function PlanosScreen() {
             </DevNote>
           </Col>
           <Col span={3} mobileFull fill>
-            <DevNote note="Execuções pendentes com data prevista entre hoje e os próximos 7 dias.">
+            <DevNote note="Execuções pendentes com data prevista entre hoje e os próximos 7 dias. “Hoje” é sempre a data atual do servidor. No protótipo a data é fixa (05/10/2026), só para manter os dados de demonstração previsíveis.">
               <KpiCard label="Próximas execuções · 7 dias" value={formatNumber(kpis.soon)} description={`Até ${formatDate(addDays(TODAY, 7))}`} icon={<IconCalendarEvent size={20} />} />
             </DevNote>
           </Col>

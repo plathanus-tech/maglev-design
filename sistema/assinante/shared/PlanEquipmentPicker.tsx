@@ -42,13 +42,19 @@ export function EquipmentPicker({ selected, onChange, error }: { selected: strin
         return (
           <Stack as="fieldset" key={unit.id} gap="sm" className="check-group">
             <legend className="sr-only">{unit.name}</legend>
-            <Checkbox
-              label={`${unit.name} (${items.length})`} checked={count === ids.length} indeterminate={count > 0 && count < ids.length}
-              onChange={(e) => toggleUnit(ids, e.target.checked)}
-            />
-            <div className="check-group-grid">
+            <div className="pick-head">
+              <Checkbox
+                label={<span className="pick-unit">{unit.name}</span>} checked={count === ids.length} indeterminate={count > 0 && count < ids.length}
+                onChange={(e) => toggleUnit(ids, e.target.checked)}
+              />
+              <span className="pick-count" aria-live="polite">{`${count} de ${items.length} selecionados`}</span>
+            </div>
+            <div className="check-group-grid pick-items">
               {items.map((e) => (
-                <Checkbox key={e.id} label={`${e.name} · ${environmentName(db, e.environmentId)}`} checked={selected.includes(e.id)} onChange={(ev) => toggle(e.id, ev.target.checked)} />
+                <Checkbox
+                  key={e.id} checked={selected.includes(e.id)} onChange={(ev) => toggle(e.id, ev.target.checked)}
+                  label={<span className="pick-eq"><span className="pick-eq-name">{e.name}</span><span className="pick-eq-env">{environmentName(db, e.environmentId)}</span></span>}
+                />
               ))}
             </div>
           </Stack>
@@ -76,7 +82,7 @@ export function PlanEquipmentsDialog({ plan, onClose }: { plan: Plan | null; onC
 
   return (
     <Dialog
-      open onClose={onClose} size="lg" title="Equipamentos do plano" subtitle="Associe ou desassocie equipamentos; a alteração vale só para as próximas execuções"
+      open onClose={onClose} size="lg" title="Gerenciar equipamentos" subtitle="Selecione os equipamentos que farão parte das próximas execuções deste plano"
       actions={(
         <>
           <Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button>
@@ -86,9 +92,8 @@ export function PlanEquipmentsDialog({ plan, onClose }: { plan: Plan | null; onC
     >
       <Stack gap="md">
         <DevNote note="RF601-FLU008 / RGN004: equipamentos desassociados perdem as execuções futuras ainda não iniciadas (OS aberta é cancelada); novos equipamentos recebem execuções e OS a partir de hoje. Histórico é preservado. CTA002: o plano precisa de ao menos 1 equipamento.">
-          <Text>Selecione os equipamentos que seguem este plano de manutenção</Text>
+          <EquipmentPicker selected={ids} onChange={setIds} error={tried && !ids.length ? requiredMessage('Equipamentos') : undefined} />
         </DevNote>
-        <EquipmentPicker selected={ids} onChange={setIds} error={tried && !ids.length ? requiredMessage('Equipamentos') : undefined} />
       </Stack>
     </Dialog>
   );

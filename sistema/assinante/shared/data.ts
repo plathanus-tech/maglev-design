@@ -8,7 +8,7 @@
  */
 import { RecordStatus, Subscriber, seed as adminSeed, subscriberUsers } from '../../admin/shared/data';
 
-export const DB_VERSION = 8;
+export const DB_VERSION = 16;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
@@ -145,7 +145,7 @@ export interface Request {
   previousRepair: { related: boolean; note?: string };
   troubleshooting: TroubleshootingRun;
   internalNotes?: string;
-  complement?: { question: string; askedAt: string; answer?: string; answeredAt?: string };
+  complement?: { question: string; askedAt: string; answer?: string; /** Foto enviada na resposta (nome do arquivo). A resposta é texto e/ou foto (RF004-FLU003). */ answerPhoto?: string; answeredAt?: string };
   /** Motivo ao rejeitar / concluir sem OS (RF402) ou observação da conclusão manual (RF401-FLU006). */
   closeReason?: string;
   /** Protocolo original quando recusada como duplicada (RF402-RGN006). */
@@ -165,9 +165,17 @@ export interface Budget {
 }
 export type Executor = { kind: 'interno'; userId: string } | { kind: 'prestador'; providerId: string; technician?: string };
 /** Checklist e leituras da execução da preventiva (RF603). */
+/** Arquivo de evidência da execução: sempre identifica a evidência e, em antes/depois, o momento (não depende da ordem de envio). */
+export interface EvidenceFile { evidence: string; moment?: 'antes' | 'depois'; name: string }
 export interface Execution {
   checks: Record<string, boolean>; readings: Record<string, string>; evidences: string[];
   anomaly?: string; notes?: string; signedBy?: string;
+  /** Fotos/arquivos por evidência (antes/depois e placa separados). */
+  evidenceFiles?: EvidenceFile[];
+  /** Valores das leituras com nome e unidade como estavam no plano na execução (o histórico não muda se o plano for alterado depois). */
+  readingsLog?: Array<{ id: string; name: string; unit: string; value: string }>;
+  /** Relatório técnico, preenchido no sistema. */
+  report?: string;
 }
 export interface WorkOrder {
   /** OS-000012 */
@@ -188,10 +196,10 @@ export interface WorkOrder {
   contactName: string; contactPhone: string;
   reported: string; diagnosis?: string; solution?: string;
   visits: Visit[]; costs: CostItem[]; budget?: Budget;
-  files: Array<{ id: string; name: string; kind: 'foto' | 'orcamento' | 'outro'; at: string; by: string }>;
+  files: Array<{ id: string; name: string; kind: 'foto' | 'orcamento' | 'outro'; at: string; by: string; evidence?: string; moment?: 'antes' | 'depois' }>;
   activities: LogEntry[];
   /** Validação da conclusão pelo solicitante (RF503-FLU008-FLU010). */
-  validation?: { requestedAt: string; assignedTo: string; result?: 'sim' | 'nao'; comment?: string; at?: string };
+  validation?: { requestedAt: string; assignedTo: string; /** Telefone de quem foi indicado para validar (quando não é um usuário cadastrado). */ assignedContact?: string; result?: 'sim' | 'nao'; comment?: string; at?: string };
   troubleshooting?: TroubleshootingRun;
   cancelReason?: string;
   execution?: Execution;
@@ -202,7 +210,10 @@ export type Frequency = 'diaria' | 'semanal' | 'mensal' | 'anual';
 export const FREQUENCY_LABEL: Record<Frequency, string> = { diaria: 'Diária', semanal: 'Semanal', mensal: 'Mensal', anual: 'Anual' };
 export type ChecklistKind = 'obrigatorio' | 'leitura' | 'opcional';
 export const CHECKLIST_KIND_LABEL: Record<ChecklistKind, string> = { obrigatorio: 'Obrigatório', leitura: 'Leitura obrigatória', opcional: 'Opcional' };
+/** Item do checklist. Para `leitura`, é a medição configurada no plano: nome (`text`) e unidade; toda medição é obrigatória na execução. */
 export interface ChecklistItem { id: string; text: string; kind: ChecklistKind; unit?: string }
+export const READING_UNITS = ['°C', '°F', '%', 'bar', 'V', 'A', 'Sem unidade'];
+export const NO_UNIT = 'Sem unidade';
 export const EVIDENCE_OPTIONS = ['Foto antes/depois', 'Foto da placa', 'Leitura/medição', 'Assinatura/aceite', 'Relatório técnico'];
 export interface Plan {
   id: string; name: string; description?: string;
@@ -428,6 +439,10 @@ export function seed(): SubDb {
       log: [log(p.requesterName ?? solicit.name, 'Abriu a solicitação', p.openedAt, `${id}-L1`)],
       ...p,
     };
+    // Motivo de recusa ou de conclusão sem OS também fica no histórico da solicitação (RF402-FLU007)
+    if (r.closeReason && !r.log.some((l) => l.text.includes(r.closeReason!) || /^(Recusou|Concluiu)/.test(l.text))) {
+      r.log = [...r.log, log(gestor.name, `${r.statusId === 'STS-06' ? (r.duplicateOf ? `Recusou como duplicada de ${r.duplicateOf}` : 'Recusou a solicitação') : 'Concluiu sem OS'}: ${r.closeReason}`, r.statusChangedAt, `${id}-LC`)];
+    }
     requests.push(r);
     return r;
   };
@@ -466,7 +481,7 @@ export function seed(): SubDb {
   addRequest(coifa, {
     problemId: 'TSO-005', description: 'Barulho forte no motor da coifa, parece peça solta.', statusId: 'STS-03', openedAt: daysAgo(3, 11),
     statusChangedAt: daysAgo(2, 15), requesterName: 'Diego Ferreira', requesterPhone: '48991114455', requesterUserId: undefined, channel: 'QR', responsibleId: admin.id,
-    complement: { question: 'Pode enviar um vídeo curto do barulho, com a coifa ligada?', askedAt: daysAgo(2, 15) },
+    complement: { question: 'Pode enviar uma foto do painel de controle da coifa?', askedAt: daysAgo(2, 15) },
     log: [log('Diego Ferreira', 'Abriu a solicitação', daysAgo(3, 11), 'y1'), log(admin.name, 'Solicitou complementação', daysAgo(2, 15), 'y2')],
   });
 
@@ -581,11 +596,8 @@ export function seed(): SubDb {
     [eq(2, 'Fritadeira'), 'Troca do termostato da fritadeira', 16, 31_000, 'PRE-002'],
     [eq(1, 'Lava-louças'), 'Reparo da bomba de drenagem', 40, 98_000, 'PRE-005'],
     [eq(0, 'Coifa'), 'Substituição das correias do exaustor', 52, 22_000, 'PRE-004'],
-    // Fritadeira 02 acumula 3 corretivas em 90 dias (alerta de reincidência, RF304)
-    [eq(2, 'Fritadeira'), 'Reparo do queimador da fritadeira', 38, 27_000, 'PRE-002'],
-    [eq(2, 'Fritadeira'), 'Troca da resistência da fritadeira', 64, 35_000, 'PRE-002'],
   ];
-  concluidas.forEach(([e, subject, ago, cents, pid], i) => {
+  const addDone = ([e, subject, ago, cents, pid]: [Equipment, string, number, number, string], i: number) => {
     const r = addRequest(e, { problemId: 'TSO-001', description: subject, statusId: 'STS-05', openedAt: daysAgo(ago + 3, 9), statusChangedAt: daysAgo(ago + 2, 9), responsibleId: gestor.id, maintTypeId: 'TMA-001', priorityId: 'PRI-3', requesterName: solicit.name });
     const o = addOrder(e, {
       subject, statusId: 'STO-08', createdAt: daysAgo(ago + 2, 9), dueAt: dayOnly(ago - 2), requestId: r.id, responsibleId: gestor.id, executor: { kind: 'prestador', providerId: pid },
@@ -597,11 +609,12 @@ export function seed(): SubDb {
     });
     r.osId = o.id;
     r.log.push(log(gestor.name, `Criou a ${o.id}`, daysAgo(ago + 2, 9), `rc${i}`));
-  });
+  };
+  concluidas.forEach(addDone);
 
   // Concluída sem OS (resolvida no troubleshooting) e recusada
   addRequest(eq(0, 'Fritadeira'), { problemId: 'TSO-001', description: 'Fritadeira não ligava; resolvido pela dica (disjuntor desarmado).', statusId: 'STS-07', openedAt: daysAgo(14, 11), statusChangedAt: daysAgo(14, 11), requesterName: 'Camila Rocha', requesterPhone: '48991117788', requesterUserId: undefined, channel: 'QR', troubleshooting: run('resolvido', [['Confira se o disjuntor do equipamento não desarmou no quadro', 'realizada']]), closeReason: 'Resolvida no troubleshooting' });
-  addRequest(eq(1, 'Balcão refrigerado'), { problemId: 'TSO-008', description: 'Balcão com adesivo solto.', impact: 'baixo', statusId: 'STS-06', openedAt: daysAgo(20, 15), statusChangedAt: daysAgo(19, 9), responsibleId: gestor.id, requesterName: solicit.name, closeReason: 'Solicitação inválida: não é um defeito do equipamento' });
+  addRequest(eq(1, 'Balcão refrigerado'), { problemId: 'TSO-008', description: 'Balcão com adesivo solto.', impact: 'baixo', statusId: 'STS-06', openedAt: daysAgo(20, 15), statusChangedAt: daysAgo(19, 9), responsibleId: gestor.id, requesterName: solicit.name, closeReason: 'Solicitação inválida — não é um defeito do equipamento' });
 
   // ── Planos de preventiva ──
   const chk = (id: string, items: Array<[string, ChecklistKind, string?]>): ChecklistItem[] => items.map(([text, kind, unit], i) => ({ id: `${id}-${i + 1}`, text, kind, unit }));
@@ -641,7 +654,15 @@ export function seed(): SubDb {
       past.forEach((k, ki) => {
         const due = nextDue(p, p.frequency === 'semanal' ? k + 1 : k);
         const done = !(p.id === 'PLA-002' && ki === 1) && !(p.id === 'PLA-001' && ei === 1 && ki === 2) && !(p.id === 'PLA-003' && ki === 2 && ei === 0);
-        executions.push({ id: `${p.id}-${eid}-${ki}`, planId: p.id, equipmentId: eid, dueDate: due, status: done ? 'concluida' : 'nao-realizada', doneAt: done ? `${due}T10:30:00` : undefined, doneBy: done ? (p.executor.kind === 'interno' ? exec.name : providers.find((x) => x.id === (p.executor as { providerId: string }).providerId)?.technicians[0]?.name) : undefined, anomalies: p.id === 'PLA-001' && ki === 0 && ei === 0 ? 'Vedação da porta ressecada' : undefined });
+        // Cada execução nasce de uma OS preventiva: no histórico, concluída (STO-08) ou cancelada por não realização (STO-09)
+        const eqp = equipments.find((x) => x.id === eid)!;
+        const ho = addOrder(eqp, {
+          subject: `${p.name} - ${eqp.name}`, kind: 'preventiva', maintTypeId: 'TMA-003', priorityId: 'PRI-4', statusId: done ? 'STO-08' : 'STO-09',
+          createdAt: `${due}T06:00:00`, dueAt: due, planId: p.id, executionId: `${p.id}-${eid}-${ki}`, executor: p.executor, responsibleId: gestor.id, reported: p.description ?? p.name,
+          activities: [log('Sistema', `OS gerada automaticamente pelo plano ${p.name}`, `${due}T06:00:00`, `ph${p.id}${ei}${ki}`)],
+          ...(done ? {} : { cancelReason: 'Execução não realizada' }),
+        });
+        executions.push({ id: `${p.id}-${eid}-${ki}`, planId: p.id, equipmentId: eid, dueDate: due, osId: ho.id, status: done ? 'concluida' : 'nao-realizada', doneAt: done ? `${due}T10:30:00` : undefined, doneBy: done ? (p.executor.kind === 'interno' ? exec.name : providers.find((x) => x.id === (p.executor as { providerId: string }).providerId)?.technicians[0]?.name) : undefined, anomalies: p.id === 'PLA-001' && ki === 0 && ei === 0 ? 'Vedação da porta ressecada' : undefined });
       });
     });
   });
@@ -676,7 +697,7 @@ export function seed(): SubDb {
     if (u.profile === 'administrador' || u.profile === 'gestor') {
       note(u.id, 1, 'solicitacao', 'Nova solicitação aberta', `${r1.id}: ${fritadeira.name} não liga (impacto alto)`, `solicitacao.html?id=${r1.id}`, hoursAgo(2));
       note(u.id, 2, 'os', 'Orçamento aguardando aprovação', `${osLava.id}: orçamento de R$ 1.380,00 da Lava Forte`, `os.html?id=${osLava.id}`, daysAgo(4, 17));
-      note(u.id, 3, 'solicitacao', 'Resposta à complementação pendente', 'Solicitação da coifa aguarda o vídeo do solicitante', 'solicitacoes.html', daysAgo(2, 15), true);
+      note(u.id, 3, 'solicitacao', 'Resposta à complementação pendente', 'Solicitação da coifa aguarda a foto do solicitante', 'solicitacoes.html', daysAgo(2, 15), true);
       note(u.id, 4, 'preventiva', 'Preventiva vencida', 'Preventiva mensal das câmaras frias está atrasada', 'planos.html', daysAgo(1, 7));
       note(u.id, 5, 'os', 'OS aguardando validação', `${osFreezer.id}: aguardando a confirmação do solicitante`, `os.html?id=${osFreezer.id}`, daysAgo(3, 12), true);
       const reinc = eq(2, 'Fritadeira');
@@ -690,6 +711,26 @@ export function seed(): SubDb {
       note(u.id, 1, 'os', 'Nova OS atribuída a você', 'Chapa não aquece por igual', 'os.html', daysAgo(10, 9));
       note(u.id, 2, 'preventiva', 'Preventiva gerada', 'Revisão semanal das fritadeiras', 'planos.html', daysAgo(1, 6));
     }
+  });
+
+  // Fritadeira 01 acumula 3 corretivas em 90 dias (alerta de reincidência, RF304). Criadas no fim da carga para não deslocar ids de SOL/OS já usados no Navegador de Protótipo
+  const fritExtra: Array<[Equipment, string, number, number, string]> = [
+    [eq(2, 'Fritadeira'), 'Reparo do queimador da fritadeira', 38, 27_000, 'PRE-002'],
+    [eq(2, 'Fritadeira'), 'Troca da resistência da fritadeira', 64, 35_000, 'PRE-002'],
+  ];
+  fritExtra.forEach((x, k) => addDone(x, 100 + k));
+
+  // Possíveis duplicadas (RF402): outras solicitações ABERTAS para a Fritadeira 01 (a mesma da SOL-000119), para exibir a seção preenchida
+  addRequest(fritadeira, {
+    problemId: 'TSO-003', description: 'A fritadeira esquenta devagar e o óleo não chega na temperatura de fritura.', impact: 'medio', statusId: 'STS-02',
+    openedAt: hoursAgo(26), statusChangedAt: hoursAgo(24), requesterName: 'Fernanda Ribeiro', requesterPhone: '48991114455', channel: 'QR', photos: 0,
+    log: [log('Fernanda Ribeiro', 'Abriu a solicitação', hoursAgo(26), 'dp1-1'), log(gestor.name, 'Iniciou a triagem', hoursAgo(24), 'dp1-2')],
+  });
+  addRequest(fritadeira, {
+    problemId: 'TSO-001', description: 'A fritadeira desligou sozinha duas vezes durante o jantar.', impact: 'alto', statusId: 'STS-03',
+    openedAt: hoursAgo(50), statusChangedAt: hoursAgo(30), requesterName: solicit.name, responsibleId: gestor.id, photos: 1,
+    complement: { question: 'O painel mostrou algum código de erro quando desligou?', askedAt: hoursAgo(30) },
+    log: [log(solicit.name, 'Abriu a solicitação', hoursAgo(50), 'dp2-1'), log(gestor.name, 'Iniciou a triagem', hoursAgo(48), 'dp2-2'), log(gestor.name, 'Solicitou complementação ao solicitante', hoursAgo(30), 'dp2-3')],
   });
 
   // Exemplos com fotos: Forno combinado 01 e Chapa 01 (foto do equipamento e foto da placa/etiqueta)

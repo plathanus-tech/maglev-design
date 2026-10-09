@@ -22,8 +22,8 @@ export interface KpiTrend {
 export interface KpiCardProps {
   /** Nome da métrica. */
   label: string;
-  /** Valor atual. Números são formatados em `locale`; texto é exibido como veio. Ignorado com `ranking`. */
-  value?: number | string;
+  /** Valor atual. Números são formatados em `locale`; texto (ou elemento, ex.: valor abreviado com Tooltip) é exibido como veio. Ignorado com `ranking`. */
+  value?: number | ReactNode;
   /**
    * Ranking compacto (ex.: top 3 clientes) no lugar do valor. Nomes longos são truncados para o card
    * manter a altura dos demais KPIs; o `label` do card já diz o que o número representa.

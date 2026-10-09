@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   IconAlertOctagon, IconAlertTriangle, IconBuildingStore, IconCalendarEvent, IconCalendarRepeat, IconChevronDown, IconChevronRight,
-  IconChevronUp, IconCircleCheck, IconClipboardList, IconCoin, IconFridge, IconInfoCircle, IconMessageReport, IconMicrowaveOff,
+  IconChevronUp, IconCircleCheck, IconClipboardList, IconEye, IconCoin, IconFridge, IconInfoCircle, IconMessageReport, IconMicrowaveOff,
   IconStopwatch, IconTool, IconTruck, IconUser, IconUserCheck, IconUserOff, IconMessageOff, IconClipboardOff,
 } from '@tabler/icons-react';
 import { Badge, Button, Card, EmptyState, KpiCard, Stack, Table, TableColumn } from '@maglev/ds';
@@ -14,7 +14,7 @@ import { formatMoney, formatNumber } from '../../admin/shared/format';
 import { greeting, todayText } from './saudacao';
 import { DEMO_NOW, Equipment, Request, WorkOrder, dayOnly } from './data';
 import { equipmentOf, ordersVisible, requestsVisible, unitName, userName, useSubSession } from './store';
-import { SectionLabel, Text, firstName, useRefs } from './ui';
+import { CellPair, RowAction, RowActions, SectionLabel, Text, firstName, goTo, useRefs } from './ui';
 import './inicio.css';
 import './inicio-layout.css';
 
@@ -91,7 +91,8 @@ const EV_BADGE: Record<EvKind, { label: string; status: 'info' | 'brand' | 'neut
 };
 
 // ─── Seção recolhível (FLU005) ───────────────────────────────────────
-function SectionActions({ open, onToggle, panelId, href, label, name }: { open: boolean; onToggle: () => void; panelId: string; href: string; label: string; name: string }) {
+function SectionActions({ open, onToggle, panelId, href, label, name }: { open: boolean; onToggle?: () => void; panelId: string; href: string; label: string; name: string }) {
+  if (!onToggle) return <a className="text-link" href={href}>{label}</a>;
   return (
     <Stack direction="horizontal" align="center" gap="md" wrap>
       <a className="text-link" href={href}>{label}</a>
@@ -209,16 +210,19 @@ function InicioScreen() {
   });
 
   const reqColumns: TableColumn<ReqRow>[] = [
+    { key: 'failure', label: 'Tipo de solicitação / Descrição', render: (v, r) => <CellPair primary={String(v)} secondary={r.description} /> },
     { key: 'statusId', label: 'Status da solicitação', render: (v) => refs.statusBadge(String(v)) },
-    { key: 'equipment', label: 'Equipamento', render: (v, r) => <a className="text-link" href={`solicitacao.html?id=${r.id}`}>{String(v)}</a> },
-    { key: 'equipmentStatusId', label: 'Status do equipamento', render: (v) => refs.statusBadge(String(v)) },
-    { key: 'failure', label: 'Tipo de falha' },
-    { key: 'description', label: 'Descrição' },
+    { key: 'unit', label: 'Unidade' },
+    { key: 'equipment', label: 'Equipamento' },
+    { key: 'equipmentStatusId', label: 'Situação do equipamento', render: (v) => refs.statusBadge(String(v)) },
+    { key: 'id', label: 'Ações', sticky: 'right', render: (_, r) => <RowActions><RowAction icon={<IconEye size={16} />} label="Abrir solicitação" target={r.id} onClick={() => goTo(`solicitacao.html?id=${r.id}`)} /></RowActions> },
   ];
   const osColumns: TableColumn<OsRow>[] = [
     { key: 'statusId', label: 'Status', render: (v) => refs.statusBadge(String(v)) },
     { key: 'id', label: 'Código', render: (v) => <a className="text-link" href={`os.html?id=${String(v)}`}>{String(v)}</a> },
+    { key: 'maint', label: 'Tipo de manutenção' },
     { key: 'subject', label: 'Assunto' },
+    { key: 'unit', label: 'Unidade' },
     { key: 'equipment', label: 'Equipamento' },
   ];
 
@@ -393,19 +397,19 @@ function InicioScreen() {
           ) : openReq ? (
             <div id={reqSectionId}>
               <Table<ReqRow>
-                title="Solicitações recentes" subtitle="As últimas solicitações abertas nas suas unidades" columns={reqColumns} rows={reqRows}
+                title="Solicitações recentes" subtitle="As solicitações mais recentes das suas unidades" columns={reqColumns} rows={reqRows}
                 empty={{ title: 'Nenhuma solicitação por aqui' }}
                 actions={<SectionActions open onToggle={() => setOpenReq(false)} panelId={reqSectionId} href="solicitacoes.html" label="Ver todas" name="solicitações recentes" />}
               />
             </div>
           ) : (
-            <Card title="Solicitações recentes" subtitle="As últimas solicitações abertas nas suas unidades" actions={<SectionActions open={false} onToggle={() => setOpenReq(true)} panelId={reqSectionId} href="solicitacoes.html" label="Ver todas" name="solicitações recentes" />} />
+            <Card title="Solicitações recentes" subtitle="As solicitações mais recentes das suas unidades" actions={<SectionActions open={false} onToggle={() => setOpenReq(true)} panelId={reqSectionId} href="solicitacoes.html" label="Ver todas" name="solicitações recentes" />} />
           )}
         </DevNote>
 
         <div className="ag2-row">
           <div className="ag2-os">
-            <DevNote note="FLU005: tabela recolhível. Ordens de serviço em andamento: todas as OS ainda não concluídas nem canceladas (situação-base), com o prazo mais próximo primeiro, até 5 (empilhado) ou até 7 quando lado a lado com “Equipamentos por status” (nº de linhas calibrado medindo a altura dos dois cards; se houver menos OS, só as existentes); “Ver todas” abre a listagem completa. Executor vê só as OS atribuídas a ele (RGN002). Resumo ao lado de “Equipamentos por status”: a coluna “Tipo de manutenção” (RF101) saiu da visão resumida por falta de largura (status, código, assunto e equipamento bastam para identificar e acompanhar; o tipo está na listagem e no detalhe da OS). Se a cliente exigir, volta quando a tela estiver em largura total. Empilha abaixo de 1440px.">
+            <DevNote note="FLU005: no mobile a seção é recolhível; no desktop a tabela fica sempre visível. Ordens de serviço em andamento: todas as OS ainda não concluídas nem canceladas (situação-base), com o prazo mais próximo primeiro, até 5 (empilhado) ou até 7 quando lado a lado com “Equipamentos por status” (nº de linhas calibrado medindo a altura dos dois cards; se houver menos OS, só as existentes); “Ver todas” abre a listagem completa. Executor vê só as OS atribuídas a ele (RGN002). Resumo ao lado de “Equipamentos por status”: a coluna “Tipo de manutenção” (RF101) saiu da visão resumida por falta de largura (status, código, assunto e equipamento bastam para identificar e acompanhar; o tipo está na listagem e no detalhe da OS). Se a cliente exigir, volta quando a tela estiver em largura total. Empilha abaixo de 1440px.">
               {isMobile ? (
                 <Stack gap="md" as="section">
                   <Stack direction="horizontal" justify="between" align="center" gap="sm" wrap>
@@ -428,16 +432,14 @@ function InicioScreen() {
                     />
                   </div>
                 </Stack>
-              ) : openOs ? (
+              ) : (
                 <div id={osSectionId}>
                   <Table<OsRow>
                     title="Ordens de serviço em andamento" subtitle="OS ainda não concluídas, com o prazo mais próximo primeiro" columns={osColumns} rows={osRows}
                     empty={{ title: 'Nenhuma ordem de serviço em andamento' }}
-                    actions={<SectionActions open onToggle={() => setOpenOs(false)} panelId={osSectionId} href="ordens-servico.html" label="Ver todas" name="ordens de serviço" />}
+                    actions={<SectionActions open panelId={osSectionId} href="ordens-servico.html" label="Ver todas" name="ordens de serviço" />}
                   />
                 </div>
-              ) : (
-                <Card title="Ordens de serviço em andamento" subtitle="OS ainda não concluídas, com o prazo mais próximo primeiro" actions={<SectionActions open={false} onToggle={() => setOpenOs(true)} panelId={osSectionId} href="ordens-servico.html" label="Ver todas" name="ordens de serviço" />} />
               )}
             </DevNote>
           </div>

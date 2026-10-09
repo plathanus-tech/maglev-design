@@ -37,7 +37,7 @@
 .subtitle { font-family: var(--font-body); font-size: var(--font-size-sm); font-weight: var(--font-weight-body); color: var(--color-text-tertiary); overflow-wrap: anywhere; }
 
 .end { display: flex; align-items: center; flex-shrink: 0; gap: var(--spacing-sm); margin-left: var(--spacing-md); }
-.meta { font-family: var(--font-body); font-size: var(--font-size-sm); font-weight: var(--font-weight-body); color: var(--color-text-tertiary); white-space: nowrap; }
+.meta { display: inline-flex; align-items: center; gap: var(--spacing-xs); font-family: var(--font-body); font-size: var(--font-size-sm); font-weight: var(--font-weight-body); color: var(--color-text-tertiary); white-space: nowrap; }
 .chevron {
   display: flex;
   flex-shrink: 0;

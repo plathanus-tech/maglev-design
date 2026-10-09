@@ -53,6 +53,7 @@ export const journeys: Journey[] = [
             variants: [
               v('sub-unidade-nova-required', 'Campo obrigatório (um erro, sem aviso)', 'unidade-form.html#state=required'),
               v('sub-unidade-nova-requiredmany', 'Campos obrigatórios (vários erros)', 'unidade-form.html#state=requiredmany'),
+              v('sub-unidade-nova-duplicate', 'Nome da unidade já existente', 'unidade-form.html#state=duplicate'),
             ],
           },
           { id: 'sub-unidade-editar', label: 'Editar unidade', path: `${s}/unidade-form.html?id=UNI-001` },

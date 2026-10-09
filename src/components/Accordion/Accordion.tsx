@@ -11,7 +11,9 @@ export interface AccordionItem {
   /** Texto de apoio quando o item está recolhido (ex.: resumo do conteúdo). Sem ele, usa `subtitle`. */
   collapsedSubtitle?: string;
   /** Informação secundária à direita do cabeçalho, antes do chevron (ex.: “2 dicas”). Menor e em cor de apoio. */
-  meta?: string;
+  meta?: ReactNode;
+  /** Informação à esquerda do `meta`, só com o item recolhido (ex.: um badge com o resultado que, aberto, já aparece no conteúdo). */
+  collapsedMeta?: ReactNode;
 }
 
 export interface AccordionProps {
@@ -62,7 +64,7 @@ export function Accordion({ items, allowMultiple = false, defaultOpenIndex = [],
                   )}
                 </span>
                 <span className={styles.end}>
-                  {item.meta && <span className={styles.meta}>{item.meta}</span>}
+                  {(item.meta || (!isOpen && item.collapsedMeta)) && <span className={styles.meta}>{!isOpen && item.collapsedMeta}{item.meta}</span>}
                   <span className={styles.chevron} aria-hidden="true"><IconChevronDown size={16} /></span>
                 </span>
               </button>

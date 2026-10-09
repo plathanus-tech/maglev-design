@@ -26,3 +26,6 @@ export const AllStatuses: Story = {
     </Stack>
   ),
 };
+
+/** Destaque sólido de erro, só para um estado urgente pontual (ex.: prazo vencido), sempre com ícone e texto. */
+export const SolidError: Story = { args: { status: 'error', solid: true, children: '05/10/2026' } };

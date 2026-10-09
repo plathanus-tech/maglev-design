@@ -26,3 +26,6 @@
 .error   { background: var(--color-status-error-bg);   color: var(--color-status-error-fg); }
 .warning { background: var(--color-status-warning-bg); color: var(--color-status-warning-fg); }
 .info    { background: var(--color-status-info-bg);    color: var(--color-status-info-fg); }
+
+/* Destaque sólido de erro (urgência pontual): tokens de ação, com texto de contraste no claro e no escuro */
+.solidError { background: var(--color-action-error); color: var(--color-on-action-error); }

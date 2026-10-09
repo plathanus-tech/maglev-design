@@ -21,7 +21,6 @@ export const journeys: Journey[] = [
       {
         id: 'ordens-servico', label: 'RF501 - Listar OS', path: `${s}/ordens-servico.html`,
         variants: [
-          v('os-filter-overdue', 'Filtro: prazo vencido', 'ordens-servico.html?filter=overdue'),
           v('os-filter-action', 'Filtro: ação necessária', 'ordens-servico.html?filter=action'),
           v('os-filter-validation', 'Filtro: aguardando validação', 'ordens-servico.html?filter=awaiting-validation'),
           v('os-filter-technician', 'Filtro: aguardando prestador/técnico', 'ordens-servico.html?filter=awaiting-technician'),
@@ -45,7 +44,6 @@ export const journeys: Journey[] = [
           v('osf-edit', 'Editar / classificar OS em andamento', 'os-form.html?id=OS-000011'),
           v('osf-edit-internal', 'Editar OS com executor interno', 'os-form.html?id=OS-000012'),
           v('osf-noorigin', 'Sem origem (OS avulsa não existe)', 'os-form.html#state=noorigin'),
-          v('osf-closed', 'OS concluída (somente leitura)', 'os-form.html?id=OS-000016'),
         ],
       },
       {
@@ -63,15 +61,10 @@ export const journeys: Journey[] = [
           },
           {
             id: 'os-validacao', label: 'Aguardando validação', path: `${s}/${os('OS-000010')}`,
-            variants: [
-              v('os-validate', 'Validação: Sim (conclui a OS)', `${os('OS-000010')}#state=validate`),
-              v('os-validateno', 'Validação: Não (reabre para o responsável)', `${os('OS-000010')}#state=validateno`),
-            ],
           },
           {
             id: 'os-andamento', label: 'Em andamento', path: `${s}/${os('OS-000011')}`,
             variants: [
-              v('os-conclude', 'Indicar conclusão', `${os('OS-000011')}#state=conclude`),
               v('os-addvisit', 'Adicionar visita / revisita', `${os('OS-000011')}#state=addvisit`),
               v('os-addcost', 'Adicionar item de custo', `${os('OS-000011')}#state=addcost`),
               v('os-cancel', 'Cancelar OS (motivo obrigatório)', `${os('OS-000011')}#state=cancel`),

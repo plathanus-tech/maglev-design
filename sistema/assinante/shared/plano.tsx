@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { IconAlertTriangle, IconCalendarEvent, IconChecks, IconPencil, IconPlayerPause, IconPlayerPlay, IconPlayerPlayFilled } from '@tabler/icons-react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { IconAlertTriangle, IconChevronDown, IconCalendarEvent, IconChecks, IconPencil, IconPlayerPause, IconPlayerPlay, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, formatNumber } from '../../admin/shared/format';
@@ -10,10 +10,47 @@ import { ResponsiveTable } from './ListKit';
 import { PlanEquipmentsDialog } from './PlanEquipmentPicker';
 import { PlanStatusDialog } from './PlanStatusDialog';
 import { compliance, describeFrequency, executorOf, isLate, isSoon, planUnitIds, statsOf } from './preventivas';
-import { unitName, useSubSession } from './store';
+import { environmentName, unitName, useSubSession } from './store';
+import { Tooltip } from '@maglev/ds';
 import { CellPair, Col, Grid, ReadField, RowAction, RowActions, goTo, param, takeFlash } from './ui';
 
 /** Estados: idle · pause / activate (RF602 - confirmação) · equipments (RF601-FLU008 - associar equipamentos) */
+/** Anomalias: texto corrido registrado na execução; uma linha com reticências e o texto completo no tooltip (e na OS) */
+function AnomalyCell({ text }: { text?: string }) {
+  if (!text?.trim()) return <>-</>;
+  return (
+    <Tooltip content={text}>
+      <span className="anom-text" tabIndex={0}>{text}</span>
+    </Tooltip>
+  );
+}
+
+/** Equipamentos do plano agrupados por unidade. Regra do estado inicial: até 6 equipamentos no plano, unidades expandidas; acima disso, recolhidas.
+ *  O clique do usuário prevalece sobre a regra (a lista não muda sozinha ao salvar no modal). */
+function EquipmentGroups({ groups, total }: { groups: { id: string; name: string; items: ReactNode[] }[]; total: number }) {
+  const [over, setOver] = useState<Record<string, boolean>>({});
+  const open = (id: string) => over[id] ?? total <= 6;
+  return (
+    <div className="eqg">
+      {groups.map((g) => {
+        const isOpen = open(g.id);
+        return (
+          <section key={g.id} className="eqg-unit">
+            <h3 className="eqg-head">
+              <button type="button" className="eqg-btn" aria-expanded={isOpen} aria-controls={`eqg-${g.id}`} onClick={() => setOver((o) => ({ ...o, [g.id]: !isOpen }))}>
+                <IconChevronDown size={16} aria-hidden="true" className={`eqg-chev${isOpen ? ' is-open' : ''}`} />
+                <span className="eqg-name">{g.name}</span>
+                <span className="eqg-count">{`${g.items.length} ${g.items.length === 1 ? 'equipamento' : 'equipamentos'}`}</span>
+              </button>
+            </h3>
+            {isOpen && <ul id={`eqg-${g.id}`} className="eqg-list">{g.items.map((it, i) => <li key={i}>{it}</li>)}</ul>}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 const STATES = ['idle', 'pause', 'activate', 'equipments'] as const;
 type Mode = (typeof STATES)[number];
 
@@ -63,7 +100,7 @@ function PlanoScreen() {
     return !!os && can('os', 'editar') && os.statusId !== 'STO-08' && os.statusId !== 'STO-09';
   };
   const runAction = (ex: PlanExecution) => (canRun(ex)
-    ? <RowActions><RowAction icon={<IconPlayerPlayFilled size={16} />} label="Executar preventiva" target={`${eqOf(ex.equipmentId)?.name ?? ''} em ${formatDate(ex.dueDate)}`} onClick={() => goTo(`execucao-preventiva.html?os=${ex.osId}`)} /></RowActions>
+    ? <RowActions><RowAction icon={<IconPlayerPlayFilled size={16} />} label="Executar preventiva" target={`${eqOf(ex.equipmentId)?.name ?? ''} em ${formatDate(ex.dueDate)}`} onClick={() => goTo(`execucao-preventiva.html?os=${ex.osId}&from=plano`)} /></RowActions>
     : undefined);
 
   const pendingCols: TableColumn<Row>[] = [
@@ -81,7 +118,7 @@ function PlanoScreen() {
     { key: 'unit', label: 'Unidade' },
     { key: 'executor', label: 'Executor', render: (_, r) => r.ex.doneBy ?? executor.primary },
     { key: 'result', label: 'Resultado', render: (_, r) => resultBadge(r.ex) },
-    { key: 'anomalies', label: 'Anomalias', render: (_, r) => r.ex.anomalies ?? '-' },
+    { key: 'anomalies', label: 'Anomalias', render: (_, r) => <AnomalyCell text={r.ex.anomalies} /> },
     { key: 'os', label: 'OS', render: (_, r) => osLink(r.ex.osId) },
   ];
 
@@ -105,7 +142,7 @@ function PlanoScreen() {
       </DevNote>
       <DevNote note="RF602 / RF601-RGN005 (recorrência fixa): a execução anterior não concluída até a geração da seguinte fica “Não realizada” e continua contando como não cumprida no cumprimento. Resultado = Concluída / Não realizada. Execuções concluídas na RF603 aparecem aqui e no histórico do equipamento (RF603-RGN003).">
         <ResponsiveTable<Row>
-          id="plan-history" title="Histórico de execuções" subtitle="Data prevista, data realizada, executor, resultado e anomalias" columns={historyCols} rows={historyRows}
+          id="plan-history" title="Histórico de execuções" subtitle="Consulte as manutenções realizadas e acompanhe os resultados de cada execução" columns={historyCols} rows={historyRows}
           emptyTitle="Nenhuma execução registrada" emptyDescription="O histórico aparece depois da primeira execução prevista"
           card={(r) => ({
             id: r.id, title: r.equipment, subtitle: `Prevista para ${formatDate(r.ex.dueDate)} · ${r.unit}`, badge: resultBadge(r.ex),
@@ -121,6 +158,9 @@ function PlanoScreen() {
 
   const configTab = (
     <Stack gap="xl">
+      <Card className="card-open" title="Informações gerais">
+        <div className="card-body-tight"><ReadField label="Descrição" value={plan.description} /></div>
+      </Card>
       <Grid>
         <Col span={6} fill>
           <Card className="card-open" title="Programação" subtitle="Calendário fixo de execução">
@@ -151,15 +191,14 @@ function PlanoScreen() {
 
       <DevNote note="RF601-FLU008: associar/desassociar equipamentos depois de criado o plano (Dialog com checkboxes agrupados por unidade). Vale só para execuções futuras (RGN004).">
         <Card
-          className="card-open" title="Equipamentos associados" subtitle={`${plan.equipmentIds.length} ${plan.equipmentIds.length === 1 ? 'equipamento' : 'equipamentos'} seguem este plano`}
+          className="card-open" title="Equipamentos associados" subtitle={`${plan.equipmentIds.length} ${plan.equipmentIds.length === 1 ? 'equipamento' : 'equipamentos'} em ${planUnitIds(db, plan).length} ${planUnitIds(db, plan).length === 1 ? 'unidade' : 'unidades'}`}
           actions={can('planos', 'editar') && <Button size="sm" variant="secondary" iconLeft={<IconPencil size={16} />} onClick={() => setEditingEquipments(true)}>Gerenciar equipamentos</Button>}
         >
           <div className="card-body-tight">
-            <Grid>
-              {plan.equipmentIds.map((id) => (
-                <Col key={id} span={6}><CellPair primary={equipmentCell(id)} secondary={unitName(db, eqOf(id)?.unitId ?? '')} /></Col>
-              ))}
-            </Grid>
+            <EquipmentGroups
+              total={plan.equipmentIds.length}
+              groups={planUnitIds(db, plan).map((uid) => ({ id: uid, name: unitName(db, uid), items: plan.equipmentIds.filter((id) => eqOf(id)?.unitId === uid).map((id) => <span className="eqg-eq">{equipmentCell(id)}<span className="eqg-env">{environmentName(db, eqOf(id)?.environmentId ?? '')}</span></span>) }))}
+            />
           </div>
         </Card>
       </DevNote>
@@ -171,7 +210,7 @@ function PlanoScreen() {
               <Stack gap="md">
                 {plan.checklist.map((c) => (
                   <Stack key={c.id} direction="horizontal" justify="between" align="start" gap="md">
-                    <span className="page-text"><strong>{c.text}</strong>{c.kind === 'leitura' && c.unit ? ` (${c.unit})` : ''}</span>
+                    <span className="page-text"><strong>{c.text}</strong></span>
                     <Badge status={c.kind === 'opcional' ? 'neutral' : c.kind === 'leitura' ? 'info' : 'brand'}>{CHECKLIST_KIND_LABEL[c.kind]}</Badge>
                   </Stack>
                 ))}
@@ -203,7 +242,7 @@ function PlanoScreen() {
         <PageHeader
           title={plan.name}
           badge={<Badge status={paused ? 'neutral' : 'success'} dot>{paused ? 'Pausado' : 'Ativo'}</Badge>}
-          subtitle={plan.description}
+          subtitle={[describeFrequency(plan), `${plan.equipmentIds.length} ${plan.equipmentIds.length === 1 ? 'equipamento' : 'equipamentos'}`, `${planUnitIds(db, plan).length} ${planUnitIds(db, plan).length === 1 ? 'unidade' : 'unidades'}`].join(' · ')}
           breadcrumb={[{ label: 'Planos de manutenção', href: 'planos.html' }, { label: plan.name }]}
           actions={(
             <>

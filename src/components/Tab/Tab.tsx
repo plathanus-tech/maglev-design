@@ -17,13 +17,21 @@ export function Tab({ tabs, defaultIndex = 0, onChange, 'aria-label': ariaLabel 
   const [active, setActive] = useState(defaultIndex);
   const baseId = useId();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const select = (i: number, focus = false) => {
     setActive(i);
     onChange?.(i);
     if (focus) refs.current[i]?.focus();
-    // Com muitas abas (mobile), a selecionada nunca fica parcialmente fora da área visível
-    refs.current[i]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    // Com muitas abas (mobile), a selecionada nunca fica parcialmente fora da área visível; só rola a lista na horizontal (a página não se move)
+    const list = listRef.current;
+    const el = refs.current[i];
+    if (list && el) {
+      const left = el.offsetLeft;
+      const right = left + el.offsetWidth;
+      if (left < list.scrollLeft) list.scrollTo?.({ left, behavior: 'smooth' });
+      else if (right > list.scrollLeft + list.clientWidth) list.scrollTo?.({ left: right - list.clientWidth, behavior: 'smooth' });
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent, i: number) => {
@@ -40,7 +48,7 @@ export function Tab({ tabs, defaultIndex = 0, onChange, 'aria-label': ariaLabel 
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.list} role="tablist" aria-label={ariaLabel}>
+      <div ref={listRef} className={styles.list} role="tablist" aria-label={ariaLabel}>
         {tabs.map((tab, i) => (
           <button
             key={i}

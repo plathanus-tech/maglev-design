@@ -4,10 +4,10 @@ import {
   IconMessageReport, IconMicrowave, IconSettings, IconTruck, IconUsers, IconX,
 } from '@tabler/icons-react';
 import { AppHeader, Button, Card, EmptyState, NavItemDef, Sidebar, Tooltip } from '@maglev/ds';
-import logoFull from '../../../public/maglev-logo-dark.svg';
-import logoIcon from '../../../public/maglev-symbol-dark.svg';
-import logoLight from '../../../public/maglev-logo.svg';
-import logoDark from '../../../public/maglev-logo-dark.svg';
+import logoFull from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
+import logoIcon from '../../../../storybook-maglev/public/maglev-symbol-dark.svg';
+import logoLight from '../../../../storybook-maglev/public/maglev-logo.svg';
+import logoDark from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
 import { PageHeader, mountApp } from '../../admin/shared/AppLayout';
 import { ThemeButton, UserMenu } from '../../admin/shared/UserMenu';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
@@ -101,7 +101,7 @@ function NotificationBell() {
  * desktop; no mobile (< 768px), AppHeader com menu hambúrguer e a Sidebar como gaveta.
  * `active` = item do menu; `screen` = permissão da tela atual (sem permissão de visualizar: aviso de acesso negado).
  */
-export function AppLayout({ active, screen, children }: { active: string; screen: ScreenKey; children: ReactNode }) {
+export function AppLayout({ active, screen, children, layout = 'default' }: { active: string; screen: ScreenKey; children: ReactNode; /** `focused` = Padrão B (wizard): sem sidebar, conteúdo centralizado em largura confortável. Os formulários convencionais (Padrão A) usam o `default`. */ layout?: 'default' | 'focused' }) {
   const isMobile = useIsMobile();
   const { user, can } = useSubSession();
   const [open, setOpen] = useState(() => { try { return localStorage.getItem(SIDEBAR_KEY) !== '0'; } catch { return true; } });
@@ -157,6 +157,24 @@ export function AppLayout({ active, screen, children }: { active: string; screen
   );
 
   const content = can(screen) ? children : <NoAccess />;
+
+  // Layout focado (Padrão B): cabeçalho global (logo + conta), sem sidebar nem menu em gaveta, conteúdo centralizado
+  if (layout === 'focused') {
+    const logo = (
+      <a className="app-focused-logo" href="inicio.html" aria-label="MAGLEV, ir para o Início">
+        <img className="logo-light" src={logoLight} alt="" />
+        <img className="logo-dark" src={logoDark} alt="" />
+      </a>
+    );
+    return (
+      <div className="app-shell is-focused">
+        <div className={isMobile ? 'app-topbar' : 'app-topbar-desktop'}>
+          <AppHeader align="start" logo={logo} actions={account(isMobile)} />
+        </div>
+        <main className="app-main"><div className="app-focused">{content}</div></main>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (

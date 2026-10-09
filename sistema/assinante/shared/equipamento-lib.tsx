@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { IconAlertCircle, IconAlertTriangle, IconCopy, IconInfoCircle, IconPrinter } from '@tabler/icons-react';
 import { Button, Card, Dialog, Feedback, Input, Stack, useToast } from '@maglev/ds';
-import logoLight from '../../../public/maglev-logo.svg';
+import logoLight from '../../../../storybook-maglev/public/maglev-logo.svg';
 import { MobileCardItem, MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { Table, TableColumn } from '@maglev/ds';

@@ -11,7 +11,7 @@
   justify-content: center;
   padding: var(--spacing-lg) var(--spacing-md);
   background-color: var(--color-bg-default);
-  background-image: url('../../assets/bg-login.png');
+  background-image: url('../../../BG%20tela%20de%20login.png');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -274,8 +274,14 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 
 /* Botões que ocupam a largura toda (mobile): o ícone à esquerda reduz só o padding esquerdo do DS (16px × 24px) e o conteúdo
    sai deslocado; aqui os dois lados ficam iguais para o texto ficar centralizado. */
-.page-actions-full button[class*="hasLeft"][class*="hasLeft"],
+.page-actions-full button[class*="hasLeft"][class*="hasLeft"]:not([class*="iconOnly"]),
 .btn-block[class*="hasLeft"][class*="hasLeft"] { padding-right: var(--control-padding-x-icon-md); }
+
+/* Cabeçalho no mobile com botão(ões) + menu ⋮: lado a lado (os botões dividem a largura, o ⋮ mantém o tamanho do ícone) */
+.page-actions-full.page-actions-full:has(.row-menu-btn) { flex-direction: row !important; flex-wrap: nowrap !important; }   /* o Stack aplica direção e quebra inline */
+.page-actions-full.page-actions-full:has(.row-menu-btn) > * { width: auto; flex: 1 1 0; min-width: 0; }
+.page-actions-full.page-actions-full:has(.row-menu-btn) > :has(.row-menu-btn), .page-actions-full:has(.row-menu-btn) > .dev-anchor:has(.row-menu-btn) { flex: 0 0 auto; }
+.page-actions-full:has(.row-menu-btn) > .dev-anchor:not(:has(.row-menu-btn)) > * { width: 100%; }
 
 /* ── Dashboard · Chamados que exigem atenção: dois destaques lado a lado, empilham sem espaço ── */
 .attention-grid { display: flex; flex-wrap: wrap; gap: var(--spacing-md); }
@@ -373,3 +379,6 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 
 /* Toolbar embrulhada num Stack dentro da toolbar do Table: o Stack ocupa a largura toda para a busca preencher o espaço */
 .toolbar-fill { flex: 1 1 100%; min-width: 0; }
+
+/* KPI com valor abreviado: não quebra linha */
+.kpi-nowrap { white-space: nowrap; }

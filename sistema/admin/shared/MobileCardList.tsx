@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { IconInbox } from '@tabler/icons-react';
 import { Card, Checkbox, EmptyState, Pagination, Stack } from '@maglev/ds';
 import { Col, Grid, SectionLabel, Text } from './ui';
 
@@ -19,13 +20,15 @@ export interface MobileCardItem {
 /** Modo de seleção múltipla: cada card ganha um Checkbox, tocar no card marca/desmarca e o rodapé de ações individuais (⋮) some. */
 export interface MobileSelection { selectedIds: Set<string>; onToggle: (id: string) => void; label: (id: string) => string }
 
-export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, page, pageSize, total, onPageChange, headingId, selection, stickyFooter }: {
+export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter }: {
   title: string;
   titleHidden?: boolean;
   subtitle?: string;
   toolbar?: ReactNode;
   items: MobileCardItem[];
   emptyTitle: string;
+  /** Texto de apoio do estado vazio (o mesmo que a tabela do desktop mostra). */
+  emptyDescription?: string;
   page: number;
   pageSize: number;
   total: number;
@@ -50,7 +53,7 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
       {toolbar}
 
       {items.length === 0 ? (
-        <Card><EmptyState title={emptyTitle} /></Card>
+        <Card><EmptyState icon={<IconInbox size={40} />} title={emptyTitle} description={emptyDescription} /></Card>
       ) : items.map((it) => {
         const checked = !!selection?.selectedIds.has(it.id);
         const card = (

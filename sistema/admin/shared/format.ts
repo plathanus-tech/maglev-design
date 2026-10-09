@@ -25,6 +25,13 @@ export function isValidCnpj(v: string) {
 
 export const formatCep = (v: string) => onlyDigits(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
 
+/** Máscara de valor em reais enquanto digita: os dígitos entram como centavos (1380 → 13,80; 138000 → 1.380,00). */
+export const maskMoney = (v: string) => {
+  const digits = v.replace(/\D/g, '').replace(/^0+/, '');
+  if (!digits) return '';
+  return (Number(digits) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export const formatPhone = (v: string) => {
   const d = onlyDigits(v).slice(0, 11);
   if (d.length <= 2) return d.length ? `(${d}` : '';
@@ -49,6 +56,15 @@ export const requiredMessage = (field: string) => `O campo ${field} é obrigató
 
 export const formatMoney = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** Valor abreviado (mil, mi, bi) no formato brasileiro, ex.: R$ 2,21 mi. Abaixo de mil devolve o valor completo. */
+export const formatMoneyCompact = (cents: number) => {
+  const v = Math.abs(cents / 100);
+  const [div, suffix] = v >= 1e9 ? [1e9, 'bi'] : v >= 1e6 ? [1e6, 'mi'] : v >= 1e3 ? [1e3, 'mil'] : [1, ''];
+  if (!suffix) return formatMoney(cents);
+  const n = (cents / 100 / div).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return `R$ ${n} ${suffix}`;
+};
 
 export const formatNumber = (n: number) => n.toLocaleString('pt-BR');
 

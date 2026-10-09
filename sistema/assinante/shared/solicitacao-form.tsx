@@ -1,13 +1,15 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { IconPhotoPlus, IconTrash } from '@tabler/icons-react';
-import { Button, Card, Checkbox, Dropdown, EmptyState, Feedback, Input, RadioButton, Stack, Textarea } from '@maglev/ds';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { IconBulb } from '@tabler/icons-react';
+import { Button, Card, Checkbox, Dropdown, EmptyState, Feedback, ImageUpload, Input, RadioButton, Stack, Table, TableColumn, Textarea } from '@maglev/ds';
+import { MobileCardList } from '../../admin/shared/MobileCardList';
+import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
-import { formatDateTime, formatPhone, isValidPhone, onlyDigits, requiredMessage } from '../../admin/shared/format';
+import { formatDateTime, formatPhone, isValidPhone, noBreak, onlyDigits, requiredMessage } from '../../admin/shared/format';
 import { IMPACT_LABEL, Impact, Request, TipResult, TroubleshootingRun, nowLocal } from './data';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { logEntry, nextSeq, notify, updateSubDb, useSubSession } from './store';
-import { Col, Grid, goTo, param, setFlash, useRefs } from './ui';
+import { CellPair, Col, Grid, goTo, param, setFlash, useRefs } from './ui';
 import { IS_THUMB, STS, isOpenBase } from './solicitacoes-shared';
 
 import './solicitacao-form.css';
@@ -18,6 +20,22 @@ type Mode = (typeof STATES)[number];
 type Stage = 'form' | 'tips' | 'resolved';
 const MAX_PHOTOS = 5;
 const DESC_MAX = 1000;
+
+type ExistingRow = Record<string, unknown> & { id: string; r: Request };
+const shortText = (t: string) => (t.length > 48 ? `${t.slice(0, 48)}…` : t);
+
+/** Foto da solicitação: ImageUpload do DS (o mesmo do Novo equipamento) com envio simulado; sem foto é o slot vazio que adiciona a próxima. */
+function PhotoSlot({ label, optional, photo, onChange }: { label: string; optional?: boolean; photo?: { name: string; url: string }; onChange: (p: { name: string; url: string } | null) => void }) {
+  const [loading, setLoading] = useState(false);
+  const timer = useRef<number>();
+  useEffect(() => () => { window.clearTimeout(timer.current); }, []);
+  const onFile = (file: File | null) => {
+    if (!file) { onChange(null); return; }
+    setLoading(true);
+    timer.current = window.setTimeout(() => { onChange({ name: file.name, url: URL.createObjectURL(file) }); setLoading(false); }, 600);
+  };
+  return <ImageUpload label={label} optional={optional} fileName={photo?.name} previewUrl={photo?.url} loading={loading} onChange={onFile} />;
+}
 
 function SolicitacaoFormScreen() {
   const refs = useRefs();
@@ -30,11 +48,10 @@ function SolicitacaoFormScreen() {
 
   const [unitId, setUnitId] = useState(fromUrl?.unitId ?? '');
   const [equipmentId, setEquipmentId] = useState(fromUrl?.id ?? '');
-  const [search, setSearch] = useState('');
   const [problemId, setProblemId] = useState('');
   const [impact, setImpact] = useState<Impact | ''>('');
   const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<Array<{ name: string; url: string }>>([]);
   const [related, setRelated] = useState('');
   const [prevNote, setPrevNote] = useState('');
   const [contactName, setContactName] = useState(user.name);
@@ -83,17 +100,23 @@ function SolicitacaoFormScreen() {
   }, [mode]);
 
   // ── Opções ──
-  const term = search.trim().toLowerCase();
   const equipmentOptions = db.equipments
-    .filter((e) => usable(e.id) && (!unitId || e.unitId === unitId) && (!term || e.name.toLowerCase().includes(term) || e.code.toLowerCase().includes(term)))
+    .filter((e) => usable(e.id) && (!unitId || e.unitId === unitId))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
-    .map((e) => ({ value: e.id, label: `${e.name} · ${e.code}${unitId ? '' : ` · ${db.units.find((u) => u.id === e.unitId)?.name}`}` }));
+    .map((e) => ({ value: e.id, label: e.name, description: `${e.code}${unitId ? '' : ` · ${db.units.find((u) => u.id === e.unitId)?.name}`}`, keywords: e.code }));
+  const isMobile = useIsMobile();
+  const existingCols: TableColumn<ExistingRow>[] = [
+    { key: 'id', label: 'Protocolo', render: (_, row) => <a className="text-link" href={`solicitacao.html?id=${row.r.id}`}>{noBreak(row.r.id)}</a> },
+    { key: 'type', label: 'Tipo de solicitação / Descrição', render: (_, row) => <CellPair primary={refs.requestType(row.r.problemId)?.name ?? '-'} secondary={shortText(row.r.description)} /> },
+    { key: 'r', label: 'Aberta em', render: (_, row) => noBreak(formatDateTime(row.r.openedAt)) },
+    { key: 'status', label: 'Status', render: (_, row) => refs.statusBadge(row.r.statusId) },
+  ];
   const typeOptions = refs.admin.requestTypes.filter((t) => t.status === 'ativo').map((t) => ({ value: t.id, label: t.name }));
 
   const problems = {
     unit: !unitId ? requiredMessage('Unidade') : undefined,
     equipment: !equipmentId ? requiredMessage('Equipamento') : undefined,
-    problem: !problemId ? requiredMessage('Tipo de problema') : undefined,
+    problem: !problemId ? requiredMessage('Tipo de solicitação') : undefined,
     impact: !impact ? requiredMessage('Impacto') : undefined,
     description: !description.trim() ? requiredMessage('Descrição') : undefined,
     related: !related ? requiredMessage('Relacionado a reparo anterior') : undefined,
@@ -172,14 +195,14 @@ function SolicitacaoFormScreen() {
     // Notifica quem faz a triagem: Administradores e Gestores de manutenção (RF404-FLU006)
     const triagers = db.users.filter((u) => u.status === 'ativo' && (u.profile === 'administrador' || u.profile === 'gestor') && u.id !== user.id).map((u) => u.id);
     notify(triagers, { title: 'Nova solicitação aberta', text: `${id}: ${equipment.name} · ${problemName} (impacto ${IMPACT_LABEL[impact as Impact].toLowerCase()})`, href: `solicitacao.html?id=${id}`, kind: 'solicitacao' });
-    setFlash({ type: 'success', title: 'Solicitação enviada', message: `Protocolo ${id}. A equipe de manutenção foi avisada.` });
+    setFlash({ type: 'success', title: 'Solicitação enviada com sucesso!', message: `Protocolo ${id}. Sua solicitação foi encaminhada para análise.` });
     window.setTimeout(() => goTo(can('solicitacoes', 'triar') ? `solicitacao.html?id=${id}` : 'solicitacoes.html'), 400);
   };
 
   const header = (
     <PageHeader
       title="Nova solicitação"
-      subtitle="Informe o problema para a equipe de manutenção"
+      subtitle="Descreva o problema identificado no equipamento"
       breadcrumb={[{ label: 'Solicitações', href: 'solicitacoes.html' }, { label: 'Nova solicitação' }]}
     />
   );
@@ -191,7 +214,7 @@ function SolicitacaoFormScreen() {
         <Stack gap="xl">
           {header}
           <DevNote note="RF403-FLU004 / CTA002: “Isso resolveu o problema!” encerra o fluxo sem abrir solicitação para triagem. É criado um registro Concluída sem OS (resolvida no troubleshooting) e a ocorrência fica no histórico do equipamento.">
-            <Feedback type="success" title="Problema resolvido" message={`Que bom que deu certo${equipment ? `: ${equipment.name} voltou a funcionar` : ''}. Nenhuma solicitação foi enviada para a equipe de manutenção`} />
+            <Feedback type="success" title="Problema resolvido" message={`Que bom que deu certo${equipment ? `: ${equipment.name} voltou a funcionar` : ''}. Nenhuma solicitação foi enviada para análise`} />
           </DevNote>
           <Card>
             <EmptyState
@@ -219,23 +242,33 @@ function SolicitacaoFormScreen() {
       <AppLayout active="solicitacoes" screen="solicitacoes">
         <Stack gap="xl" className="form-page">
           {header}
-          <DevNote note="RF403-FLU002/FLU003, RGN005 e CTA004: uma dica por tela, da mais simples à mais complexa, com barra de progresso. “Próxima dica” sem marcar “Realizei esta dica” registra Pulada; marcando, Realizada. É possível voltar à dica anterior. Na última dica, o botão vira “Sem sucesso? Envie uma solicitação”. Etapas de risco (elétrica, gás) só orientam a observar (RGN002).">
-            <Card className="card-open" title={`Dica nº ${tipIdx + 1} de ${tips.length}`} subtitle={`${equipment?.name} · ${problemName}`}>
+          <DevNote note="RF403-FLU002/FLU003, RGN005 e CTA004: uma dica por tela, da mais simples à mais complexa, com barra de progresso. “Próxima dica” sem marcar “Testei esta dica” registra Pulada; marcando, Realizada. É possível voltar à dica anterior. Na última dica, o botão vira “Sem sucesso? Envie uma solicitação”. Etapas de risco (elétrica, gás) só orientam a observar (RGN002).">
+            <Card
+              className="card-open ts-step" title="Solução de problemas" subtitle={`${equipment?.name} · ${problemName}`}
+              actions={<span className="ts-count" aria-hidden="true">{tipIdx + 1} de {tips.length}</span>}
+            >
               <div className="card-body-tight">
                 <Stack gap="lg">
                   <div className="tip-progress" role="progressbar" aria-label="Progresso das dicas" aria-valuemin={0} aria-valuemax={tips.length} aria-valuenow={tipIdx + 1} aria-valuetext={`Dica ${tipIdx + 1} de ${tips.length}`}>
                     <div className="tip-progress-bar" style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="page-text" aria-live="polite">{tips[tipIdx].text}</p>
-                  <Checkbox label="Realizei esta dica" checked={!!done[tipIdx]} onChange={(e) => toggleDone(e.target.checked)} />
-                  <Stack direction="horizontal" gap="sm" wrap>
-                    <Button onClick={solved}>Isso resolveu o problema!</Button>
-                    <Button variant="secondary" disabled={tipIdx === 0} onClick={() => setTipIdx((i) => i - 1)}>Dica anterior</Button>
-                    {last
-                      ? <Button variant="secondary" onClick={noSuccess}>Sem sucesso? Envie uma solicitação</Button>
-                      : <Button variant="secondary" onClick={next}>Próxima dica</Button>}
+                  <div className="ts-instruction" aria-live="polite">
+                    <span className="ts-instruction-icon" aria-hidden="true"><IconBulb size={24} /></span>
+                    <p className="ts-instruction-text">{tips[tipIdx].text}</p>
+                  </div>
+                  <div className="ts-attempt">
+                    <Checkbox label="Testei esta dica" checked={!!done[tipIdx]} onChange={(e) => toggleDone(e.target.checked)} />
+                  </div>
+                  <Stack gap="md" className="ts-actions">
+                    <Button className="ts-primary" onClick={solved}>Isso resolveu o problema!</Button>
+                    <div className="ts-nav">
+                      <Button variant="secondary" disabled={tipIdx === 0} onClick={() => setTipIdx((i) => i - 1)}>Dica anterior</Button>
+                      {last
+                        ? <Button variant="secondary" onClick={noSuccess}>Sem sucesso? Envie uma solicitação</Button>
+                        : <Button variant="secondary" onClick={next}>Próxima dica</Button>}
+                    </div>
                   </Stack>
-                  <Stack direction="horizontal"><Button variant="ghost" size="sm" onClick={() => { setStage('form'); resetRun(); }}>Voltar ao formulário</Button></Stack>
+                  <div className="ts-back"><Button variant="ghost" size="sm" onClick={() => { setStage('form'); resetRun(); }}>Voltar ao formulário</Button></div>
                 </Stack>
               </div>
             </Card>
@@ -246,7 +279,6 @@ function SolicitacaoFormScreen() {
   }
 
   const showTsOffer = !!equipment && !!problemId && tips.length > 0 && !finished && run.overall === 'nao-iniciado';
-  const photoName = (n: number) => `foto-${String(n).padStart(2, '0')}.jpg`;
 
   return (
     <AppLayout active="solicitacoes" screen="solicitacoes">
@@ -260,7 +292,7 @@ function SolicitacaoFormScreen() {
           )}
           {finished && (
             <DevNote note="RF403-FLU005: na última dica, sem solução, o usuário volta ao formulário com a mensagem “Solução de problemas concluída”. A solicitação segue com as notas (cada dica e Realizada/Pulada; resultado geral Sem sucesso - FLU006).">
-              <Feedback type="success" title="Solução de problemas concluída" message="As dicas tentadas serão enviadas junto com a solicitação. Complete os dados e envie para a equipe de manutenção" />
+              <Feedback type="success" title="Solução de problemas concluída" message="As dicas tentadas serão enviadas junto com a solicitação. Complete os dados e envie a solicitação para análise" />
             </DevNote>
           )}
 
@@ -273,10 +305,7 @@ function SolicitacaoFormScreen() {
                   </DevNote>
                 </Col>
                 <Col span={12}>
-                  <Input type="search" aria-label="Buscar equipamento por nome ou código/patrimônio" placeholder="Buscar equipamento por nome ou código/patrimônio" value={search} onChange={(e) => setSearch(e.target.value)} />
-                </Col>
-                <Col span={12}>
-                  <Dropdown label="Equipamento" required placeholder="Selecione o equipamento" options={equipmentOptions} value={equipmentId} onChange={pickEquipment} error={show('equipment')} helperText={search && equipmentOptions.length === 0 ? 'Nenhum equipamento encontrado para a busca' : undefined} />
+                  <Dropdown label="Equipamento" required placeholder="Buscar por nome ou código/patrimônio" searchable searchPlaceholder="Buscar por nome ou código/patrimônio" searchLabel="Buscar equipamento por nome ou código/patrimônio" emptyText="Nenhum equipamento encontrado" options={equipmentOptions} value={equipmentId} onChange={pickEquipment} error={show('equipment')} />
                 </Col>
               </Grid>
             </div>
@@ -290,21 +319,15 @@ function SolicitacaoFormScreen() {
                   message="Confira se o seu problema já foi informado. Você pode acompanhar uma delas ou seguir com a nova solicitação"
                   dismissible onDismiss={() => setDupDismissed(true)}
                 />
-                <Card className="card-open" title="Acompanhar uma solicitação existente">
-                  <div className="card-body-tight">
-                    <Stack as="ul" gap="sm" className="ts-list">
-                      {openOnes.map((r) => (
-                        <li key={r.id} className="ts-item">
-                          <Stack direction="horizontal" align="center" gap="sm" wrap>
-                            <a className="text-link" href={`solicitacao.html?id=${r.id}`}>{r.id}</a>
-                            {refs.statusBadge(r.statusId)}
-                            <span className="cell-secondary">{formatDateTime(r.openedAt)}</span>
-                          </Stack>
-                        </li>
-                      ))}
-                    </Stack>
-                  </div>
-                </Card>
+                {isMobile ? (
+                  <MobileCardList
+                    headingId="existing-title" title="Acompanhar uma solicitação existente" subtitle="Verifique se o mesmo problema já foi registrado em outra solicitação" emptyTitle="Nenhuma solicitação aberta"
+                    page={1} pageSize={Math.max(1, openOnes.length)} total={openOnes.length} onPageChange={() => undefined}
+                    items={openOnes.map((r) => ({ id: r.id, title: <a className="text-link" href={`solicitacao.html?id=${r.id}`}>{r.id}</a>, subtitle: refs.requestType(r.problemId)?.name ?? '-', badge: refs.statusBadge(r.statusId), fields: [{ label: 'Descrição', value: shortText(r.description) }, { label: 'Aberta em', value: formatDateTime(r.openedAt) }] }))}
+                  />
+                ) : (
+                  <Table<ExistingRow> title="Acompanhar uma solicitação existente" subtitle="Verifique se o mesmo problema já foi registrado em outra solicitação" columns={existingCols} rows={openOnes.map((r) => ({ id: r.id, r }))} />
+                )}
               </Stack>
             </DevNote>
           )}
@@ -312,7 +335,7 @@ function SolicitacaoFormScreen() {
           <Card className="card-open" title="Problema" subtitle="Conte o que está acontecendo">
             <div className="card-body-tight">
               <Grid>
-                <Col span={6}><Dropdown label="Tipo de problema" required placeholder="Selecione" options={typeOptions} value={problemId} onChange={pickProblem} error={show('problem')} /></Col>
+                <Col span={6}><Dropdown label="Tipo de solicitação" required placeholder="Selecione" options={typeOptions} value={problemId} onChange={pickProblem} error={show('problem')} /></Col>
                 <Col span={6}>
                   <DevNote note="💡 Impacto: sugestão Baixo / Médio / Alto, a confirmar. A triagem usa o impacto na matriz de prioridade (Admin RF405).">
                     <RadioButton name="impact" label="Impacto" orientation="horizontal" options={(Object.keys(IMPACT_LABEL) as Impact[]).map((v) => ({ value: v, label: IMPACT_LABEL[v] }))} value={impact} onChange={(v) => setImpact(v as Impact)} error={show('impact')} />
@@ -320,11 +343,12 @@ function SolicitacaoFormScreen() {
                 </Col>
                 {showTsOffer && (
                   <Col span={12}>
-                    <DevNote note="RF403-FLU001 / RF404-RGN006: o troubleshooting é oferecido depois de escolher equipamento e tipo de problema, se houver dicas cadastradas (CTA001). Iniciar é opcional (RGN008): se não iniciar, a solicitação registra “Não iniciado”. Sem dicas, segue direto para o envio (RGN004).">
-                      <Stack gap="sm">
-                        <Feedback type="info" title="Solução de problemas disponível!" message={`Experimente algumas dicas antes de enviar a solicitação. São ${tips.length} dicas, da mais simples à mais complexa`} />
-                        <Stack direction="horizontal"><Button variant="secondary" onClick={start}>Começar</Button></Stack>
-                      </Stack>
+                    <DevNote note="RF403-FLU001 / RF404-RGN006: o troubleshooting é oferecido depois de escolher equipamento e tipo de solicitação, se houver dicas cadastradas (CTA001). Iniciar é opcional (RGN008): se não iniciar, a solicitação registra “Não iniciado”. Sem dicas, segue direto para o envio (RGN004).">
+                      <Card
+                        className="ts-offer" padding="none" title={<span className="ts-offer-title"><IconBulb size={20} aria-hidden="true" />Solução de problemas</span>}
+                        subtitle={`Antes de enviar a solicitação, confira ${tips.length === 1 ? 'esta dica' : `estas ${tips.length} dicas`} para tentar resolver o problema`}
+                        actions={<Button onClick={start}>Começar</Button>}
+                      />
                     </DevNote>
                   </Col>
                 )}
@@ -336,23 +360,16 @@ function SolicitacaoFormScreen() {
                 </Col>
                 <Col span={12}>
                   <DevNote note="💡 RF404: quantidade e tamanho máximos das fotos a definir (aqui, até 5). Envio simulado no protótipo.">
-                    <Stack gap="sm">
-                      <span className="read-label">Fotos <span className="field-note">(opcional)</span></span>
-                      {photos.length > 0 && (
-                        <Stack as="ul" gap="xs" className="ts-list">
-                          {photos.map((p, i) => (
-                            <li key={p} className="ts-item">
-                              <Stack direction="horizontal" align="center" justify="between" gap="sm">
-                                <span className="page-text">{p}</span>
-                                <Button type="button" variant="ghost" size="sm" iconOnly iconLeft={<IconTrash size={16} />} aria-label={`Remover ${p}`} onClick={() => setPhotos((l) => l.filter((_, k) => k !== i))} />
-                              </Stack>
-                            </li>
-                          ))}
-                        </Stack>
+                    <Stack gap="md">
+                      {photos.map((p, i) => (
+                        <PhotoSlot
+                          key={`${p.name}-${i}`} label={i === 0 ? 'Fotos' : `Foto ${i + 1}`} optional={i === 0} photo={p}
+                          onChange={(next) => setPhotos((l) => (next ? l.map((x, k) => (k === i ? next : x)) : l.filter((_, k) => k !== i)))}
+                        />
+                      ))}
+                      {photos.length < MAX_PHOTOS && (
+                        <PhotoSlot key={`new-${photos.length}`} label={photos.length === 0 ? 'Fotos' : `Foto ${photos.length + 1}`} optional={photos.length === 0} onChange={(next) => next && setPhotos((l) => [...l, next])} />
                       )}
-                      <Stack direction="horizontal">
-                        <Button type="button" variant="secondary" size="sm" iconLeft={<IconPhotoPlus size={16} />} disabled={photos.length >= MAX_PHOTOS} onClick={() => setPhotos((l) => [...l, photoName(l.length + 1)])}>Adicionar foto</Button>
-                      </Stack>
                     </Stack>
                   </DevNote>
                 </Col>

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Badge, Card, Stack } from '@maglev/ds';
+import { Accordion, Badge, Card, Stack } from '@maglev/ds';
 import { useDb as useAdminDb } from '../../admin/shared/store';
 import { StatusItem, LevelItem, ConfigItem, Visual } from '../../admin/shared/data';
 import { levelBadgeOf, statusBadgeOf } from '../../admin/shared/ui';
@@ -62,12 +62,10 @@ const OVERALL: Record<TroubleshootingRun['overall'], { label: string; badge: 'su
  * Resolvido) e a lista de dicas com o resultado de cada uma (Realizada / Pulada). Aparece na triagem da solicitação
  * e na OS (visível ao técnico/prestador). Só leitura.
  */
-export function TroubleshootingNotes({ run }: { run?: TroubleshootingRun }) {
+export function TroubleshootingNotes({ run, collapsible = false }: { run?: TroubleshootingRun; /** Recolhível: o cabeçalho mantém o resultado geral e a quantidade de dicas; inicia aberto se houve troubleshooting e fechado se não foi iniciado. */ collapsible?: boolean }) {
   if (!run) return null;
   const overall = OVERALL[run.overall];
-  return (
-    <Card className="card-open" title="Notas do troubleshooting" subtitle="O que foi tentado antes de abrir a solicitação">
-      <div className="card-body-tight">
+  const body = (
         <Stack gap="md">
           <Stack direction="horizontal" align="center" gap="sm" wrap>
             <span className="read-label">Resultado geral</span>
@@ -88,7 +86,27 @@ export function TroubleshootingNotes({ run }: { run?: TroubleshootingRun }) {
               </Stack>
             )}
         </Stack>
+  );
+  if (collapsible) {
+    return (
+      <div className="ts-accordion">
+      <Accordion
+        headingLevel={2}
+        defaultOpenIndex={run.overall === 'nao-iniciado' ? [] : [0]}
+        items={[{
+          title: 'Notas do troubleshooting', subtitle: 'O que foi tentado antes de abrir a solicitação',
+          // Recolhido: resultado + quantidade; aberto: só a quantidade (o resultado geral já aparece no conteúdo)
+          collapsedMeta: <Badge status={overall.badge} dot>{overall.label}</Badge>,
+          meta: run.tips.length === 1 ? '1 dica' : `${run.tips.length} dicas`,
+          content: body,
+        }]}
+      />
       </div>
+    );
+  }
+  return (
+    <Card className="card-open" title="Notas do troubleshooting" subtitle="O que foi tentado antes de abrir a solicitação">
+      <div className="card-body-tight">{body}</div>
     </Card>
   );
 }

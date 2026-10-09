@@ -1,0 +1,48 @@
+/* Stepper de formulário: mesmos tokens e proporções do "Andamento da OS" (os.css): círculo, conector e rótulo abaixo. */
+.fs-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.fs-step { position: relative; }
+.fs-compact-text { margin: 0 0 var(--spacing-sm); font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.fs-item { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-xs); width: 100%; padding: 0; background: none; border: 0; font: inherit; text-align: center; color: inherit; border-radius: var(--radius-control); }
+button.fs-item { cursor: pointer; }
+button.fs-item:hover .fs-label { text-decoration: underline; }
+button.fs-item:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.fs-mark {
+  position: relative; z-index: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: var(--spacing-lg); height: var(--spacing-lg); border-radius: var(--radius-pill);
+  font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); font-weight: var(--font-weight-semibold);
+  background: var(--color-bg-subtle); color: var(--color-text-secondary); border: var(--border-width-thin) solid var(--color-border-muted);
+}
+@media (max-width: 767px) { .fs-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; } }
+.fs-label { font-size: var(--font-size-md); font-weight: var(--font-weight-regular); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.fs-step.is-done .fs-mark { background: var(--color-status-success-fg); color: var(--color-text-inverse); border-color: var(--color-status-success-fg); }   /* mesmo padrão de conclusão do Andamento da OS: círculo cheio e check contrastante */
+.fs-step.is-current .fs-mark { background: var(--color-bg-brand-strong); color: var(--color-text-inverse); border-color: var(--color-bg-brand-strong); }
+.fs-step.is-current .fs-label { font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.fs-step.is-reached .fs-label, .fs-step.is-done .fs-label { color: var(--color-text-primary); }
+.fs-step.is-future .fs-mark { background: var(--color-bg-subtle); color: var(--color-text-tertiary); border-style: solid; border-color: var(--color-border-muted); }
+.fs-step.is-future .fs-label { color: var(--color-text-tertiary); }
+
+.fs-step.is-available .fs-mark { color: var(--color-text-secondary); }
+.fs-step.is-invalid .fs-mark { border-color: var(--color-status-error-fg); color: var(--color-status-error-fg); }
+.fs-step.is-invalid .fs-label { color: var(--color-status-error-fg); }
+
+/* conector: do marcador anterior ao atual; verde só entre etapas concluídas e a atual */
+.fs-step + .fs-step::before {
+  content: ''; position: absolute; z-index: 0; top: calc(var(--spacing-lg) / 2 - var(--border-width-medium) / 2);
+  right: calc(50% + var(--spacing-lg) / 2); width: calc(100% - var(--spacing-lg)); height: var(--border-width-medium);
+  background: color-mix(in srgb, var(--color-border-muted) 45%, transparent);   /* neutro e discreto, visível no claro e no escuro */
+}
+.fs-step.is-done + .fs-step.is-done::before, .fs-step.is-done + .fs-step.is-current::before { background: var(--color-status-success-fg); }
+@media (min-width: 768px) { .fs-compact-text { display: none; } }
+
+/* modo escuro: etapa atual em tom mais claro da marca, no mesmo peso visual do verde de concluída */
+[data-theme="dark"] .fs-step.is-current .fs-mark { background: var(--color-brand-400); border-color: var(--color-brand-400); }
+
+/* Edição: etapas não ativas com círculo cinza preenchido, navegáveis (área mínima de 44px, hover no círculo e no rótulo) */
+.fs-editable .fs-step.is-available .fs-mark, .fs-editable .fs-step.is-invalid .fs-mark { background: var(--color-bg-disabled); border-color: var(--color-bg-disabled); }
+.fs-editable .fs-step.is-invalid .fs-mark { border-color: var(--color-status-error-fg); }
+.fs-editable .fs-step.is-available .fs-label { color: var(--color-text-secondary); }
+.fs-editable button.fs-item { min-height: 2.75rem; cursor: pointer; justify-content: flex-start; }
+.fs-editable button.fs-item:hover .fs-label { text-decoration: none; color: var(--color-text-primary); }
+.fs-editable .fs-step.is-available button.fs-item:hover .fs-mark { background: var(--color-border-subtle); border-color: var(--color-border-muted); color: var(--color-text-primary); }
+.fs-editable .fs-step.is-current button.fs-item:hover .fs-mark { filter: brightness(0.95); }
+.fs-editable .fs-mark { transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast); }

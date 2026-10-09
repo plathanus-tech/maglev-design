@@ -72,3 +72,39 @@
 .info-btn { position: relative; }
 .info-btn::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2.75rem; height: 2.75rem; transform: translate(-50%, -50%); }
 
+
+/* Layout focado (Padrão B, wizard): sem sidebar, coluna única centralizada com largura confortável */
+.app-shell.is-focused { flex-direction: column; }
+.app-shell.is-focused > .app-main { flex: 1; }
+.app-focused { width: 100%; max-width: 60rem; margin-inline: auto; }
+.app-focused .form-page { max-width: none; }
+.app-focused-logo { display: inline-flex; align-items: center; border-radius: var(--radius-control); }
+.app-focused-logo:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.app-focused-logo img { height: var(--spacing-xl); width: auto; }
+
+/* Retorno explícito do layout focado: discreto, acima do título */
+.back-link { display: inline-flex; align-items: center; gap: var(--spacing-xs); align-self: flex-start; font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-secondary); text-decoration: none; border-radius: var(--radius-control-sm); }
+.back-link:hover { color: var(--color-text-primary); text-decoration: underline; }
+.back-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+
+/* Transição entre o layout padrão (com sidebar) e o focado: navegação entre páginas com View Transitions (cross-document).
+   O cabeçalho permanece no lugar; a sidebar sai/entra deslizando de leve com fade; o conteúdo faz fade. 330ms, sem efeitos chamativos. */
+@view-transition { navigation: auto; }
+.app-sidebar { view-transition-name: app-sidebar; }
+.app-topbar-desktop, .app-topbar { view-transition-name: app-header; }
+::view-transition-group(*) { animation-duration: 330ms; animation-timing-function: ease-out; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 330ms; }
+::view-transition-old(app-sidebar) { animation: app-sidebar-out 330ms ease-out both; }
+::view-transition-new(app-sidebar) { animation: app-sidebar-in 330ms ease-out both; }
+@keyframes app-sidebar-out { to { opacity: 0; transform: translateX(calc(var(--spacing-lg) * -1)); } }
+@keyframes app-sidebar-in { from { opacity: 0; transform: translateX(calc(var(--spacing-lg) * -1)); } }
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* Wizard no mobile: Voltar e Continuar com o mesmo tamanho (metade da largura cada) */
+@media (max-width: 767px) {
+  .wizard-nav > * { flex: 1 1 0; min-width: 0; }
+  .wizard-nav > .dev-anchor > *, .wizard-nav > button { width: 100%; }
+}

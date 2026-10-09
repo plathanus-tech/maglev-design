@@ -95,7 +95,8 @@
 .ag2-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--spacing-lg); align-items: start; }
 .ag2-os, .ag2-eq { min-width: 0; }
 @media (min-width: 1440px) {
-  .ag2-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  /* mesma divisão e mesmo espaçamento do bloco de cima (.ag-top): “Equipamentos por status” fica na largura de “Agenda de hoje” */
+  .ag2-row { grid-template-columns: minmax(0, 3fr) minmax(0, 1.25fr); column-gap: var(--spacing-md); }
   .ag2-eq .ag-metrics { flex-direction: column; align-items: center; gap: var(--spacing-md); }
   .ag2-eq .ag-metrics .donut-box { flex: 0 0 auto; margin-inline: auto; }
   .ag2-eq .ag-metrics .donut-legend { display: flex; flex-direction: column; }

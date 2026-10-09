@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PrototypeNav } from './PrototypeNav';
 
-import '../../src/tokens/tokens.css';
+import '../../../storybook-maglev/src/tokens/tokens.css';
 import '../admin/shared/theme';
 import '../admin/shared/fonts.css';
 import './nav.css';

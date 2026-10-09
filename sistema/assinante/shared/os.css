@@ -2,7 +2,8 @@
    a linha de progresso (stepper). Estrutura, superfícies e espaçamento continuam vindo de Stack, Card, Tab, Badge…
    Só tokens existentes (storybook-maglev/src/tokens/tokens.css). */
 
-.os-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: var(--spacing-md); }
+.os-steps-wrap { padding: 0 var(--spacing-lg) var(--spacing-md); }
+.os-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm) var(--spacing-md); }
 .os-step { position: relative; display: flex; flex-direction: row; align-items: center; gap: var(--spacing-sm); }
 .os-step-text { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
 .os-step-label { font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-primary); }
@@ -22,7 +23,7 @@
 
 @media (min-width: 768px) {
   .os-steps { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0; }
-  .os-step { flex-direction: column; text-align: center; gap: var(--spacing-xs); }
+  .os-step { flex-direction: column; text-align: center; gap: var(--spacing-2xs); }
   .os-step-text { align-items: center; }
   /* conector entre marcadores: da borda do marcador anterior até o atual */
   .os-step + .os-step::before {
@@ -30,5 +31,79 @@
     right: calc(50% + var(--spacing-lg) / 2); width: calc(100% - var(--spacing-lg)); height: var(--border-width-medium);
     background: var(--color-border-subtle);
   }
-  .os-step.is-done + .os-step::before, .os-step.is-skipped + .os-step::before { background: var(--color-status-success-fg); }
+  .os-step.is-done + .os-step.is-done::before, .os-step.is-done + .os-step.is-current::before, .os-step.is-done + .os-step.is-skipped::before,
+  .os-step.is-skipped + .os-step.is-done::before, .os-step.is-skipped + .os-step.is-current::before { background: var(--color-status-success-fg); }
 }
+
+/* Decisão pendente do orçamento: destaque discreto na borda; o âncora recebe o foco do botão "Decidir orçamento" */
+.os-next-anchor { outline: none; }
+.os-next { border-color: var(--color-action-primary); }
+
+/* Atividades: timeline com título, autor/data e detalhe só quando existe */
+.os-timeline { list-style: none; margin: 0; padding: 0; }
+.os-timeline-item { position: relative; display: flex; flex-direction: column; margin-left: var(--spacing-xs); padding: 0 0 var(--spacing-md) var(--spacing-lg); border-left: var(--border-width-medium) solid var(--color-border-subtle); }
+.os-timeline-item:last-child { padding-bottom: 0; border-left-color: transparent; }
+.os-timeline-item::before { content: ""; position: absolute; left: calc(var(--spacing-xs) * -1 - var(--border-width-medium) / 2 - 1px); top: var(--spacing-2xs); width: var(--spacing-sm); height: var(--spacing-sm); border-radius: var(--radius-full); background: var(--color-border-muted); }
+.os-timeline-item:first-child::before { background: var(--color-text-brand); }
+.os-timeline-title { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.os-timeline-meta { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.os-timeline-detail { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+
+/* Arquivos: miniatura da foto ou ícone do documento + nome legível, clicáveis para visualizar */
+.os-file { display: inline-flex; align-items: center; gap: var(--spacing-sm); padding: 0; background: none; border: 0; font: inherit; color: var(--color-text-primary); text-align: left; cursor: pointer; border-radius: var(--radius-control); }
+.os-file:hover .os-file-name { text-decoration: underline; }
+.os-file:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset, 2px); }
+.os-file-thumb { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: var(--spacing-xl); height: var(--spacing-xl); border-radius: var(--radius-control); background: var(--color-bg-subtle); color: var(--color-text-secondary); overflow: hidden; }
+.os-file-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.os-file-name { overflow-wrap: anywhere; font-weight: var(--font-weight-label); }
+.os-file-zoom { display: flex; justify-content: center; align-items: center; background: var(--color-bg-subtle); border-radius: var(--radius-control); padding: var(--spacing-md); color: var(--color-text-tertiary); }
+.os-file-zoom img { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: var(--radius-control); }
+
+/* Informações gerais: faixa compacta, uma linha só no desktop (mesma tipografia do resumo da solicitação) */
+.os-meta dl { margin: 0; padding: var(--spacing-lg); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md); }
+.os-meta dt { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.os-meta dd { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.os-due { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--spacing-xs); }
+@media (min-width: 1024px) { .os-meta dl { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Próxima ação: card neutro e compacto - título, responsável e botão numa linha no desktop */
+.os-nextrow { display: grid; grid-template-columns: 1fr; gap: var(--spacing-md); align-items: center; }
+.os-nextcol { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
+.os-nextlabel { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.os-nexttitle { font: var(--text-body-m); letter-spacing: var(--text-body-m-tracking); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.os-nextvalue { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-primary); overflow-wrap: anywhere; }
+/* Mobile: ações empilhadas em largura total, a principal primeiro. Desktop: lado a lado à direita, a principal na ponta */
+.os-nextactions { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.os-nextactions > * { width: 100%; }
+@media (min-width: 1024px) { .os-nextrow { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) auto; } .os-nextactions { flex-direction: row-reverse; justify-content: flex-start; } .os-nextactions > * { width: auto; } }
+
+/* Andamento da OS: progresso e próxima ação num bloco só, separados por uma linha discreta */
+.os-step-label { text-align: center; }
+.os-next-sep { margin-top: var(--spacing-md); padding-top: var(--spacing-lg); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.os-budgetline { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm) var(--spacing-md); }
+.os-budgetline dt { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.os-budgetline dd { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-primary); overflow-wrap: anywhere; }
+@media (min-width: 1024px) { .os-budgetline { grid-template-columns: 1fr 1.4fr 2fr 1.4fr; } }
+
+/* Problema relatado: o tipo de solicitação é o destaque; descrição, impacto e reparo anterior vêm abaixo */
+.os-problem-type { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); line-height: var(--line-height-tight); color: var(--color-text-primary); overflow-wrap: anywhere; }
+
+/* Atendimento e Diagnóstico ocupam a largura toda, mas os campos ficam em colunas confortáveis, sem se espalhar */
+.os-fields { max-width: 44rem; }
+
+/* Equipamento: identificação (foto + nome/fabricante/modelo) e localização separadas por uma divisória sutil */
+.os-eq-id { display: flex; align-items: flex-start; gap: var(--spacing-md); }
+.os-eq-photo { flex-shrink: 0; }
+.sol-photo.os-eq-photo.is-empty { cursor: default; background: var(--color-bg-subtle); border-color: transparent; }
+.os-eq-text { display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; }
+.os-eq-name { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); line-height: var(--line-height-snug); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.os-eq-spec { margin: 0; display: flex; flex-direction: column; gap: var(--spacing-2xs); }
+.os-eq-spec > div { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); }
+.os-eq-spec dt { color: var(--color-text-tertiary); }
+.os-eq-spec dt::after { content: ":"; }
+.os-eq-spec dd { margin: 0; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.os-eq-loc { display: flex; flex-direction: column; gap: var(--spacing-sm); padding-top: var(--spacing-md); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+
+/* Problema relatado e Equipamento lado a lado: mesma altura (a do maior) sem altura fixa; em telas menores cada um tem a sua */
+.os-pair .grid > .fill > div { display: flex; flex-direction: column; }
+.os-pair .grid > .fill > div > section { flex: 1; }

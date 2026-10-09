@@ -2,3 +2,23 @@
    Tokens existentes, nenhum valor fixo de cor/espaço. */
 .tip-progress { height: var(--spacing-xs); border-radius: var(--radius-pill); background: var(--color-bg-subtle); overflow: hidden; }
 .tip-progress-bar { height: 100%; border-radius: var(--radius-pill); background: var(--color-action-primary); transition: width 0.2s ease; }
+
+/* Oferta de troubleshooting: superfície neutra com destaque sutil da cor da marca, botão dentro do componente */
+.ts-offer { background: var(--color-bg-brand); border-color: var(--color-border-brand, var(--color-border-subtle)); }
+.ts-offer-title { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
+.ts-offer-title svg { color: var(--color-text-brand); flex-shrink: 0; }
+
+/* Passo a passo guiado: card mais estreito e centralizado, instrução em destaque, ações em três níveis */
+.ts-step { max-width: 40rem; margin-inline: auto; }
+.ts-count { font-size: var(--font-size-sm); font-weight: var(--font-weight-label); color: var(--color-text-secondary); white-space: nowrap; }
+.ts-instruction { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-md); padding: var(--spacing-lg) 0; text-align: center; }
+.ts-instruction-icon { display: inline-flex; align-items: center; justify-content: center; width: var(--spacing-2xl); height: var(--spacing-2xl); border-radius: var(--radius-pill); background: var(--color-bg-brand); color: var(--color-text-brand); }
+.ts-instruction-text { margin: 0; max-width: 32rem; font-size: var(--font-size-lg); font-weight: var(--font-weight-label); line-height: var(--line-height-relaxed, 1.5); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ts-attempt { padding-top: var(--spacing-md); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.ts-attempt-hint { font-size: var(--font-size-sm); color: var(--color-text-tertiary); padding-left: var(--spacing-xl); }
+.ts-nav { display: flex; justify-content: space-between; gap: var(--spacing-sm); }
+.ts-back { display: flex; justify-content: center; padding-top: var(--spacing-sm); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+@media (max-width: 767px) { .ts-nav { flex-direction: column-reverse; } .ts-nav > * { width: 100%; } }
+.ts-primary { width: 100%; }
+.ts-offer > header { align-items: center; padding-block: var(--spacing-md); }
+@media (max-width: 767px) { .ts-offer > header { flex-direction: column; align-items: stretch; } }

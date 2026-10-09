@@ -133,7 +133,7 @@ function SolicitacoesScreen() {
 
   const columns: TableColumn<Row>[] = [
     { key: 'v', label: 'Protocolo', render: (_, row) => link(row.v.r.id) },
-    { key: 'subject', label: 'Assunto / Tipo de problema', render: (_, row) => <CellPair primary={probName(row.v.r)} secondary={row.v.r.description.length > 48 ? `${row.v.r.description.slice(0, 48)}…` : row.v.r.description} /> },
+    { key: 'subject', label: 'Tipo de solicitação / Descrição', render: (_, row) => <CellPair primary={probName(row.v.r)} secondary={row.v.r.description.length > 48 ? `${row.v.r.description.slice(0, 48)}…` : row.v.r.description} /> },
     { key: 'id', label: 'Status', render: (_, row) => refs.statusBadge(row.v.r.statusId) },
     { key: 'waiting', label: 'Aguardando há', render: (_, row) => waiting(row.v) },
     { key: 'unit', label: 'Unidade', render: (_, row) => unitName(db, row.v.unitId) },

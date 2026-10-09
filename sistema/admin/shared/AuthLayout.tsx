@@ -1,11 +1,11 @@
 import { ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Card, Stack, ToastProvider } from '@maglev/ds';
-import logoLight from '../../../public/maglev-logo.svg';
-import logoDark from '../../../public/maglev-logo-dark.svg';
+import logoLight from '../../../../storybook-maglev/public/maglev-logo.svg';
+import logoDark from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
 import { DevNote } from './dev-notes/DevNote';
 
-import '../../../src/tokens/tokens.css';
+import '../../../../storybook-maglev/src/tokens/tokens.css';
 import './theme';
 import './fonts.css';
 import './nav-sync';

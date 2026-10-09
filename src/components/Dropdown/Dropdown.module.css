@@ -72,33 +72,11 @@
   font-weight: var(--font-weight-body);
 }
 
-/* ── Mobile (≤ 640px = --breakpoint-sm): folha inferior ───────────────── */
+/* ── Mobile (≤ 640px = --breakpoint-sm): a lista continua colada no campo, com a largura dele; só aumenta a área de toque ── */
 @media (max-width: 640px) {
   .trigger { min-height: 2.75rem; }
-
-  .backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-overlay);
-    background: var(--color-overlay);
-  }
-
-  .menu {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: calc(var(--z-overlay) + 1);
-    max-height: 60vh;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    border: none;
-    border-radius: var(--radius-overlay) var(--radius-overlay) 0 0;
-    box-shadow: var(--shadow-2xl);
-  }
-
-  .option { min-height: 3rem; font-size: var(--font-size-lg); }
+  .backdrop { display: none; }
+  .option { min-height: 3rem; }
 }
 
 
