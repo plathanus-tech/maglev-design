@@ -4,10 +4,10 @@ import {
   IconMessageReport, IconMicrowave, IconSettings, IconTruck, IconUsers, IconX,
 } from '@tabler/icons-react';
 import { AppHeader, Button, Card, EmptyState, NavItemDef, Sidebar, Tooltip } from '@maglev/ds';
-import logoFull from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
-import logoIcon from '../../../../storybook-maglev/public/maglev-symbol-dark.svg';
-import logoLight from '../../../../storybook-maglev/public/maglev-logo.svg';
-import logoDark from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
+import logoFull from '../../../public/maglev-logo-dark.svg';
+import logoIcon from '../../../public/maglev-symbol-dark.svg';
+import logoLight from '../../../public/maglev-logo.svg';
+import logoDark from '../../../public/maglev-logo-dark.svg';
 import { PageHeader, mountApp } from '../../admin/shared/AppLayout';
 import { ThemeButton, UserMenu } from '../../admin/shared/UserMenu';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';

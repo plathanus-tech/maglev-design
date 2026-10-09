@@ -5,16 +5,16 @@ import {
   IconProgressCheck, IconShieldLock, IconTool, IconToolsKitchen2, IconUsers,
 } from '@tabler/icons-react';
 import { AppHeader, Breadcrumb, BreadcrumbItem, Button, Card, EmptyState, NavItemDef, Sidebar, Stack, ToastProvider } from '@maglev/ds';
-import logoFull from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
-import logoIcon from '../../../../storybook-maglev/public/maglev-symbol-dark.svg';
-import logoLight from '../../../../storybook-maglev/public/maglev-logo.svg';
-import logoDark from '../../../../storybook-maglev/public/maglev-logo-dark.svg';
+import logoFull from '../../../public/maglev-logo-dark.svg';
+import logoIcon from '../../../public/maglev-symbol-dark.svg';
+import logoLight from '../../../public/maglev-logo.svg';
+import logoDark from '../../../public/maglev-logo-dark.svg';
 import { ScreenKey } from './data';
 import { useSession } from './store';
 import { useIsMobile } from './useMediaQuery';
 import { ThemeButton, UserMenu } from './UserMenu';
 
-import '../../../../storybook-maglev/src/tokens/tokens.css';
+import '../../../src/tokens/tokens.css';
 import './theme';
 import './fonts.css';
 import './nav-sync';
