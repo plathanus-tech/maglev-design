@@ -41,6 +41,10 @@ export interface DropdownProps {
   searchLabel?: string;
   /** Texto quando a busca não encontra nada. */
   emptyText?: string;
+  /** Ícone decorativo acima do texto de lista vazia (padrão dos estados vazios). */
+  emptyIcon?: ReactNode;
+  /** Ação contextual (ex.: link) abaixo do texto de lista vazia; fecha o menu ao ser acionada. */
+  emptyAction?: ReactNode;
 }
 
 /**
@@ -51,7 +55,7 @@ export interface DropdownProps {
 export function Dropdown({
   options, value, onChange, placeholder = 'Selecione...', disabled = false,
   label, labelAction, 'aria-label': ariaLabel, helperText, error, required, optional, className, size = 'md',
-  searchable = false, searchPlaceholder = 'Buscar', searchLabel = 'Buscar na lista', emptyText = 'Nenhum resultado',
+  searchable = false, searchPlaceholder = 'Buscar', searchLabel = 'Buscar na lista', emptyText = 'Nenhum resultado', emptyIcon, emptyAction,
 }: DropdownProps) {
   if (import.meta.env.DEV && !label && !ariaLabel) {
     console.warn('Dropdown: forneça `label` ou `aria-label` para que o campo tenha um nome acessível.');
@@ -186,7 +190,7 @@ export function Dropdown({
                   </li>
                 ));
                 if (!searchable) {
-                  return <ul ref={menuRef as RefObject<HTMLUListElement>} id={listId} role="listbox" aria-label={label ?? ariaLabel} className={styles.menu} style={menuStyle}>{items}</ul>;
+                  return <ul ref={menuRef as RefObject<HTMLUListElement>} id={listId} role="listbox" aria-label={label ?? ariaLabel} className={styles.menu} style={menuStyle}>{items}{visible.length === 0 && <li role="presentation" className={styles.empty}>{emptyIcon && <span className={styles.emptyIcon} aria-hidden="true">{emptyIcon}</span>}{emptyText}{emptyAction && <span className={styles.emptyAction} onClick={() => setOpen(false)}>{emptyAction}</span>}</li>}</ul>;
                 }
                 return (
                   <div ref={menuRef as RefObject<HTMLDivElement>} className={cx(styles.menu, styles.menuSearchable)} style={menuStyle}>
@@ -199,7 +203,7 @@ export function Dropdown({
                       />
                     </div>
                     <ul id={listId} role="listbox" aria-label={label ?? ariaLabel} className={styles.list}>{items}</ul>
-                    {visible.length === 0 && <p className={styles.empty} role="status">{emptyText}</p>}
+                    {visible.length === 0 && <p className={styles.empty} role="status">{emptyIcon && <span className={styles.emptyIcon} aria-hidden="true">{emptyIcon}</span>}{emptyText}</p>}
                   </div>
                 );
               })()}

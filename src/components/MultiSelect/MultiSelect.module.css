@@ -1,0 +1,56 @@
+.trigger {
+  composes: control from '../FormField/FormField.module.css';
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding-block: var(--spacing-xs);
+  cursor: pointer;
+}
+.trigger[aria-disabled="true"] { background: var(--color-status-disabled-bg); border-color: var(--color-border-disabled); color: var(--color-text-disabled); cursor: not-allowed; }
+.open .trigger { border-color: var(--color-border-focus); box-shadow: var(--focus-glow); }
+.open .trigger[aria-invalid="true"] { box-shadow: var(--focus-glow-error); }
+
+/* Tags quebram de linha: o campo cresce em altura sem sobrepor nem cortar */
+.values { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); min-width: 0; flex: 1; }
+.placeholder { color: var(--color-text-placeholder); }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  max-width: 100%;
+  padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-sm);
+  font: var(--text-body-xs);
+  letter-spacing: var(--text-body-xs-tracking);
+  color: var(--color-text-brand);
+  background: var(--color-bg-brand);
+  border-radius: var(--radius-control-sm);
+}
+.tagLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tagRemove {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-control-sm);
+  cursor: pointer;
+}
+.tagRemove::after { content: ""; position: absolute; inset: calc(var(--spacing-sm) * -1); }   /* área de toque ≥ 44px sem engordar a tag */
+.tagRemove:hover { background: var(--color-bg-subtle); }
+.tagRemove:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+
+.chevron { display: flex; flex-shrink: 0; color: var(--color-text-tertiary); transition: transform var(--transition-fast); }
+.open .chevron { transform: rotate(180deg); }
+
+/* Opção com checkbox (só visual: o clique é da linha inteira) */
+.option { gap: var(--spacing-sm); }
+.option[aria-selected="true"] { background: transparent; color: var(--color-text-primary); }
+.option[aria-selected="true"][data-active="true"] { background: var(--color-bg-subtle); }
+.optionCheck { display: inline-flex; flex-shrink: 0; pointer-events: none; }

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconCheck, IconPhoto, IconPhotoPlus, IconX } from '@tabler/icons-react';
-import { Badge, Button, Card, Checkbox, Dialog, Feedback, ImageUpload, Input, Stack, Textarea, useToast } from '@maglev/ds';
+import { Badge, Button, Card, Checkbox, Dialog, Feedback, ImageUpload, Input, RadioButton, Stack, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, requiredMessage } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
-import { CHECKLIST_KIND_LABEL, EvidenceFile, Execution, NO_UNIT, Request } from './data';
+import { CHECKLIST_KIND_LABEL, EvidenceFile, Execution, IMPACT_LABEL, Impact, NO_UNIT, Request, nowLocal } from './data';
 import { evidenceFile, executorOf } from './preventivas';
 import { nextSeq, logEntry, notify, unitName, updateSubDb, useSubSession } from './store';
 import { Col, Grid, ReadField, param, useRefs } from './ui';
@@ -157,6 +157,7 @@ function ExecucaoScreen() {
   const [tried, setTried] = useState(false);
   const [showPend, setShowPend] = useState(false);
   const [report, setReport] = useState('');
+  const [anomalyImpact, setAnomalyImpact] = useState<Impact | ''>('');
 
   const isDone = order?.statusId === 'STO-08' && !!order.execution;
   const cancelled = order?.statusId === 'STO-09';
@@ -165,6 +166,14 @@ function ExecucaoScreen() {
   const hasReadings = !!plan?.checklist.some((c) => c.kind === 'leitura');
 
   // Variantes do navegador: preenchem um exemplo
+  // Executor identificado no sistema (interno ou técnico do prestador): nome preenchido sem nova digitação; senão, preenchimento manual
+  useEffect(() => {
+    if (!order || isDone || signName) return;
+    const ex = order.executor.kind === 'interno' ? executorOf(db, order.executor).primary : order.executor.technician;
+    if (ex) setSignName(ex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
+
   useEffect(() => {
     if (!plan || isDone) return;
     const mandatory = plan.checklist.filter((c) => c.kind !== 'opcional');
@@ -175,7 +184,7 @@ function ExecucaoScreen() {
       setSignName(user.name); setAccepted(true); setReport('Serviços realizados conforme o checklist, sem condições adversas encontradas.');
     };
     if (mode === 'incomplete') { setChecks(mandatory[0] ? { [mandatory[0].id]: true } : {}); setTried(true); }
-    if (mode === 'anomaly') { complete(); setAnomaly('Vedação da porta ressecada, com folga na parte inferior'); setAnomalyPhoto(true); }
+    if (mode === 'anomaly') { complete(); setAnomaly('Vedação da porta ressecada, com folga na parte inferior'); setAnomalyPhoto(true); setAnomalyImpact('medio'); }
     if (mode === 'done') { complete(); setNotes('Execução sem intercorrências'); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, plan?.id]);
@@ -197,10 +206,12 @@ function ExecucaoScreen() {
     plan.evidences.forEach((e, i) => {
       if (isUpload(e, hasReadings)) out.push({ key: `ev-${e}`, label: e, done: attached.includes(e), target: `ex-ev-${i}` });
       if (e === REPORT) out.push({ key: 'report', label: REPORT, done: !!report.trim(), target: 'ex-report' });
-      if (e === SIGNATURE) out.push({ key: 'sign', label: 'Assinatura/aceite', done: !!(signName.trim() && accepted), target: 'ex-sign' });
+      if (e === SIGNATURE) out.push({ key: 'sign', label: 'Confirmação da execução', done: !!(signName.trim() && accepted), target: 'ex-sign' });
     });
+    // A solicitação corretiva precisa do impacto (a triagem usa na prioridade); o restante vem da própria execução
+    if (anomaly.trim() && plan.onAnomaly === 'abrir-solicitacao') out.push({ key: 'impact', label: 'Impacto da anomalia', done: !!anomalyImpact, target: 'ex-impact' });
     return out;
-  }, [plan, checks, readings, attached, signName, accepted, hasReadings, report]);
+  }, [plan, checks, readings, attached, signName, accepted, hasReadings, report, anomaly, anomalyImpact]);
   const pending = reqs.filter((x) => !x.done);
 
   if (!order || !plan || order.kind !== 'preventiva' || !equipment) {
@@ -236,7 +247,7 @@ function ExecucaoScreen() {
   const complete = () => {
     setTried(true);
     if (pending.length) { setShowPend(true); window.setTimeout(() => document.getElementById('pendencias')?.scrollIntoView({ block: 'center' }), 0); return; }
-    const at = new Date().toISOString().slice(0, 19);
+    const at = nowLocal();
     const doneBy = order.executor.kind === 'interno' ? executor.primary : order.executor.technician ?? executor.primary;
     const evidenceFiles: EvidenceFile[] = attached.flatMap((a) => (a === BEFORE_AFTER
       ? MOMENTS.flatMap(({ m }) => (files[fkey(a, m)] ?? [{ name: evidenceFile(`${a} ${m}`) }]).map((x) => ({ evidence: a, moment: m, name: x.name })))
@@ -248,7 +259,7 @@ function ExecucaoScreen() {
       if (willOpenRequest) {
         const id = nextSeq('SOL', d.requests.map((r) => r.id));
         newRequest = {
-          id, equipmentId: equipment.id, problemId: 'TSO-008', impact: 'medio',
+          id, equipmentId: equipment.id, problemId: 'TSO-008', impact: (anomalyImpact || 'medio') as Impact,
           description: `Anomalia encontrada na preventiva ${order.id} (${plan.name}): ${anomaly.trim()}`, photos: anomalyPhoto || anomalyFile ? 1 : 0,
           requesterName: user.name, requesterPhone: user.phone, requesterUserId: user.id, channel: 'Portal', openedAt: at, statusId: 'STS-01', statusChangedAt: at,
           previousRepair: { related: false }, troubleshooting: { overall: 'nao-iniciado', tips: [] },
@@ -261,7 +272,12 @@ function ExecucaoScreen() {
         orders: d.orders.map((o) => (o.id !== order.id ? o : {
           ...o, statusId: 'STO-08', execution,
           files: [...o.files, ...evidenceFiles.map((x, j) => ({ id: `EX-${Date.now()}-${j}`, name: x.name, kind: 'foto' as const, at, by: user.name, evidence: x.evidence, moment: x.moment }))],
-          activities: [...o.activities, logEntry(user.name, `Concluiu a execução da preventiva${newRequest ? ` - anomalia registrada e solicitação ${newRequest.id} aberta` : ''}`)],
+          activities: [
+            ...o.activities,
+            ...(anomaly.trim() ? [logEntry(user.name, `Anomalia registrada - ${anomaly.trim()}`)] : []),
+            ...(newRequest ? [logEntry('Sistema', `Solicitação corretiva aberta - ${newRequest.id} a partir da anomalia registrada`)] : []),
+            logEntry(user.name, 'Concluiu a execução da preventiva'),
+          ],
         })),
         executions: d.executions.map((x) => (x.id === order.executionId ? { ...x, status: 'concluida' as const, doneAt: at, doneBy, osId: order.id, anomalies: anomaly.trim() || undefined } : x)),
       };
@@ -283,6 +299,14 @@ function ExecucaoScreen() {
   const plainItems = plan.checklist.filter((c) => c.kind !== 'leitura');
   const readingItems = plan.checklist.filter((c) => c.kind === 'leitura');
   const uploads = plan.evidences.map((e, i) => ({ e, i })).filter((x) => isUpload(x.e, hasReadings));
+  // Cancelar volta para a tela de onde a pessoa abriu a execução (plano, OS ou a página anterior); sem origem conhecida, a lista de OS
+  const goBack = () => {
+    const from = param('from');
+    if (from === 'plano') { window.location.href = `plano.html?id=${plan.id}`; return; }
+    if (from === 'os') { window.location.href = `os.html?id=${order.id}`; return; }
+    const ref = document.referrer;
+    window.location.href = ref && new URL(ref).origin === window.location.origin && new URL(ref).pathname !== window.location.pathname ? ref : 'ordens-servico.html';
+  };
   const block = isMobile ? 'btn-block' : undefined;
   const checkError = (id: string) => (tried && !readOnly && !checks[id] ? 'Marque este item para concluir' : undefined);
 
@@ -456,6 +480,15 @@ function ExecucaoScreen() {
                       onChange={(p) => { setAnomalyFile(p ?? undefined); setAnomalyPhoto(!!p); }}
                     />
                   )}
+                  {willOpenRequest && (
+                    <div id="ex-impact">
+                      <RadioButton
+                        name="anomaly-impact" label="Impacto da anomalia" orientation="horizontal" disabled={readOnly}
+                        options={(Object.keys(IMPACT_LABEL) as Impact[]).map((k) => ({ value: k, label: IMPACT_LABEL[k] }))} value={anomalyImpact} onChange={(v) => setAnomalyImpact(v as Impact)}
+                        error={tried && !readOnly && !anomalyImpact ? requiredMessage('Impacto da anomalia') : undefined}
+                      />
+                    </div>
+                  )}
                   {hasAnomaly && (willOpenRequest
                     ? <Feedback type="info" title="Será aberta uma solicitação corretiva" message={`Ao concluir, o sistema abre uma solicitação para ${equipment.name}, que segue a triagem normal`} />
                     : <Feedback type="info" message="A anomalia será apenas registrada no histórico, conforme o plano" />)}
@@ -471,15 +504,15 @@ function ExecucaoScreen() {
           </Card>
 
           {(plan.evidences.includes(SIGNATURE) || !!v.signedBy) && (
-          <DevNote note="RF603 💡 formato da assinatura/aceite a confirmar: no protótipo, nome de quem aceitou + confirmação de aceite. Obrigatório quando o plano exige “Assinatura/aceite”.">
-            <div id="ex-sign"><Card className="card-open" title="Assinatura / aceite" subtitle="Quem acompanhou a execução no local">
+          <DevNote note="RF603: o próprio executor registra a confirmação (nome pré-preenchido quando identificado no sistema, editável se não houver) e conclui a execução; sem assinatura desenhada. Obrigatória quando o plano exige “Assinatura/aceite”.">
+            <div id="ex-sign"><Card className="card-open" title="Confirmação da execução" subtitle="Confirme a realização da manutenção preventiva">
               <div className="card-body-tight">
                 <Stack gap="md">
                   <Input
-                    label="Nome de quem aceitou" optional={!plan.evidences.includes(SIGNATURE)} autoComplete="off" disabled={readOnly} value={v.signedBy} onChange={(e) => setSignName(e.target.value)}
-                    error={tried && !readOnly && plan.evidences.includes(SIGNATURE) && !signName.trim() ? requiredMessage('Nome de quem aceitou') : undefined}
+                    label="Nome do executor" optional={!plan.evidences.includes(SIGNATURE)} autoComplete="off" disabled={readOnly} value={v.signedBy} onChange={(e) => setSignName(e.target.value)}
+                    error={tried && !readOnly && plan.evidences.includes(SIGNATURE) && !signName.trim() ? requiredMessage('Nome do executor') : undefined}
                   />
-                  <Checkbox label="Confirmo o aceite" checked={v.accepted} disabled={readOnly} onChange={(e) => setAccepted(e.target.checked)} error={tried && !readOnly && plan.evidences.includes(SIGNATURE) && !accepted ? 'Confirme o aceite para concluir' : undefined} />
+                  <Checkbox label="Confirmo que realizei os procedimentos registrados nesta execução" checked={v.accepted} disabled={readOnly} onChange={(e) => setAccepted(e.target.checked)} error={tried && !readOnly && plan.evidences.includes(SIGNATURE) && !accepted ? 'Confirme a realização para concluir' : undefined} />
                 </Stack>
               </div>
             </Card></div>
@@ -497,7 +530,7 @@ function ExecucaoScreen() {
               <DevNote note="RF603-FLU006 / RGN003: grava a execução na OS, muda o status para Concluída (💡 preventiva conclui direto, sem validação do solicitante), marca a execução do plano como Concluída (histórico do equipamento e cumprimento) e registra no log.">
                 <Button type="submit" size={isMobile ? 'lg' : 'md'} className={block} iconLeft={<IconCheck size={20} />}>Concluir execução</Button>
               </DevNote>
-              <Button variant="ghost" size={isMobile ? 'lg' : 'md'} className={block} onClick={() => { window.location.href = 'ordens-servico.html'; }}>Cancelar</Button>
+              <Button variant="ghost" size={isMobile ? 'lg' : 'md'} className={block} onClick={goBack}>Cancelar</Button>
             </Stack>
           )}
         </Stack>

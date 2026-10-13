@@ -263,9 +263,9 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 .app-topbar-desktop > header { border-bottom-color: var(--color-gray-200); }
 :root[data-theme="dark"] .app-topbar-desktop > header { border-bottom-color: var(--color-gray-700); }
 
-/* Botão de tema: ícone de 32×32 (mesmo tamanho do avatar) com borda gray-200 (no escuro, gray-700) e hover gray-100 (no escuro, gray-800) */
+/* Botão de tema: ícone de 36×36 com borda gray-200 (no escuro, gray-700) e hover gray-100 (no escuro, gray-800) */
 .theme-btn.theme-btn {
-  width: 2rem; height: 2rem; min-height: 0; padding: 0;   /* 32px = avatar sm */
+  width: calc(var(--control-height-md) - var(--spacing-sm)); height: calc(var(--control-height-md) - var(--spacing-sm)); min-height: 0; padding: 0;   /* 36px, igual aos controles compactos das tabelas */
   border: var(--border-width-thin) solid var(--color-gray-200); background: transparent; color: var(--color-text-secondary);
 }
 .theme-btn.theme-btn:hover:not(:disabled) { background: var(--color-gray-100); color: var(--color-text-primary); }
@@ -382,3 +382,7 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 
 /* KPI com valor abreviado: não quebra linha */
 .kpi-nowrap { white-space: nowrap; }
+
+/* Logo como link para o início: não altera o tamanho nem a posição do logo */
+.logo-link { display: flex; align-items: center; height: 100%; border-radius: var(--radius-control-sm); }
+.logo-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }

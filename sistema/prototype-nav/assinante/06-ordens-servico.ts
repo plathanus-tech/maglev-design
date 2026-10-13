@@ -3,7 +3,7 @@
  * Ids reais da carga inicial (assinante/shared/data.ts): OS-000009 lava-louças (Aguardando aprovação com orçamento),
  * OS-000010 freezer (Aguardando validação), OS-000011 coifa (Em andamento), OS-000012 chapa (Aberta, executor interno),
  * OS-000013 fogão (Aguardando peça), OS-000014 ar-condicionado (Aguardando prestador), OS-000015 mesa refrigerada
- * (Em andamento, vencida, executor interno), OS-000016 concluída, OS-000021 preventiva em andamento.
+ * (Em andamento, vencida, executor interno), OS-000016 concluída, OS-000048 preventiva em andamento (atrasada).
  * SOL-000122 = solicitação aprovada (STS-04) ainda sem OS. Perfis por `?as=`: U1 Administrador, U2 Solicitante,
  * U3 Executor, U4 Gestor.
  */
@@ -76,7 +76,7 @@ export const journeys: Journey[] = [
           { id: 'os-peca', label: 'Aguardando peça/recurso', path: `${s}/${os('OS-000013')}` },
           { id: 'os-prestador', label: 'Aguardando prestador', path: `${s}/${os('OS-000014')}` },
           { id: 'os-concluida', label: 'Concluída (somente leitura)', path: `${s}/${os('OS-000016')}` },
-          { id: 'os-preventiva', label: 'OS preventiva (checklist do plano)', path: `${s}/${os('OS-000021')}` },
+          { id: 'os-preventiva', label: 'OS preventiva (checklist do plano)', path: `${s}/${os('OS-000048')}` },
         ],
       },
     ],

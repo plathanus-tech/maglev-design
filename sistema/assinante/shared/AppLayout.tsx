@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   IconBell, IconBuilding, IconBuildingStore, IconCalendarRepeat, IconClipboardList, IconHome2, IconLayoutGrid, IconLock, IconMenu2,
-  IconMessageReport, IconMicrowave, IconSettings, IconTruck, IconUsers, IconX,
+  IconMessageReport, IconMicrowave, IconSettings, IconTool, IconUsers, IconX,
 } from '@tabler/icons-react';
 import { AppHeader, Button, Card, EmptyState, NavItemDef, Sidebar, Tooltip } from '@maglev/ds';
 import logoFull from '../../../public/maglev-logo-dark.svg';
@@ -33,7 +33,7 @@ const NAV: NavEntry[] = [
   { id: 'solicitacoes', screen: 'solicitacoes', label: 'Solicitações', icon: <IconMessageReport size={16} />, href: 'solicitacoes.html' },
   { id: 'os', screen: 'os', label: 'Ordens de serviço', icon: <IconClipboardList size={16} />, href: 'ordens-servico.html' },
   { id: 'planos', screen: 'planos', label: 'Planos de manutenção', icon: <IconCalendarRepeat size={16} />, href: 'planos.html' },
-  { id: 'prestadores', screen: 'prestadores', label: 'Prestadores', icon: <IconTruck size={16} />, href: 'prestadores.html' },
+  { id: 'prestadores', screen: 'prestadores', label: 'Prestadores', icon: <IconTool size={16} />, href: 'prestadores.html' },
   {
     // Grupo recolhível (accordion): clicar só expande; a navegação é das páginas filhas.
     id: 'configuracoes', screen: 'empresa', label: 'Configurações', icon: <IconSettings size={16} />,
@@ -140,7 +140,7 @@ export function AppLayout({ active, screen, children, layout = 'default' }: { ac
       open={sidebarOpen}
       onToggle={onToggle}
       onNavClick={navigate}
-      logo={{ full: <img src={logoFull} alt="MAGLEV" />, icon: <img src={logoIcon} alt="MAGLEV" /> }}
+      logo={{ full: <a className="logo-link" href="inicio.html" aria-label="Ir para o início"><img src={logoFull} alt="" /></a>, icon: <a className="logo-link" href="inicio.html" aria-label="Ir para o início"><img src={logoIcon} alt="" /></a> }}
       version={`v${APP_VERSION}`}
     />
   );
@@ -161,7 +161,7 @@ export function AppLayout({ active, screen, children, layout = 'default' }: { ac
   // Layout focado (Padrão B): cabeçalho global (logo + conta), sem sidebar nem menu em gaveta, conteúdo centralizado
   if (layout === 'focused') {
     const logo = (
-      <a className="app-focused-logo" href="inicio.html" aria-label="MAGLEV, ir para o Início">
+      <a className="app-focused-logo" href="inicio.html" aria-label="Ir para o início">
         <img className="logo-light" src={logoLight} alt="" />
         <img className="logo-dark" src={logoDark} alt="" />
       </a>
@@ -190,8 +190,10 @@ export function AppLayout({ active, screen, children, layout = 'default' }: { ac
                   aria-label={drawerOpen ? 'Fechar menu' : 'Abrir menu'} aria-expanded={drawerOpen} aria-controls={DRAWER_ID}
                   onClick={() => (drawerOpen ? closeDrawer() : setDrawerOpen(true))}
                 />
-                <img className="logo-light" src={logoLight} alt="MAGLEV" />
-                <img className="logo-dark" src={logoDark} alt="" aria-hidden="true" />
+                <a className="logo-link" href="inicio.html" aria-label="Ir para o início">
+                  <img className="logo-light" src={logoLight} alt="" />
+                  <img className="logo-dark" src={logoDark} alt="" aria-hidden="true" />
+                </a>
               </>
             )}
             actions={account(true)}

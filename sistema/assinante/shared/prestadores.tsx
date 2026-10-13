@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { IconCircleCheck, IconCircleOff, IconClipboardList, IconEye, IconPencil, IconPlus, IconTools, IconTruck } from '@tabler/icons-react';
+import { IconCircleCheck, IconCircleOff, IconClipboardList, IconEye, IconPencil, IconPlus, IconTools, IconTruck, IconBuilding } from '@tabler/icons-react';
 import { IconSearch } from '@tabler/icons-react';
 import { Button, Card, EmptyState, Input, KpiCard, Stack, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
@@ -119,7 +119,7 @@ function PrestadoresScreen() {
       <Stack gap="xl">
         <PageHeader
           title="Prestadores"
-          subtitle="Gerencie os prestadores de serviço e os técnicos que atendem seus equipamentos"
+          subtitle="Gerencie os prestadores de serviços e os técnicos responsáveis pela manutenção dos seus equipamentos"
           actions={can('prestadores', 'cadastrar') && (
             <DevNote note="Abre o cadastro (RF702). Visível só para perfis com permissão “Cadastrar” em Prestadores. O botão não deve ser exibido para usuários sem a permissão “Cadastrar” em Prestadores.">
               <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('prestador-form.html')}>Novo prestador</Button>
@@ -130,7 +130,7 @@ function PrestadoresScreen() {
         <Grid>
           <Col span={4} fill>
             <DevNote note="Prestadores com status Ativo. Só os ativos são ofertados em novas OS e planos (RF701-RGN001).">
-              <KpiCard label="Prestadores ativos" value={formatNumber(kpis.active)} description={`${formatNumber(rows.length)} cadastrados`} icon={<IconTruck size={20} />} />
+              <KpiCard label="Prestadores ativos" value={formatNumber(kpis.active)} description={`${formatNumber(rows.length)} cadastrados`} icon={<IconBuilding size={20} />} />
             </DevNote>
           </Col>
           <Col span={4} fill>

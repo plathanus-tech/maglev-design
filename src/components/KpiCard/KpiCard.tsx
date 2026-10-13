@@ -8,8 +8,10 @@ import styles from './KpiCard.module.css';
 export interface KpiTrend {
   /** Sentido da mudança do número. */
   direction: 'up' | 'down' | 'flat';
-  /** Variação percentual, sempre positiva (o sentido vem de `direction`). */
-  percent: number;
+  /** Variação percentual, sempre positiva (o sentido vem de `direction`). Ignorada quando `text` é informado. */
+  percent?: number;
+  /** Variação em texto, no lugar do percentual (ex.: "+3 clientes" para variação absoluta). O sinal e a unidade vêm prontos. */
+  text?: string;
   /**
    * Se a mudança é boa ou ruim **para este KPI** — não é deduzido da seta.
    * Ex.: inadimplentes subindo = `negative`; chamados abertos caindo = `positive`.
@@ -67,7 +69,7 @@ export function KpiCard({
 }: KpiCardProps) {
   const Arrow = trend && ARROW[trend.direction];
   const pct = trend
-    && `${trend.percent.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+    && (trend.text ?? `${(trend.percent ?? 0).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
 
   return (
     <Card className={cx(styles.kpi, href && styles.clickable, className)} padding="none">

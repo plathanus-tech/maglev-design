@@ -48,6 +48,13 @@ function trendOf(now: number, before: number, upIs: KpiTrend['sentiment'], refer
     reference,
   };
 }
+/** Variação absoluta em clientes (crescimento líquido, não novos cadastros): +3 clientes, −1 cliente, 0 clientes. */
+function countTrendOf(now: number, before: number, upIs: KpiTrend['sentiment'], reference: string): KpiTrend {
+  const diff = now - before;
+  const n = Math.abs(diff);
+  const noun = n === 1 ? 'cliente' : 'clientes';
+  return { ...trendOf(now, before, upIs, reference), percent: undefined, text: diff === 0 ? '0 clientes' : `${diff > 0 ? '+' : '−'}${formatNumber(n)} ${noun}` };
+}
 const VS_WEEK = 'vs. há 7 dias';
 
 type Row = Record<string, unknown> & Subscriber & { activeUsers: number };
@@ -81,9 +88,9 @@ function AssinantesScreen() {
       active,
       overdue,
       spent,
-      activeTrend: trendOf(active, KPI_HISTORY.activeWeekAgo, 'positive', VS_WEEK),
-      overdueTrend: trendOf(overdue, KPI_HISTORY.overdueWeekAgo, 'negative', VS_WEEK),
-      spentTrend: trendOf(spent, spent - KPI_HISTORY.spent7dCents, 'neutral', VS_WEEK),
+      activeTrend: countTrendOf(active, KPI_HISTORY.activeWeekAgo, 'positive', VS_WEEK),
+      overdueTrend: countTrendOf(overdue, KPI_HISTORY.overdueWeekAgo, 'negative', VS_WEEK),
+      spentTrend: trendOf(spent, spent - KPI_HISTORY.spent7dCents, 'negative', VS_WEEK),
       ranking: [...db.subscribers].filter((s) => s.status !== 'inativo').sort((a, b) => b.requests30d - a.requests30d).slice(0, 3)
         .map((s) => ({ label: subscriberName(s), value: s.requests30d })),
     };
@@ -180,7 +187,7 @@ function AssinantesScreen() {
           </Col>
           <Col span={3} mobileFull fill>
             <DevNote note="Soma dos custos realizados das ordens de serviço de todos os assinantes (RF201), comparada com o total de há 7 dias. Variação em cinza (neutra): gastar mais ou menos não é, por si só, bom ou ruim para a plataforma - confirmar. Pagamentos não passam pela plataforma.">
-              <KpiCard label="Valor total gasto em manutenção" value={kpis.spent >= 100000 ? <Tooltip content={formatMoney(kpis.spent)}><span tabIndex={0} className="kpi-nowrap">{formatMoneyCompact(kpis.spent)}</span></Tooltip> : formatMoney(kpis.spent)} trend={kpis.spentTrend} icon={<IconReportMoney size={20} />} />
+              <KpiCard label="Gasto em manutenção" value={kpis.spent >= 100000 ? <Tooltip content={formatMoney(kpis.spent)}><span tabIndex={0} className="kpi-nowrap">{formatMoneyCompact(kpis.spent)}</span></Tooltip> : formatMoney(kpis.spent)} trend={kpis.spentTrend} icon={<IconReportMoney size={20} />} />
             </DevNote>
           </Col>
           <Col span={3} mobileFull fill>

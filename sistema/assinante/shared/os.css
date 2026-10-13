@@ -107,3 +107,8 @@
 /* Problema relatado e Equipamento lado a lado: mesma altura (a do maior) sem altura fixa; em telas menores cada um tem a sua */
 .os-pair .grid > .fill > div { display: flex; flex-direction: column; }
 .os-pair .grid > .fill > div > section { flex: 1; }
+
+@media (min-width: 1024px) { .os-meta dl.os-meta-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+/* Preventiva: 3 etapas distribuídas em colunas iguais, com largura máxima para não abrir demais em telas largas */
+@media (min-width: 768px) { .os-steps.os-steps-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 40rem; margin-inline: auto; } }

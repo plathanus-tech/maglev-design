@@ -8,7 +8,7 @@
  */
 import { RecordStatus, Subscriber, seed as adminSeed, subscriberUsers } from '../../admin/shared/data';
 
-export const DB_VERSION = 16;
+export const DB_VERSION = 22;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
@@ -238,7 +238,7 @@ export interface PlanExecution {
 
 // ═══ Prestadores (RF701-RF703) ══════════════════════════════════════
 export interface ProviderContact { id: string; name: string; role: string; phone: string; email: string; main?: boolean }
-export interface Technician { id: string; name: string; specialty: string; phone: string; email: string }
+export interface Technician { id: string; name: string; /** Um técnico pode ter várias especialidades (todas dentre as do prestador) */ specialties: string[]; phone: string; email: string }
 export interface Provider {
   id: string; kind: 'empresa' | 'autonomo'; name: string; tradeName?: string;
   /** Só dígitos: CNPJ (14) ou CPF (11). */
@@ -408,7 +408,7 @@ export function seed(): SubDb {
   const mk = (id: string, name: string, tradeName: string | undefined, doc: string, specialties: string[], categoryIds: string[], regions: string[], contact: [string, string, string, string], techs: Array<[string, string]>, extra: Partial<Provider> = {}): Provider => ({
     id, kind: 'empresa', name, tradeName, doc, status: 'ativo', specialties, categoryIds, equipmentTypes: [], regions,
     contacts: [{ id: `${id}-C1`, name: contact[0], role: contact[1], phone: contact[2], email: contact[3], main: true }],
-    technicians: techs.map(([tn, sp], k) => ({ id: `${id}-T${k + 1}`, name: tn, specialty: sp, phone: `4899${pad(70000 + k * 311 + id.length * 17, 5)}${k}`.slice(0, 11), email: `${slug(tn)}@${slug(tradeName ?? name).replace(/\./g, '')}.com.br` })),
+    technicians: techs.map(([tn, sp], k) => ({ id: `${id}-T${k + 1}`, name: tn, specialties: sp ? [sp] : [], phone: `4899${pad(70000 + k * 311 + id.length * 17, 5)}${k}`.slice(0, 11), email: `${slug(tn)}@${slug(tradeName ?? name).replace(/\./g, '')}.com.br` })),
     ...extra,
   });
   const providers: Provider[] = [
@@ -622,8 +622,8 @@ export function seed(): SubDb {
     {
       id: 'PLA-001', name: 'Preventiva mensal das câmaras frias', description: 'Limpeza do condensador, vedações e verificação da temperatura', equipmentIds: equipments.filter((e) => e.name.startsWith('Câmara fria')).map((e) => e.id),
       startDate: dayOnly(200), frequency: 'mensal', every: 1, refDay: 5, window: { from: '08:00', to: '11:00' }, durationH: 2, executor: { kind: 'prestador', providerId: 'PRE-001', technician: 'Anderson Pires' },
-      checklist: chk('PLA-001', [['Limpar o condensador', 'obrigatorio'], ['Conferir a vedação das portas', 'obrigatorio'], ['Medir a temperatura interna', 'leitura', '°C'], ['Verificar o dreno do evaporador', 'opcional']]),
-      evidences: ['Foto antes/depois', 'Leitura/medição', 'Assinatura/aceite'], onAnomaly: 'abrir-solicitacao', status: 'ativo', createdAt: daysAgo(200),
+      checklist: chk('PLA-001', [['Limpar o condensador', 'obrigatorio'], ['Conferir a vedação das portas', 'obrigatorio'], ['Medir a temperatura interna', 'leitura', '°C'], ['Medir a tensão da rede', 'leitura', 'V'], ['Verificar o dreno do evaporador', 'opcional']]),
+      evidences: ['Foto antes/depois', 'Foto da placa', 'Leitura/medição', 'Assinatura/aceite', 'Relatório técnico'], onAnomaly: 'abrir-solicitacao', status: 'ativo', createdAt: daysAgo(200),
     },
     {
       id: 'PLA-002', name: 'Limpeza e inspeção das coifas', description: 'Limpeza de filtros e dutos, checagem do motor', equipmentIds: equipments.filter((e) => e.name.startsWith('Coifa')).map((e) => e.id),
@@ -662,7 +662,37 @@ export function seed(): SubDb {
           activities: [log('Sistema', `OS gerada automaticamente pelo plano ${p.name}`, `${due}T06:00:00`, `ph${p.id}${ei}${ki}`)],
           ...(done ? {} : { cancelReason: 'Execução não realizada' }),
         });
-        executions.push({ id: `${p.id}-${eid}-${ki}`, planId: p.id, equipmentId: eid, dueDate: due, osId: ho.id, status: done ? 'concluida' : 'nao-realizada', doneAt: done ? `${due}T10:30:00` : undefined, doneBy: done ? (p.executor.kind === 'interno' ? exec.name : providers.find((x) => x.id === (p.executor as { providerId: string }).providerId)?.technicians[0]?.name) : undefined, anomalies: p.id === 'PLA-001' && ki === 0 && ei === 0 ? 'Vedação da porta ressecada' : undefined });
+        const anom = p.id === 'PLA-001' && ki === 2 && ei === 0 ? 'Vedação da porta ressecada' : undefined;
+        if (done) {
+          // Execução concluída pela RF603: registros reais (checklist, leituras, fotos por momento, relatório, confirmação)
+          const who = (p.executor.kind === 'interno' ? exec.name : providers.find((x) => x.id === (p.executor as { providerId: string }).providerId)?.technicians[0]?.name) ?? '';
+          const val = (u?: string) => (u === '°C' ? '3,5' : u === 'V' ? '220' : u === 'm³/h' ? '1250' : '10');
+          const readingsLog = p.checklist.filter((c) => c.kind === 'leitura').map((c) => ({ id: c.id, name: c.text, unit: c.unit && c.unit !== 'Sem unidade' ? c.unit : '', value: val(c.unit) }));
+          const tag = `${eqp.code ?? eqp.id}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          ho.execution = {
+            checks: Object.fromEntries(p.checklist.filter((c) => c.kind !== 'leitura').map((c) => [c.id, true])),
+            readings: Object.fromEntries(readingsLog.map((x) => [x.id, x.value])), readingsLog,
+            evidences: p.evidences.filter((e) => e === 'Foto antes/depois' || e === 'Foto da placa'),
+            evidenceFiles: [
+              ...(p.evidences.includes('Foto antes/depois') ? [{ evidence: 'Foto antes/depois', moment: 'antes' as const, name: 'chapa.jpg' }, { evidence: 'Foto antes/depois', moment: 'depois' as const, name: 'images.jpg' }] : []),
+              ...(p.evidences.includes('Foto da placa') ? [{ evidence: 'Foto da placa', name: 'placa.webp' }] : []),
+            ],
+            report: p.evidences.includes('Relatório técnico') ? 'Serviços realizados conforme o checklist do plano; equipamento em condições normais de operação.' : undefined,
+            signedBy: p.evidences.includes('Assinatura/aceite') ? who : undefined,
+            anomaly: anom,
+          };
+          if (anom) {
+            const rq = addRequest(eqp, {
+              problemId: 'TSO-008', description: `Anomalia encontrada na preventiva ${ho.id} (${p.name}): ${anom}`, statusId: 'STS-01', openedAt: `${due}T10:30:00`, statusChangedAt: `${due}T10:30:00`,
+              impact: 'medio', photos: 0, requesterName: who, requesterPhone: exec.phone ?? '', channel: 'Portal',
+              log: [log(who, `Abriu a solicitação automaticamente a partir da preventiva ${ho.id}`, `${due}T10:30:00`, `pq${p.id}${ei}${ki}`)],
+            });
+            ho.activities.push(log(who || 'Executor', `Anomalia registrada - ${anom}`, `${due}T10:30:00`, `pa${p.id}${ei}${ki}`));
+            ho.activities.push(log('Sistema', `Solicitação corretiva aberta - ${rq.id} a partir da anomalia registrada`, `${due}T10:30:00`, `ps${p.id}${ei}${ki}`));
+          }
+          ho.activities.push(log(who || 'Executor', 'Concluiu a execução da preventiva', `${due}T10:30:00`, `pc${p.id}${ei}${ki}`));
+        }
+        executions.push({ id: `${p.id}-${eid}-${ki}`, planId: p.id, equipmentId: eid, dueDate: due, osId: ho.id, status: done ? 'concluida' : 'nao-realizada', doneAt: done ? `${due}T10:30:00` : undefined, doneBy: done ? (p.executor.kind === 'interno' ? exec.name : providers.find((x) => x.id === (p.executor as { providerId: string }).providerId)?.technicians[0]?.name) : undefined, anomalies: anom });
       });
     });
   });

@@ -1,5 +1,5 @@
 /** Regras de Prestadores (RF701-RF703), só lógica - sem tela. */
-import { Provider, SubDb, WorkOrder } from './data';
+import { Provider, SubDb, Technician, WorkOrder } from './data';
 import { TODAY, addDays } from './preventivas';
 
 /** Todas as OS atribuídas ao prestador (RF703-CTA001): executor do tipo prestador com `providerId`. */
@@ -13,6 +13,8 @@ export const orderCompletedAt = (db: SubDb, o: WorkOrder) =>
 export const orderCostCents = (o: WorkOrder) => o.costs.reduce((n, c) => n + c.cents, 0);
 
 export const providerName = (p: Pick<Provider, 'name' | 'tradeName'>) => p.tradeName ?? p.name;
+/** Especialidades do técnico em texto corrido (listas e opções), ou vazio */
+export const techSpecialtiesText = (t: Pick<Technician, 'specialties'>) => t.specialties.join(', ');
 export const mainContact = (p: Provider) => p.contacts.find((c) => c.main) ?? p.contacts[0];
 export const PROVIDER_KIND_LABEL: Record<Provider['kind'], string> = { empresa: 'Empresa', autonomo: 'Profissional autônomo' };
 
@@ -30,5 +32,7 @@ export function isValidCpf(v: string) {
   };
   return calc(9) === Number(d[9]) && calc(10) === Number(d[10]);
 }
+/** Autônomo pode informar CPF ou CNPJ (ex.: MEI): a máscara e a validação seguem a quantidade de dígitos (até 11 = CPF; acima = CNPJ). */
+export const docKind = (v: string): 'CPF' | 'CNPJ' => (v.replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF');
 export const formatCpf = (v: string) => v.replace(/\D/g, '').slice(0, 11)
   .replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1-$2');

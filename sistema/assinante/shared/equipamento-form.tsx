@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { CategoryIcon } from '../../admin/shared/IconPicker';
 import { IconArrowDown, IconArrowUp, IconCopy, IconGripVertical, IconPhoto, IconPlus, IconTrash } from '@tabler/icons-react';
 import { Accordion, Button, Card, DatePicker, Dropdown, Feedback, ImageUpload, Input, RadioButton, Stack, Textarea, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
@@ -204,7 +205,7 @@ function EquipamentoFormScreen() {
   // ── Opções ──
   const units = db.units.filter((u) => unitIds.includes(u.id) && (u.status === 'ativo' || u.id === editing?.unitId)).map((u) => ({ value: u.id, label: u.name }));
   const envs = db.environments.filter((x) => x.unitId === d.unitId && (x.status === 'ativo' || x.id === editing?.environmentId)).map((x) => ({ value: x.id, label: x.name }));
-  const categories = refs.admin.categories.filter((c) => c.status === 'ativo' || c.id === editing?.categoryId).map((c) => ({ value: c.id, label: c.name }));
+  const categories = refs.admin.categories.filter((c) => c.status === 'ativo' || c.id === editing?.categoryId).map((c) => ({ value: c.id, label: c.name, leading: c.icon ? <CategoryIcon id={c.icon} size={20} /> : undefined }));
   const statuses = eqStatuses.map((s) => ({ value: s.id, label: s.name }));
   if (editing && !statuses.some((s) => s.value === editing.statusId)) statuses.push({ value: editing.statusId, label: refs.status(editing.statusId)?.name ?? editing.statusId });
   const criticalities = refs.admin.criticalities.map((c) => ({ value: c.id, label: c.name }));

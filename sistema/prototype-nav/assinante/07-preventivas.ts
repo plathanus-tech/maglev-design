@@ -1,8 +1,8 @@
 /**
  * Navegador de Protótipo - Área do assinante · Preventivas (RF601-RF603).
  * Ids de referência da carga inicial: planos PLA-001 (câmaras frias, atrasado), PLA-002 (coifas), PLA-003 (fritadeiras, executor interno),
- * PLA-004 (fornos, pausado). OS preventivas: OS-000021 (PLA-001, em andamento/atrasada), OS-000022 e OS-000023 (PLA-001), OS-000024/25 (PLA-002),
- * OS-000026 (PLA-003, executor ASS-0001-U3). Usuários: gestor ASS-0001-U4, executor ASS-0001-U3, solicitante ASS-0001-U2.
+ * PLA-004 (fornos, pausado). OS preventivas: OS-000048 (PLA-001, em andamento/atrasada), OS-000049 e OS-000050 (PLA-001), OS-000024/25 (PLA-002),
+ * OS-000053 (PLA-003, executor ASS-0001-U3). Usuários: gestor ASS-0001-U4, executor ASS-0001-U3, solicitante ASS-0001-U2.
  */
 import type { Journey } from '../config';
 
@@ -56,13 +56,13 @@ export const journeys: Journey[] = [
         variants: [v('plano-editar-interno', 'Executor interno', 'plano-form.html?id=PLA-003')],
       },
       {
-        id: 'execucao', label: 'RF603 - Execução da preventiva', path: `${s}/execucao-preventiva.html?os=OS-000022`,
+        id: 'execucao', label: 'RF603 - Execução da preventiva', path: `${s}/execucao-preventiva.html?os=OS-000049`,
         variants: [
-          v('execucao-incomplete', 'Concluir com pendências', 'execucao-preventiva.html?os=OS-000022#state=incomplete'),
-          v('execucao-anomaly', 'Com anomalia (gera solicitação corretiva)', 'execucao-preventiva.html?os=OS-000023#state=anomaly'),
-          v('execucao-done', 'Execução concluída (leitura)', 'execucao-preventiva.html?os=OS-000022#state=done'),
-          v('execucao-interno', 'Executor interno (perfil Executor)', 'execucao-preventiva.html?os=OS-000026&as=ASS-0001-U3'),
-          v('execucao-bloqueada', 'Executor sem acesso à OS', 'execucao-preventiva.html?os=OS-000022&as=ASS-0001-U3'),
+          v('execucao-incomplete', 'Concluir com pendências', 'execucao-preventiva.html?os=OS-000049#state=incomplete'),
+          v('execucao-anomaly', 'Com anomalia (gera solicitação corretiva)', 'execucao-preventiva.html?os=OS-000050#state=anomaly'),
+          v('execucao-done', 'Execução concluída (leitura)', 'execucao-preventiva.html?os=OS-000049#state=done'),
+          v('execucao-interno', 'Executor interno (perfil Executor)', 'execucao-preventiva.html?os=OS-000053&as=ASS-0001-U3'),
+          v('execucao-bloqueada', 'Executor sem acesso à OS', 'execucao-preventiva.html?os=OS-000049&as=ASS-0001-U3'),
         ],
       },
     ],

@@ -89,7 +89,7 @@ export function AppLayout({ active, screen, children }: { active: string; screen
       open={sidebarOpen}
       onToggle={onToggle}
       onNavClick={navigate}
-      logo={{ full: <img src={logoFull} alt="MAGLEV" />, icon: <img src={logoIcon} alt="MAGLEV" /> }}
+      logo={{ full: <a className="logo-link" href="dashboard.html" aria-label="Ir para o início"><img src={logoFull} alt="" /></a>, icon: <a className="logo-link" href="dashboard.html" aria-label="Ir para o início"><img src={logoIcon} alt="" /></a> }}
       version={`v${APP_VERSION}`}
     />
   );
@@ -118,8 +118,10 @@ export function AppLayout({ active, screen, children }: { active: string; screen
                   aria-label={drawerOpen ? 'Fechar menu' : 'Abrir menu'} aria-expanded={drawerOpen} aria-controls={DRAWER_ID}
                   onClick={() => (drawerOpen ? closeDrawer() : setDrawerOpen(true))}
                 />
-                <img className="logo-light" src={logoLight} alt="MAGLEV" />
-                <img className="logo-dark" src={logoDark} alt="" aria-hidden="true" />
+                <a className="logo-link" href="dashboard.html" aria-label="Ir para o início">
+                  <img className="logo-light" src={logoLight} alt="" />
+                  <img className="logo-dark" src={logoDark} alt="" aria-hidden="true" />
+                </a>
               </>
             )}
             actions={account(true)}

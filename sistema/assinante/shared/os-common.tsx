@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Button, Dialog, Dropdown, Feedback, RadioButton, Stack, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { Executor, SubDb, WorkOrder, SubUser, dayOnly } from './data';
+import { techSpecialtiesText } from './prestadores';
 import { logEntry, notify, updateSubDb, useSubSession } from './store';
 import { Col, Grid, useRefs } from './ui';
 import { requiredMessage } from '../../admin/shared/format';
@@ -35,6 +36,12 @@ export function executorInfo(db: SubDb, e: Executor): { name: string; kind: stri
   if (e.kind === 'interno') return { name: db.users.find((u) => u.id === e.userId)?.name ?? '-', kind: 'Interno' };
   return { name: providerLabel(db, e.providerId), kind: 'Prestador', technician: e.technician };
 }
+/** Registro de notificação ao atribuir a OS a um prestador. Autônomo: o link de acesso vai para o e-mail do próprio profissional (contato principal) */
+export const notifyProviderLog = (db: SubDb, providerId: string) => {
+  const p = db.providers.find((x) => x.id === providerId);
+  const to = p?.kind === 'autonomo' ? p.contacts.find((c) => c.main)?.email : undefined;
+  return `Notificou o prestador ${providerLabel(db, providerId)}${to ? ` - link de acesso enviado para ${to}` : ' (sem login na plataforma)'}`;
+};
 export const executorText = (db: SubDb, e: Executor) => {
   const i = executorInfo(db, e);
   return i.technician ? `${i.name} (${i.technician})` : i.name;
@@ -147,13 +154,13 @@ export function PlanFields({ db, value, onChange, categoryId, unitId, errors, cu
               />
             </DevNote>
           </Col>
-          <Col span={6}>
+          {provider?.kind !== 'autonomo' && <Col span={6}>
             <Dropdown
               label="Técnico do prestador" optional placeholder={provider ? 'Selecione o técnico' : 'Escolha o prestador primeiro'}
-              options={(provider?.technicians ?? []).map((t) => ({ value: t.name, label: `${t.name} · ${t.specialty}` }))}
+              options={(provider?.technicians ?? []).map((t) => ({ value: t.name, label: t.specialties.length ? `${t.name} · ${techSpecialtiesText(t)}` : t.name }))}
               value={value.technician} onChange={(v) => set({ technician: v })} disabled={!provider}
             />
-          </Col>
+          </Col>}
           {providers.length === 0 && (
             <Col span={12}><Feedback type="warning" title="Nenhum prestador disponível" message={`Não há prestador ativo que atenda a categoria ${categoryName}. Cadastre ou ative um prestador, ou use a equipe interna.`} /></Col>
           )}
@@ -193,7 +200,7 @@ export function ReassignDialog({ order, onClose }: { order: WorkOrder | null; on
     const respChanged = order.responsibleId !== after.responsibleId;
     const execChanged = executorText(db, order.executor) !== executorText(db, after.executor);
     const next = { ...order, ...after };
-    if (execChanged && after.executor.kind === 'prestador') logs.push(`Notificou o prestador ${providerLabel(db, after.executor.providerId)} (sem login na plataforma)`);
+    if (execChanged && after.executor.kind === 'prestador') logs.push(notifyProviderLog(db, after.executor.providerId));
     patchOrder(order.id, user.name, (o) => ({ ...o, ...after }), logs);
     notifyAssignees(db, next, { responsible: respChanged, executor: execChanged });
     toast.show({ type: 'success', title: 'OS reatribuída', message: 'Quem foi atribuído foi notificado e a alteração ficou registrada nas atividades.' });

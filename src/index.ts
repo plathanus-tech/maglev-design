@@ -33,6 +33,8 @@ export { Input } from './components/Input/Input';
 export type { InputProps } from './components/Input/Input';
 export { KpiCard } from './components/KpiCard/KpiCard';
 export type { KpiCardProps, KpiTrend } from './components/KpiCard/KpiCard';
+export { MultiSelect } from './components/MultiSelect/MultiSelect';
+export type { MultiSelectProps } from './components/MultiSelect/MultiSelect';
 export { Pagination } from './components/Pagination/Pagination';
 export type { PaginationProps } from './components/Pagination/Pagination';
 export { RadioButton } from './components/RadioButton/RadioButton';

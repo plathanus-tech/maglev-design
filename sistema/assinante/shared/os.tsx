@@ -15,14 +15,15 @@ import { formatDate, formatDateTime, formatMoney, formatPhone, isValidPhone, mas
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { describeFrequency } from './preventivas';
 import { photoSrc } from './photos';
-import { IMPACT_LABEL, COST_KIND_LABEL, CostKind, WorkOrder, nowLocal } from './data';
+import { IMPACT_LABEL, COST_KIND_LABEL, CostKind, NO_UNIT, WorkOrder, nowLocal } from './data';
 import { equipmentOf, environmentName, logEntry, notify, ordersVisible, unitName, updateSubDb, useSubSession, userName } from './store';
 import { CellPair, Col, Grid, ReadField, RowAction, RowActions, Text, TroubleshootingNotes, goTo, param, takeFlash, useRefs } from './ui';
 import {
-  ReassignDialog, STO, executorInfo, executorText, isEditable, overdueDays, parseCents, patchOrder, providerLabel,
+  ReassignDialog, STO, executorInfo, executorText, isEditable, notifyProviderLog, overdueDays, parseCents, patchOrder, providerLabel,
 } from './os-common';
 import './os.css';
 import './solicitacao.css';
+import './preventivas.css';
 
 type Dlg = 'approve' | 'reject' | 'status' | 'addvisit' | 'addcost' | 'reassign' | 'conclude' | 'addbudget' | 'diagnosis' | 'file' | 'reassignval' | { rm: string } | null;
 
@@ -74,6 +75,8 @@ function splitActivity(text: string): { title: string; detail?: string } {
   if (j > 0 && j < 70) return { title: text.slice(0, j), detail: text.slice(j + 2) };
   return { title: text };
 }
+/** Códigos de solicitação (SOL-000123) no texto do histórico viram link para a solicitação vinculada */
+const linkRefs = (text: string): ReactNode => text.split(/(SOL-\d{6})/).map((part, i) => (/^SOL-\d{6}$/.test(part) ? <a key={i} className="text-link" href={`solicitacao.html?id=${part}`}>{part}</a> : part));
 function ActivityTimeline({ items }: { items: WorkOrder['activities'] }) {
   return (
     <ol className="os-timeline">
@@ -82,7 +85,7 @@ function ActivityTimeline({ items }: { items: WorkOrder['activities'] }) {
         return (
           <li key={a.id} className="os-timeline-item">
             <span className="os-timeline-title">{ev.title}</span>
-            {ev.detail && <span className="os-timeline-detail">{ev.detail}</span>}
+            {ev.detail && <span className="os-timeline-detail">{linkRefs(ev.detail)}</span>}
             <span className="os-timeline-meta">{a.by} · {formatDateTime(a.at)}</span>
           </li>
         );
@@ -96,6 +99,14 @@ type StepState = 'done' | 'current' | 'pending' | 'skipped' | 'blocked';
 function buildSteps(o: WorkOrder, base: string | undefined): Array<{ label: string; state: StepState; hint?: string }> {
   const closed = base === 'concluido';
   const canceled = base === 'cancelado';
+  // Preventiva: gerada pelo plano, executada e concluída pelo executor (RF603), sem triagem, diagnóstico, aprovação ou validação
+  if (o.kind === 'preventiva') {
+    const st: StepState[] = closed ? ['done', 'done', 'done'] : o.statusId !== STO.ABERTA ? ['done', 'current', 'pending'] : ['current', 'pending', 'pending'];
+    const hint: Array<string | undefined> = [];
+    if (canceled) { const k = st.findIndex((x) => x === 'current'); if (k >= 0) { st[k] = 'blocked'; hint[k] = 'Cancelada'; } }
+    else if (!closed) hint[st.findIndex((x) => x === 'current')] = 'Etapa atual';
+    return ['Programada', 'Em execução', 'Concluída'].map((label, i) => ({ label, state: st[i], hint: hint[i] }));
+  }
   const inValidation = o.statusId === STO.VALIDACAO;
   const b = o.budget;
   const reachedExecution = !!o.diagnosis || inValidation || closed;
@@ -109,7 +120,6 @@ function buildSteps(o: WorkOrder, base: string | undefined): Array<{ label: stri
     closed ? 'done' : 'pending',
   ];
   const hint: Array<string | undefined> = [];
-  if (o.kind === 'preventiva') { st[0] = 'skipped'; st[1] = 'skipped'; hint[0] = 'Gerada pelo plano'; hint[1] = 'Gerada pelo plano'; }
   if (st[4] === 'skipped') hint[4] = 'Sem orçamento';
   if (st[4] === 'pending' && !b) hint[4] = 'Se houver custo';
   if (st[4] === 'blocked') hint[4] = 'Orçamento reprovado';
@@ -135,7 +145,7 @@ function Progress({ order, base, children }: { order: WorkOrder; base: string | 
       title="Andamento da OS" padding="none"
     >
       <div className="os-steps-wrap">
-        <ol className="os-steps" aria-label="Linha de progresso da OS: da solicitação à conclusão">
+        <ol className={`os-steps${order.kind === 'preventiva' ? ' os-steps-3' : ''}`} aria-label={order.kind === 'preventiva' ? 'Linha de progresso da OS: da programação à conclusão' : 'Linha de progresso da OS: da solicitação à conclusão'}>
           {steps.map((x) => (
             <li key={x.label} className={`os-step is-${x.state}`} aria-current={x.state === 'current' ? 'step' : undefined} title={x.hint}>
               <span className="os-step-mark" aria-hidden="true">{STEP_ICON[x.state]}</span>
@@ -203,7 +213,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
 
   const approvers = db.users.filter((u) => u.status === 'ativo' && (u.profile === 'administrador' || u.profile === 'gestor')).map((u) => u.id);
   const execUserIds = order.executor.kind === 'interno' ? [order.executor.userId] : [];
-  const prestadorLog = order.executor.kind === 'prestador' ? [`Notificou o prestador ${providerLabel(db, order.executor.providerId)} (sem login na plataforma)`] : [];
+  const prestadorLog = order.executor.kind === 'prestador' ? [notifyProviderLog(db, order.executor.providerId)] : [];
   const href = `os.html?id=${order.id}`;
   const req = db.requests.find((r) => r.id === order.requestId);
   const stName = (id: string) => refs.status(id)?.name ?? id;
@@ -607,6 +617,193 @@ function OsScreen() {
   const realized = order.costs.filter((c) => !(c.kind === 'orcamento' && order.budget && order.budget.decision !== 'aprovado')).reduce((n, c) => n + c.cents, 0);
   const budgetNote = !order.budget ? (budgeted ? 'Orçamento lançado como item de custo' : 'Sem orçamento') : order.budget.decision === 'aprovado' ? 'Orçamento aprovado' : order.budget.decision === 'reprovado' ? 'Orçamento reprovado' : 'Aguardando aprovação';
 
+  const eqCard = (
+          <Card title="Equipamento">
+            <div className="card-body-tight">
+              <Stack gap="md">
+                <div className="os-eq-id">
+                  {eq?.photoName ? (
+                    <button type="button" className="sol-photo os-eq-photo" onClick={() => setPreview({ name: eq.photoName!, kind: 'equipamento' })} aria-label={`Ampliar a foto do equipamento ${eq.name}`}>
+                      {photoSrc(eq.photoName) ? <img src={photoSrc(eq.photoName)} alt="" /> : <IconPhoto size={20} aria-hidden="true" />}
+                    </button>
+                  ) : (
+                    <span className="sol-photo os-eq-photo is-empty" role="img" aria-label="Equipamento sem foto cadastrada"><IconPhoto size={20} aria-hidden="true" /></span>
+                  )}
+                  <div className="os-eq-text">
+                    <span className="os-eq-name">{eqLink}</span>
+                    <dl className="os-eq-spec">
+                      <div><dt>Fabricante</dt><dd>{eq?.maker || '-'}</dd></div>
+                      <div><dt>Modelo</dt><dd>{eq?.model || '-'}</dd></div>
+                    </dl>
+                  </div>
+                </div>
+                <div className="os-eq-loc">
+                  <ReadField label="Unidade" value={eq ? unitName(db, eq.unitId) : undefined} />
+                  <ReadField label="Ambiente" value={eq ? environmentName(db, eq.environmentId) : undefined} />
+                </div>
+              </Stack>
+            </div>
+          </Card>
+  );
+  const historyCard = (
+    <DevNote note="RF503-CTA004: log automático de toda interação (status, atribuição, anexos, visitas, custos, aprovação, validação) com autor, data e hora - mais recente primeiro. O histórico completo fica na aba Resumo (não há aba Atividades); carregamento progressivo com “Carregar mais”.">
+      <Card title="Histórico de atividades" subtitle="Registro das ações e alterações realizadas nesta OS">
+        <div className="card-body-tight">
+          <Stack gap="md">
+            {history.length ? <ActivityTimeline items={history.slice(0, histShown)} /> : <Text>Nenhuma atividade registrada</Text>}
+            {history.length > histShown && <Stack direction="horizontal"><Button size="sm" variant="secondary" onClick={() => setHistShown((n) => n + 10)}>Carregar mais</Button></Stack>}
+          </Stack>
+        </div>
+      </Card>
+    </DevNote>
+  );
+
+  // ── OS preventiva: plano, execução (RF603) e histórico ──
+  const planExec = db.executions.find((x) => x.id === order.executionId);
+  const ex = order.execution;
+  const checklistPlain = plan?.checklist.filter((c) => c.kind !== 'leitura') ?? [];
+  const readingDefs = plan?.checklist.filter((c) => c.kind === 'leitura') ?? [];
+  const readingsList = ex ? (ex.readingsLog ?? readingDefs.map((c) => ({ id: c.id, name: c.text, unit: c.unit && c.unit !== NO_UNIT ? c.unit : '', value: (ex.readings[c.id] ?? '').trim() }))) : [];
+  const doneChecks = ex ? checklistPlain.filter((c) => ex.checks[c.id]).length : 0;
+  const evMet = (e: string) => (!ex ? false : e === 'Assinatura/aceite' ? !!ex.signedBy : e === 'Relatório técnico' ? !!ex.report?.trim() : e === 'Leitura/medição' ? readingsList.length > 0 && readingsList.every((x) => x.value) : ex.evidences.includes(e));
+  const evTotal = plan?.evidences.length ?? 0;
+  const evDone = plan ? plan.evidences.filter(evMet).length : 0;
+  const anomalyText = ex?.anomaly ?? planExec?.anomalies;
+  const anomalyReq = anomalyText ? db.requests.find((q) => q.description.includes(`preventiva ${order.id}`)) : undefined;
+  const lateExec = planExec?.doneAt && order.dueAt ? planExec.doneAt.slice(0, 10) > order.dueAt : false;
+  const execBadge = base === 'cancelado' ? <Badge status="neutral">Cancelada</Badge> : base === 'concluido' ? <Badge status={lateExec ? 'warning' : 'success'}>{lateExec ? 'Concluída com atraso' : 'Concluída no prazo'}</Badge>
+    : late > 0 ? <Badge status="error" solid icon={<IconAlertTriangle size={14} />}>{`Atrasada há ${late} ${late === 1 ? 'dia' : 'dias'}`}</Badge> : <Badge status="info">No prazo</Badge>;
+  const emptyExecText = base === 'cancelado' ? 'A OS foi cancelada e a execução não foi registrada' : order.statusId === STO.ABERTA ? 'A execução ainda não foi registrada' : base === 'concluido' ? 'Os registros desta execução não estão disponíveis (dados anteriores ao registro detalhado)' : 'Em execução. Os registros aparecem aqui quando a execução for concluída';
+  const anomalyCard = anomalyText ? (
+    <Card title="Anomalias" subtitle="Registradas durante a preventiva">
+      <div className="card-body-tight">
+        <Stack gap="xs">
+          <Text>{anomalyText}</Text>
+          {anomalyReq && <Stack direction="horizontal"><a className="text-link" href={`solicitacao.html?id=${anomalyReq.id}`}>{`Solicitação corretiva ${anomalyReq.id}`}</a></Stack>}
+        </Stack>
+      </div>
+    </Card>
+  ) : null;
+  const canExecute = can('os', 'editar') && (order.statusId === STO.ABERTA || order.statusId === STO.ANDAMENTO) && base !== 'cancelado';
+  const goExecution = () => goTo(`execucao-preventiva.html?os=${order.id}&from=os`);
+
+  const prevSummary = (
+    <Stack gap="lg">
+      <div className="os-pair">
+        <Grid>
+          <Col span={8} fill>
+            <DevNote note="OS preventiva: o destaque é o plano que originou a OS (não há solicitação nem problema relatado). Dados reais do plano associado.">
+              <Card title="Informações do plano">
+                <div className="card-body-tight">
+                  <div className="os-fields"><Grid>
+                    <Col span={6}><ReadField label="Plano de manutenção" value={plan ? <a className="text-link" href={`plano.html?id=${plan.id}`}>{plan.name}</a> : '-'} /></Col>
+                    <Col span={6}><ReadField label="Frequência" value={plan ? describeFrequency(plan) : undefined} /></Col>
+                    <Col span={12}><ReadField label="Descrição" value={plan?.description ?? order.reported} /></Col>
+                  </Grid></div>
+                </div>
+              </Card>
+            </DevNote>
+          </Col>
+          <Col span={4} fill>{eqCard}</Col>
+        </Grid>
+      </div>
+      <DevNote note="Resumo da execução: só o que a RF603 efetivamente registrou (checklist, leituras, evidências); antes da conclusão não há progresso persistido. O detalhe fica na aba Execução.">
+        <Card title="Resumo da execução"{...(!ex ? { subtitle: emptyExecText } : {})}>
+          {ex && (
+          <div className="card-body-tight">
+            {(
+              <div className="os-fields"><Grid>
+                <Col span={6}><ReadField label="Data de realização" value={planExec?.doneAt ? formatDateTime(planExec.doneAt) : undefined} /></Col>
+                <Col span={6}><ReadField label="Executor" value={planExec?.doneBy ?? exec.name} /></Col>
+                <Col span={6}><ReadField label="Procedimentos realizados" value={`${doneChecks} de ${checklistPlain.length}`} /></Col>
+                {readingDefs.length > 0 && <Col span={6}><ReadField label="Leituras e medições" value={`${readingsList.filter((x) => x.value).length} de ${readingsList.length} registradas`} /></Col>}
+                {evTotal > 0 && <Col span={6}><ReadField label="Evidências exigidas" value={`${evDone} de ${evTotal} atendidas`} /></Col>}
+              </Grid></div>
+            )}
+          </div>
+          )}
+        </Card>
+      </DevNote>
+      {anomalyCard}
+      {historyCard}
+    </Stack>
+  );
+
+  const FOTO_GROUPS: Array<{ ev: string; moment?: 'antes' | 'depois'; label: string }> = [
+    { ev: 'Foto antes/depois', moment: 'antes', label: 'Antes da manutenção' }, { ev: 'Foto antes/depois', moment: 'depois', label: 'Depois da manutenção' }, { ev: 'Foto da placa', label: 'Foto da placa' },
+  ];
+  const photoGroups = FOTO_GROUPS.filter((g) => plan?.evidences.includes(g.ev)).map((g) => ({ ...g, items: (ex?.evidenceFiles ?? []).filter((x) => x.evidence === g.ev && x.moment === g.moment) }));
+  const execSection = (title: string, subtitle: string | undefined, body: ReactNode) => (
+    <Card title={title} subtitle={subtitle}><div className="card-body-tight">{body}</div></Card>
+  );
+  const prevExecution = !ex ? (
+    <Card title="Execução" subtitle={base === 'cancelado' ? 'OS cancelada' : 'Registros da manutenção preventiva'}>
+      <div className="card-body-tight">
+        <Stack gap="md">
+          <Text>{base === 'cancelado' ? 'A OS foi cancelada e a manutenção não foi executada' : base === 'concluido' ? 'Os registros desta execução não estão disponíveis (dados anteriores ao registro detalhado)' : order.statusId === STO.ABERTA ? 'A manutenção ainda não foi executada' : 'A manutenção está em execução. Os registros aparecem aqui quando a execução for concluída'}</Text>
+          {canExecute && <Stack direction="horizontal"><Button size="sm" iconLeft={<IconPlayerPlay size={16} />} onClick={goExecution}>Abrir execução</Button></Stack>}
+        </Stack>
+      </div>
+    </Card>
+  ) : (
+    <DevNote note="Visualização dos registros da RF603 (somente leitura, sem formulário): checklist, leituras (nome, valor e unidade como estavam no plano na execução), fotos identificadas por momento/placa, relatório, anomalias, observações e a confirmação do executor. Só aparecem os tipos de evidência configurados no plano.">
+      <Stack gap="lg">
+        {checklistPlain.length > 0 && execSection('Checklist', `${doneChecks} de ${checklistPlain.length} procedimentos realizados`, (
+          <ul className="ex-list">
+            {checklistPlain.map((c) => (
+              <li key={c.id} className="ex-row">
+                <span className="page-text">{c.text}</span>
+                <Stack direction="horizontal" gap="sm" align="center">
+                  <span className="ex-tag">{c.kind === 'opcional' ? 'Opcional' : 'Obrigatório'}</span>
+                  {ex.checks[c.id] ? <Badge status="success" dot>Realizado</Badge> : <Badge status="neutral" dot>Não realizado</Badge>}
+                </Stack>
+              </li>
+            ))}
+          </ul>
+        ))}
+        {readingsList.length > 0 && execSection('Leituras e medições', undefined, (
+          <ul className="ex-list">
+            {readingsList.map((x) => (
+              <li key={x.id} className="ex-row"><span className="page-text">{x.name}</span><span className="page-text"><strong>{x.value ? `${x.value}${x.unit ? ` ${x.unit}` : ''}` : 'Não registrada'}</strong></span></li>
+            ))}
+          </ul>
+        ))}
+        {photoGroups.length > 0 && execSection('Fotos da execução', undefined, (
+          <Stack gap="md">
+            {photoGroups.map((g) => (
+              <Stack key={g.label} gap="xs">
+                <span className="page-label">{g.label}</span>
+                {g.items.length ? (
+                  <ul className="ev-grid" aria-label={g.label}>
+                    {g.items.map((it, k) => (
+                      <li key={`${it.name}-${k}`} className="ev-item">
+                        <button type="button" className="ev-thumb" title={it.name} onClick={() => setPreview({ name: it.name, kind: 'foto' })} aria-label={`Ampliar foto: ${it.name}`}>
+                          {photoSrc(it.name) ? <img src={photoSrc(it.name)} alt="" /> : <span className="ev-ph"><IconPhoto size={24} aria-hidden="true" /><span className="ev-ph-name">{it.name}</span></span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <span className="cell-secondary">Nenhuma foto registrada</span>}
+              </Stack>
+            ))}
+          </Stack>
+        ))}
+        {plan?.evidences.includes('Relatório técnico') && execSection('Relatório técnico', undefined, <Text>{ex.report || 'Não preenchido'}</Text>)}
+        {anomalyText && execSection('Anomalias', 'Registradas durante a preventiva', (
+          <Stack gap="xs"><Text>{anomalyText}</Text>{anomalyReq && <Stack direction="horizontal"><a className="text-link" href={`solicitacao.html?id=${anomalyReq.id}`}>{`Solicitação corretiva ${anomalyReq.id}`}</a></Stack>}</Stack>
+        ))}
+        {ex.notes && execSection('Observações', undefined, <Text>{ex.notes}</Text>)}
+        {ex.signedBy && execSection('Confirmação da execução', undefined, (
+          <div className="os-fields"><Grid>
+            <Col span={6}><ReadField label="Nome do executor" value={ex.signedBy} /></Col>
+            <Col span={6}><ReadField label="Data e hora" value={planExec?.doneAt ? formatDateTime(planExec.doneAt) : undefined} /></Col>
+            <Col span={12}><ReadField label="Confirmação" value="Confirmou que realizou os procedimentos registrados nesta execução" /></Col>
+          </Grid></div>
+        ))}
+      </Stack>
+    </DevNote>
+  );
+
   const summary = (
     <Stack gap="lg">
       <div className="os-pair">
@@ -651,32 +848,7 @@ function OsScreen() {
           </DevNote>
         </Col>
         <Col span={4} fill>
-          <Card title="Equipamento">
-            <div className="card-body-tight">
-              <Stack gap="md">
-                <div className="os-eq-id">
-                  {eq?.photoName ? (
-                    <button type="button" className="sol-photo os-eq-photo" onClick={() => setPreview({ name: eq.photoName!, kind: 'equipamento' })} aria-label={`Ampliar a foto do equipamento ${eq.name}`}>
-                      {photoSrc(eq.photoName) ? <img src={photoSrc(eq.photoName)} alt="" /> : <IconPhoto size={20} aria-hidden="true" />}
-                    </button>
-                  ) : (
-                    <span className="sol-photo os-eq-photo is-empty" role="img" aria-label="Equipamento sem foto cadastrada"><IconPhoto size={20} aria-hidden="true" /></span>
-                  )}
-                  <div className="os-eq-text">
-                    <span className="os-eq-name">{eqLink}</span>
-                    <dl className="os-eq-spec">
-                      <div><dt>Fabricante</dt><dd>{eq?.maker || '-'}</dd></div>
-                      <div><dt>Modelo</dt><dd>{eq?.model || '-'}</dd></div>
-                    </dl>
-                  </div>
-                </div>
-                <div className="os-eq-loc">
-                  <ReadField label="Unidade" value={eq ? unitName(db, eq.unitId) : undefined} />
-                  <ReadField label="Ambiente" value={eq ? environmentName(db, eq.environmentId) : undefined} />
-                </div>
-              </Stack>
-            </div>
-          </Card>
+          {eqCard}
         </Col>
       </Grid>
       </div>
@@ -741,16 +913,7 @@ function OsScreen() {
         </Col>
       </Grid>
 
-    <DevNote note="RF503-CTA004: log automático de toda interação (status, atribuição, anexos, visitas, custos, aprovação, validação) com autor, data e hora - mais recente primeiro. O histórico completo fica na aba Resumo (não há aba Atividades); carregamento progressivo com “Carregar mais”.">
-      <Card title="Histórico de atividades" subtitle="Registro das ações e alterações realizadas nesta OS">
-        <div className="card-body-tight">
-          <Stack gap="md">
-            {history.length ? <ActivityTimeline items={history.slice(0, histShown)} /> : <Text>Nenhuma atividade registrada</Text>}
-            {history.length > histShown && <Stack direction="horizontal"><Button size="sm" variant="secondary" onClick={() => setHistShown((n) => n + 10)}>Carregar mais</Button></Stack>}
-          </Stack>
-        </div>
-      </Card>
-    </DevNote>
+    {historyCard}
     </Stack>
   );
 
@@ -814,8 +977,8 @@ function OsScreen() {
   );
 
   // ── Arquivos ──
-  type FileRow = Record<string, unknown> & { id: string; name: string; kind: keyof typeof FILE_KIND; at: string; by: string };
-  const fileRows: FileRow[] = order.files.map((f) => ({ id: f.id, name: f.name, kind: f.kind, at: f.at, by: f.by }));
+  type FileRow = Record<string, unknown> & { id: string; name: string; kind: keyof typeof FILE_KIND; at: string; by: string; ev?: string };
+  const fileRows: FileRow[] = order.files.map((f) => ({ id: f.id, name: f.name, kind: f.kind, at: f.at, by: f.by, ev: f.evidence ? `${f.evidence}${f.moment ? ` (${f.moment})` : ''}` : undefined }));
   const fileIcon = (k: keyof typeof FILE_KIND) => (k === 'orcamento' ? <IconFileInvoice size={20} aria-hidden="true" /> : k === 'foto' ? <IconPhoto size={20} aria-hidden="true" /> : <IconFileText size={20} aria-hidden="true" />);
   const openFile = (r: FileRow) => (r.kind === 'foto' || photoSrc(r.name) ? setPreview({ name: r.name, kind: r.kind }) : toast.show({ type: 'info', title: 'Visualização simulada', message: `${r.name}: a prévia de documentos é simulada no protótipo.` }));
   const fileCell = (r: FileRow) => (
@@ -836,15 +999,20 @@ function OsScreen() {
       actions={canEdit ? <Button size="sm" iconLeft={<IconFilePlus size={16} />} onClick={() => setDlg('file')}>Anexar arquivo</Button> : undefined}
       columns={[
         { key: 'name', label: 'Arquivo', render: (_, r) => fileCell(r) },
-        { key: 'kind', label: 'Tipo', render: (v) => <Badge status="neutral">{FILE_KIND[v as keyof typeof FILE_KIND]}</Badge> },
+        { key: 'kind', label: 'Tipo', render: (v, r) => <Badge status="neutral">{r.ev ?? FILE_KIND[v as keyof typeof FILE_KIND]}</Badge> },
         { key: 'by', label: 'Enviado por' }, { key: 'at', label: 'Em', render: (v) => formatDateTime(String(v)) },
         { key: 'id', label: 'Ações', sticky: 'right', render: (_, r) => fileActions(r) },
       ]}
-      toCard={(r) => ({ title: fileCell(r), subtitle: FILE_KIND[r.kind], fields: [{ label: 'Enviado por', value: r.by }, { label: 'Em', value: formatDateTime(r.at) }], actions: fileActions(r) })}
+      toCard={(r) => ({ title: fileCell(r), subtitle: r.ev ?? FILE_KIND[r.kind], fields: [{ label: 'Enviado por', value: r.by }, { label: 'Em', value: formatDateTime(r.at) }], actions: fileActions(r) })}
     />
   );
 
-  const tabs = [
+  const tabs = order.kind === 'preventiva' ? [
+    { label: 'Resumo', content: prevSummary },
+    { label: 'Execução', content: prevExecution },
+    ...(showCosts ? [{ label: 'Custos', content: costs }] : []),
+    { label: 'Arquivos', content: files },
+  ] : [
     { label: 'Resumo', content: summary },
     { label: `Visitas (${order.visits.length})`, content: visits },
     ...(showCosts ? [{ label: 'Custos', content: costs }] : []),
@@ -867,6 +1035,9 @@ function OsScreen() {
   type NextAct = { title: string; who: string; note?: string; primary?: { label: string; onClick: () => void }; secondary?: { label: string; onClick: () => void } };
   const nextAction = ((): NextAct | null => {
     if (!editable) return null;
+    if (order.kind === 'preventiva') {
+      return { title: 'Executar manutenção preventiva', who: execName, note: order.statusId === STO.ANDAMENTO ? 'A execução está em andamento' : undefined, primary: canExecute ? { label: 'Abrir execução', onClick: goExecution } : undefined };
+    }
     const v = order.validation;
     let act: NextAct;
     if (order.statusId === STO.VALIDACAO) act = { title: 'Validar a conclusão', who: v?.assignedTo ?? respName, note: 'O solicitante confirma se o problema foi resolvido' };
@@ -906,6 +1077,15 @@ function OsScreen() {
           />
           <DevNote note="RF503 - informações gerais: tipo, prioridade, prazo e responsável pela OS, integradas ao cabeçalho (o status fica só no título). Prazo ultrapassado e não concluída é destacado (RF501-RGN003; SLA é FE001, fora do escopo).">
             <Card className="os-meta" padding="none">
+              {order.kind === 'preventiva' ? (
+                <dl className="os-meta-5" aria-label="Informações gerais da OS">
+                  <div><dt>Tipo de manutenção</dt><dd>{refs.maintType(order.maintTypeId)?.name ?? 'Preventiva'}</dd></div>
+                  <div><dt>Plano de manutenção</dt><dd>{plan ? <a className="text-link" href={`plano.html?id=${plan.id}`}>{plan.name}</a> : '-'}</dd></div>
+                  <div><dt>Data prevista</dt><dd>{formatDate(order.dueAt)}</dd></div>
+                  <div><dt>Executor responsável</dt><dd>{executorValue}</dd></div>
+                  <div><dt>Situação do prazo</dt><dd>{execBadge}</dd></div>
+                </dl>
+              ) : (
               <dl aria-label="Informações gerais da OS">
                 <div><dt>Tipo de manutenção</dt><dd>{refs.maintType(order.maintTypeId)?.name ?? '-'}</dd></div>
                 <div><dt>Prioridade</dt><dd>{refs.priorityBadge(order.priorityId)}</dd></div>
@@ -917,6 +1097,7 @@ function OsScreen() {
                 </div>
                 <div><dt>Responsável pela OS</dt><dd>{respName}</dd></div>
               </dl>
+              )}
             </Card>
           </DevNote>
         </Stack>
@@ -973,7 +1154,7 @@ function OsScreen() {
         </DevNote>
 
         {order.statusId === STO.CANCELADA && <Feedback type="warning" title="OS cancelada" message={order.cancelReason ? `Motivo: ${order.cancelReason}` : 'Esta OS foi cancelada.'} />}
-        {base === 'concluido' && <Feedback type="success" title="OS concluída" message="A OS foi validada e está somente para leitura. A solicitação de origem foi encerrada." />}
+        {base === 'concluido' && order.kind !== 'preventiva' && <Feedback type="success" title="OS concluída" message="A OS foi validada e está somente para leitura. A solicitação de origem foi encerrada." />}
         {blocked && editable && order.statusId !== STO.APROVACAO && <Feedback type="warning" title="Execução bloqueada" message="Esta OS tem orçamento sem aprovação. Ela só avança para a execução depois que um usuário do assinante aprovar (RGN002)." />}
 
         {awaitingValidation && <ValidationCard order={order} defaultOpen={mode === 'validate' || mode === 'validateno'} defaultResult={mode === 'validate' ? 'sim' : mode === 'validateno' ? 'nao' : undefined} />}

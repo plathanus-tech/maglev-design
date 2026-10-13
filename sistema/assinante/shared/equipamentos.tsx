@@ -1,4 +1,5 @@
 import { ReactElement, ReactNode, useEffect, useMemo, useState } from 'react';
+import { CategoryIcon } from '../../admin/shared/IconPicker';
 import {
   IconAlertTriangle, IconChevronDown, IconClipboardList, IconChecklist, IconChevronRight, IconCircleCheck, IconCircleOff, IconEye, IconMicrowave,
   IconPencil, IconPlayerStop, IconPlus, IconQrcode, IconReportMoney, IconSearch, IconTool, IconBuildingStore, IconLayoutGrid, IconPhoto, IconPrinter,
@@ -46,6 +47,11 @@ function EquipamentosScreen() {
   const isMobile = useIsMobile();
   const { db, can, unitIds, canSeeCosts } = useSubSession();
   const refs = useRefs();
+  // Ícone herdado da categoria cadastrada no Admin (sem ícone, só o conteúdo)
+  const WithIcon = ({ e, children }: { e?: Equipment; children: ReactNode }) => {
+    const icon = e ? refs.category(e.categoryId)?.icon : undefined;
+    return icon ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={icon} size={20} />{children}</Stack> : <>{children}</>;
+  };
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const eqStatuses = refs.activeStatuses('equipamento');
   const statusIdByVisual = (v: string) => eqStatuses.find((s) => s.visual === v)?.id ?? ALL;
@@ -266,7 +272,7 @@ function EquipamentosScreen() {
   const nextCell = (date?: string) => (date ? <span className={isOverdue(date) ? 'eq-overdue' : undefined}>{formatDate(date)}{isOverdue(date) ? ' · vencida' : ''}</span> : '-');
   const columns: TableColumn<Row>[] = [
     { key: 'name', label: 'Equipamento', sortable: true, render: (_, r) => <CellPair primary={<a className="text-link" href={`equipamento.html?id=${r.id}`}>{r.name}</a>} secondary={r.code || r.id} /> },
-    { key: 'categoryName', label: 'Categoria' },
+    { key: 'categoryName', label: 'Categoria', render: (v, r) => <WithIcon e={r.equipment}>{String(v)}</WithIcon> },
     { key: 'unitName', label: 'Unidade' },
     { key: 'envName', label: 'Ambiente' },
     { key: 'statusId', label: 'Status', render: (v) => refs.statusBadge(String(v)) },
@@ -314,7 +320,7 @@ function EquipamentosScreen() {
       stickyFooter={selectMode && selectedCount > 0 ? <Button iconLeft={<IconPrinter size={20} />} onClick={() => setBatchOpen(true)}>{selectedCount === 1 ? 'Imprimir 1 etiqueta' : `Imprimir ${selectedCount} etiquetas`}</Button> : undefined}
       page={page} pageSize={PAGE_SIZE} total={rows.length} onPageChange={setPage}
       items={pageRows.map((r): MobileCardItem => ({
-        id: r.id, title: r.name, subtitle: r.code || r.id, badge: refs.statusBadge(r.statusId),
+        id: r.id, title: <WithIcon e={r.equipment}>{r.name}</WithIcon>, subtitle: r.code || r.id, badge: refs.statusBadge(r.statusId),
         fields: fieldsFor([
           { label: 'Categoria', value: r.categoryName }, { label: 'Criticidade', value: refs.criticalityBadge(r.criticalityId) },
           { label: 'Unidade', value: r.unitName }, { label: 'Ambiente', value: r.envName },
@@ -369,7 +375,7 @@ function EquipamentosScreen() {
           {expandButton(r)}
           {treeLead(r)}
           <CellPair
-            primary={r.kind === 'eq' ? <a className="text-link" href={`equipamento.html?id=${r.rowId}`}>{r.name}</a> : <strong>{r.name}</strong>}
+            primary={r.kind === 'eq' ? <WithIcon e={r.equipment}><a className="text-link" href={`equipamento.html?id=${r.rowId}`}>{r.name}</a></WithIcon> : <strong>{r.name}</strong>}
             secondary={`${KIND_LABEL[r.kind]} · ${r.sub || '-'}`}
           />
         </Stack>
@@ -437,7 +443,7 @@ function EquipamentosScreen() {
                         <span className="mtree-spacer" aria-hidden="true" />
                         <span className="tree-lead tree-lead--eq" aria-hidden="true">{eqThumb(e)}</span>
                         <div className="mtree-text">
-                          <a className="text-link mtree-name" href={`equipamento.html?id=${e.id}`}>{e.name}</a>
+                          <WithIcon e={e}><a className="text-link mtree-name" href={`equipamento.html?id=${e.id}`}>{e.name}</a></WithIcon>
                           <span className="cell-secondary">{`${KIND_LABEL.eq} · ${e.code || '-'}`}</span>
                           {refs.statusBadge(e.statusId)}
                         </div>

@@ -1,5 +1,5 @@
 import { KeyboardEvent, ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { IconBuildingStore, IconClipboardList, IconHelp, IconMessageReport, IconMicrowave, IconSearch, IconTruck } from '@tabler/icons-react';
+import { IconBuildingStore, IconClipboardList, IconHelp, IconMessageReport, IconMicrowave, IconSearch, IconTool } from '@tabler/icons-react';
 import { Button, Input, Spinner, Tooltip } from '@maglev/ds';
 import { normalize } from '../../admin/shared/format';
 import { SubDb } from './data';
@@ -20,7 +20,7 @@ const GROUPS: Array<{ kind: Kind; label: string; icon: ReactNode }> = [
   { kind: 'os', label: 'Ordens de serviço', icon: <IconClipboardList size={16} /> },
   { kind: 'solicitacoes', label: 'Solicitações', icon: <IconMessageReport size={16} /> },
   { kind: 'unidades', label: 'Unidades', icon: <IconBuildingStore size={16} /> },
-  { kind: 'prestadores', label: 'Prestadores', icon: <IconTruck size={16} /> },
+  { kind: 'prestadores', label: 'Prestadores', icon: <IconTool size={16} /> },
 ];
 const PER_GROUP = 4;
 const MIN_CHARS = 2;

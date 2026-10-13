@@ -7,7 +7,7 @@ import { useHashState } from '../../admin/shared/useHashState';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { ProviderContact, Technician, WorkOrder } from './data';
 import { ResponsiveTable } from './ListKit';
-import { PROVIDER_KIND_LABEL, formatCpf, mainContact, orderCompletedAt, orderCostCents, providerName, providerOrders, withinDays } from './prestadores';
+import { PROVIDER_KIND_LABEL, docKind, formatCpf, mainContact, orderCompletedAt, orderCostCents, providerName, providerOrders, techSpecialtiesText, withinDays } from './prestadores';
 import { ProviderStatusDialog } from './ProviderStatusDialog';
 import { unitName, useSubSession } from './store';
 import { Col, Grid, ReadField, goTo, param, recordStatusBadge, takeFlash, useRefs } from './ui';
@@ -15,7 +15,15 @@ import { Col, Grid, ReadField, goTo, param, recordStatusBadge, takeFlash, useRef
 /** Estados: idle · inactivate / activate (RF701 - confirmação a partir do perfil) */
 const STATES = ['idle', 'inactivate', 'activate'] as const;
 type Mode = (typeof STATES)[number];
-const PERIOD_DAYS = 90;
+const PERIOD_DAYS = 30;
+/** Duração média legível: abaixo de 1 dia em horas (ou minutos), a partir de 1 dia em dias */
+const formatDuration = (days: number) => {
+  const hours = days * 24;
+  if (hours < 1) return `${Math.max(Math.round(hours * 60), 1)} min`;
+  if (days < 1) return `${Math.round(hours)} h`;
+  const n = Math.round(days * 10) / 10;
+  return `${String(n).replace('.', ',')} ${n === 1 ? 'dia' : 'dias'}`;
+};
 
 type OrderRow = Record<string, unknown> & { id: string; order: WorkOrder; equipment: string; at: string; cost: number };
 type ContactRow = Record<string, unknown> & ProviderContact;
@@ -85,7 +93,7 @@ function PrestadorScreen() {
   ];
   const techCols: TableColumn<TechRow>[] = [
     { key: 'name', label: 'Nome' },
-    { key: 'specialty', label: 'Especialidade', render: (v) => (v ? String(v) : '-') },
+    { key: 'specialties', label: 'Especialidades', render: (_, t) => (t.specialties.length ? techSpecialtiesText(t) : '-') },
     { key: 'phone', label: 'Telefone', render: (v) => (v ? noBreak(formatPhone(String(v))) : '-') },
     { key: 'email', label: 'E-mail', render: (v) => (v ? String(v) : '-') },
   ];
@@ -98,7 +106,7 @@ function PrestadorScreen() {
           <Grid>
             <Col span={6}><ReadField label={company ? 'Razão social' : 'Nome do prestador'} value={p.name} /></Col>
             <Col span={6}><ReadField label="Nome fantasia" value={p.tradeName} /></Col>
-            <Col span={6}><ReadField label={company ? 'CNPJ' : 'CPF'} value={company ? formatCnpj(p.doc) : formatCpf(p.doc)} /></Col>
+            <Col span={6}><ReadField label={company ? 'CNPJ' : docKind(p.doc)} value={company || docKind(p.doc) === 'CNPJ' ? formatCnpj(p.doc) : formatCpf(p.doc)} /></Col>
             <Col span={6}><ReadField label="Tipo" value={PROVIDER_KIND_LABEL[p.kind]} /></Col>
             <Col span={6}><ReadField label="Responsável" value={main ? `${main.name} · ${main.role}` : undefined} /></Col>
             <Col span={6}><ReadField label="Contato" value={main ? `${formatPhone(main.phone)} · ${main.email}` : undefined} /></Col>
@@ -107,7 +115,7 @@ function PrestadorScreen() {
         </div>
       </Card>
 
-      <Card className="card-open" title="Atuação" subtitle="O que o prestador atende e onde">
+      <Card className="card-open" title="Atuação" subtitle="Defina os serviços prestados e as regiões atendidas">
         <div className="card-body-tight">
           <Grid>
             <Col span={6}><ReadField label="Especialidades" value={p.specialties.join(', ')} /></Col>
@@ -134,12 +142,12 @@ function PrestadorScreen() {
         />
       </DevNote>
 
-      <DevNote note="RF702-RGN002: um prestador pode ter vários técnicos, de especialidades diferentes.">
+      {p.kind !== 'autonomo' && <DevNote note="RF702-RGN002: um prestador pode ter vários técnicos, de especialidades diferentes.">
         <ResponsiveTable<TechRow>
           id="provider-techs" title="Técnicos vinculados" subtitle={`${p.technicians.length} ${p.technicians.length === 1 ? 'técnico' : 'técnicos'}`} columns={techCols} rows={p.technicians as TechRow[]} emptyTitle="Nenhum técnico vinculado"
-          card={(t) => ({ id: t.id, title: t.name, subtitle: t.specialty || undefined, fields: [{ label: 'Telefone', value: t.phone ? noBreak(formatPhone(t.phone)) : '-' }, { label: 'E-mail', value: t.email || '-' }] })}
+          card={(t) => ({ id: t.id, title: t.name, subtitle: techSpecialtiesText(t) || undefined, fields: [{ label: 'Telefone', value: t.phone ? noBreak(formatPhone(t.phone)) : '-' }, { label: 'E-mail', value: t.email || '-' }] })}
         />
-      </DevNote>
+      </DevNote>}
     </Stack>
   );
 
@@ -190,7 +198,7 @@ function PrestadorScreen() {
           <Grid>
             <Col span={kpiCols as 4 | 6} fill><KpiCard label={`OS · ${PERIOD_DAYS} dias`} value={formatNumber(inPeriod.length)} description="Abertas no período" icon={<IconClipboardList size={20} />} /></Col>
             <Col span={kpiCols as 4 | 6} fill>
-              <KpiCard label="Tempo médio de atendimento" value={avgDays === null ? '-' : `${avgDays.toFixed(1).replace('.', ',')} dias`} description="Da abertura à conclusão" icon={<IconClock size={20} />} />
+              <KpiCard label="Tempo médio de atendimento" value={avgDays === null ? '-' : formatDuration(avgDays)} description="Da abertura à conclusão" icon={<IconClock size={20} />} />
             </Col>
             {canSeeCosts && (
               <Col span={4} mobileFull fill><KpiCard label={`Custo total · ${PERIOD_DAYS} dias`} value={formatMoney(totalCost)} description="Das OS concluídas no período" icon={<IconReportMoney size={20} />} /></Col>

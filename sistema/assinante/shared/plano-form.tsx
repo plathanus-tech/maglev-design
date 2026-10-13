@@ -5,6 +5,7 @@ import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, requiredMessage } from '../../admin/shared/format';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { CHECKLIST_KIND_LABEL, ChecklistItem, ChecklistKind, EVIDENCE_OPTIONS, NO_UNIT, READING_UNITS, Executor, Frequency, Plan, nowLocal } from './data';
+import { techSpecialtiesText } from './prestadores';
 import { CheckGroup } from './ListKit';
 import { FormStepper, FormStepState } from './form-stepper';
 import { useLeaveGuard } from './leave-guard';
@@ -426,12 +427,12 @@ function PlanoFormScreen() {
               </Col>
               {providerInactive && <Col span={12}><Feedback type="warning" title="Prestador inativo" message="O prestador padrão deste plano está inativo e não é ofertado. Escolha outro" /></Col>}
               {providers.length === 0 && <Col span={12}><Feedback type="info" message="Nenhum prestador ativo atende todas as categorias dos equipamentos selecionados. Revise a seleção no passo 1 ou cadastre um prestador" /></Col>}
-              <Col span={12}>
+              {provider?.kind !== 'autonomo' && <Col span={12}>
                 <Dropdown
                   optional label="Técnico" placeholder="Qualquer técnico do prestador" value={d.technician} onChange={(v) => set('technician', v)}
-                  options={[{ value: '', label: 'Qualquer técnico do prestador' }, ...(provider?.technicians ?? []).map((t) => ({ value: t.name, label: `${t.name} · ${t.specialty}` }))]}
+                  options={[{ value: '', label: 'Qualquer técnico do prestador' }, ...(provider?.technicians ?? []).map((t) => ({ value: t.name, label: t.specialties.length ? `${t.name} · ${techSpecialtiesText(t)}` : t.name }))]}
                 />
-              </Col>
+              </Col>}
             </>
           )}
         </Grid>
@@ -592,7 +593,7 @@ function PlanoFormScreen() {
           <Grid>
             <Col span={6}><ReadField label="Tipo de executor" value={d.executorKind === 'interno' ? 'Equipe interna' : d.executorKind === 'prestador' ? 'Prestador externo' : undefined} /></Col>
             <Col span={6}><ReadField label={d.executorKind === 'prestador' ? 'Prestador padrão' : 'Executor padrão'} value={execName} /></Col>
-            {d.executorKind === 'prestador' && <Col span={12}><ReadField label="Técnico" value={d.technician || 'Qualquer técnico do prestador'} /></Col>}
+            {d.executorKind === 'prestador' && provider?.kind !== 'autonomo' && <Col span={12}><ReadField label="Técnico" value={d.technician || 'Qualquer técnico do prestador'} /></Col>}
           </Grid>
         </div>
       </Card>
