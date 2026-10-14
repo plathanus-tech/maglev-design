@@ -11,7 +11,7 @@
   justify-content: center;
   padding: var(--spacing-lg) var(--spacing-md);
   background-color: var(--color-bg-default);
-  background-image: url('../../../BG%20tela%20de%20login.png');
+  background-image: url('../../assets/bg-login.png');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
