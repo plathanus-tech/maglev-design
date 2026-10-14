@@ -4,12 +4,13 @@ import { Avatar, Button, Tooltip } from '@maglev/ds';
 import { useTheme } from './theme';
 
 /** Alternância direta claro/escuro: só o ícone, com nome acessível e dica indicando a ação. */
-export function ThemeButton() {
+/** `placement`: onde o tooltip abre; no último item do cabeçalho (telas externas) use "left" para ele não passar da borda da tela. */
+export function ThemeButton({ placement = 'bottom' }: { placement?: 'top' | 'bottom' | 'left' | 'right' } = {}) {
   const [theme, setTheme] = useTheme();
   const dark = theme === 'dark';
   const label = dark ? 'Ativar modo claro' : 'Ativar modo escuro';
   return (
-    <Tooltip content={label} placement="bottom">
+    <Tooltip content={label} placement={placement}>
       <Button
         variant="ghost"
         iconOnly

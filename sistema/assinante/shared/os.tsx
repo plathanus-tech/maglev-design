@@ -18,8 +18,9 @@ import { photoSrc } from './photos';
 import { IMPACT_LABEL, COST_KIND_LABEL, CostKind, NO_UNIT, WorkOrder, nowLocal } from './data';
 import { equipmentOf, environmentName, logEntry, notify, ordersVisible, unitName, updateSubDb, useSubSession, userName } from './store';
 import { CellPair, Col, Grid, ReadField, RowAction, RowActions, Text, TroubleshootingNotes, goTo, param, takeFlash, useRefs } from './ui';
+import { AttachmentsField, AttachmentsStack, AttachmentsView, namesOf, Picked } from './attachments';
 import {
-  ReassignDialog, STO, executorInfo, executorText, isEditable, notifyProviderLog, overdueDays, parseCents, patchOrder, providerLabel,
+  AttachmentField, ReassignDialog, STO, applyOrderValidation, applyOrderConclusion, executorInfo, executorText, isEditable, notifyProviderLog, overdueDays, parseCents, patchOrder, providerLabel,
 } from './os-common';
 import './os.css';
 import './solicitacao.css';
@@ -159,27 +160,6 @@ function Progress({ order, base, children }: { order: WorkOrder; base: string | 
   );
 }
 
-/** Anexo (ImageUpload do DS, o mesmo de Nova solicitação) com envio simulado: guarda só o nome do arquivo; imagens ganham miniatura. */
-function AttachmentField({ label, value, onChange, required, error }: { label: string; value: string; onChange: (name: string) => void; required?: boolean; error?: string }) {
-  const [loading, setLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string>();
-  const timer = useRef<number>();
-  useEffect(() => () => { window.clearTimeout(timer.current); }, []);
-  useEffect(() => { if (!value) setPreviewUrl(undefined); }, [value]);
-  const onFile = (file: File | null) => {
-    if (!file) { setPreviewUrl(undefined); onChange(''); return; }
-    setLoading(true);
-    timer.current = window.setTimeout(() => { setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined); onChange(file.name); setLoading(false); }, 600);
-  };
-  return (
-    <ImageUpload
-      label={label} optional={!required} error={error} fileName={value} previewUrl={previewUrl} loading={loading} onChange={onFile}
-      accept="image/png,image/jpeg,application/pdf" helperText="JPG, PNG ou PDF"
-      labels={{ add: 'Adicionar anexo', replace: 'Trocar anexo', remove: 'Remover anexo', loading: 'Enviando anexo...', invalidType: 'Envie um arquivo JPG, PNG ou PDF' }}
-    />
-  );
-}
-
 // ───────────────────────── Diálogos ─────────────────────────
 function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setDlg: (d: Dlg) => void; preset?: string }) {
   const toast = useToast();
@@ -195,10 +175,11 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [file, setFile] = useState('');
+  const [costFiles, setCostFiles] = useState<Picked[]>([]);
   const [tried, setTried] = useState(false);
   const key = typeof dlg === 'object' && dlg ? 'rm' : dlg;
   useEffect(() => {
-    setTried(false); setVal(''); setFile(''); setDate(''); setFrom(''); setTo('');
+    setTried(false); setVal(''); setFile(''); setCostFiles([]); setDate(''); setFrom(''); setTo('');
     if (dlg === 'status') { setSel(preset ?? ''); setText(''); }
     else if (dlg === 'diagnosis') { setText(order.diagnosis ?? ''); setText2(order.solution ?? ''); }
     else if (dlg === 'conclude') { setText(order.solution ?? ''); }
@@ -314,8 +295,8 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
       if (!text.trim() || cents === null) return;
       const id = `C${Date.now().toString(36)}`;
       patchOrder(order.id, user.name, (o) => ({
-        ...o, costs: [...o.costs, { id, kind: sel as CostKind, description: text.trim(), cents, attachment: file || undefined }],
-        files: file ? [...o.files, { id: `F${id}`, name: file, kind: 'outro', at: nowLocal(), by: user.name }] : o.files,
+        ...o, costs: [...o.costs, { id, kind: sel as CostKind, description: text.trim(), cents, attachment: costFiles[0]?.name, attachments: costFiles.length ? costFiles.map((f) => f.name) : undefined }],
+        files: [...o.files, ...costFiles.map((f, i) => ({ id: `F${id}${i}`, name: f.name, kind: 'outro' as const, at: nowLocal(), by: user.name }))],
       }), [`Adicionou item de custo (${COST_KIND_LABEL[sel as CostKind]}): ${text.trim()}`]);
       toast.show({ type: 'success', title: 'Item de custo adicionado', message: 'O custo realizado alimenta o gasto do equipamento.' });
       close();
@@ -327,7 +308,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
             <Col span={12}><Dropdown label="Tipo" required options={Object.entries(COST_KIND_LABEL).map(([value, label]) => ({ value, label }))} value={sel} onChange={setSel} /></Col>
             <Col span={12}><Input label="Descrição" required autoComplete="off" value={text} onChange={(ev) => setText(ev.target.value)} error={e.desc} /></Col>
             <Col span={12}><Input label="Valor (R$)" required inputMode="numeric" autoComplete="off" placeholder="0,00" value={val} onChange={(ev) => setVal(maskMoney(ev.target.value))} error={e.val} /></Col>
-            <Col span={12}><AttachmentField label="Anexo" value={file} onChange={setFile} /></Col>
+            <Col span={12}><AttachmentsField label="Anexos" items={costFiles} onChange={setCostFiles} /></Col>
           </Grid>
         </DevNote>
       </Dialog>
@@ -403,10 +384,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
     const go = () => {
       setTried(true);
       if (!text.trim()) return;
-      const who = req?.requesterName ?? order.contactName;
-      patchOrder(order.id, user.name, (o) => ({ ...o, statusId: STO.VALIDACAO, solution: text.trim(), validation: { requestedAt: nowLocal(), assignedTo: who } }),
-        [`Indicou a conclusão - status: Aguardando validação (validação de ${who})`]);
-      notify(req?.requesterUserId ? [req.requesterUserId] : db.users.filter((u) => u.status === 'ativo' && u.name === who).map((u) => u.id), { kind: 'os', title: 'Validação pendente', text: `${order.id}: o problema foi resolvido?`, href });
+      applyOrderConclusion(db, order, text, user.name);
       toast.show({ type: 'success', title: 'Conclusão indicada', message: 'O solicitante foi notificado para validar.' });
       close();
     };
@@ -490,24 +468,9 @@ function ValidationCard({ order, defaultOpen, defaultResult }: { order: WorkOrde
   const submit = () => {
     setTried(true);
     if (!result || (result === 'nao' && !comment.trim())) return;
-    const by = onBehalf ? `em nome de ${v.assignedTo}` : '';
-    const note = comment.trim() ? `: ${comment.trim()}` : '';
-    const now = nowLocal();
-    if (result === 'sim') {
-      patchOrder(order.id, user.name, (o) => ({ ...o, statusId: STO.CONCLUIDA, validation: { ...v, result: 'sim', comment: comment.trim() || undefined, at: now } }),
-        [`${onBehalf ? `Registrou a validação ${by}` : 'Validou a conclusão'}: o problema foi resolvido${note}`, 'OS concluída - a solicitação de origem foi encerrada com ela']);
-      updateSubDb((d) => ({
-        ...d,
-        requests: d.requests.map((r) => (r.id === order.requestId ? { ...r, log: [...r.log, logEntry(user.name, `Encerrada com a conclusão da ${order.id} após a validação`)] } : r)),
-        equipments: d.equipments.map((e) => (e.id === order.equipmentId && e.statusId === 'STE-04' && !d.orders.some((x) => x.id !== order.id && x.equipmentId === e.id && x.statusId !== STO.CONCLUIDA && x.statusId !== STO.CANCELADA) ? { ...e, statusId: 'STE-01' } : e)),
-      }));
-      toast.show({ type: 'success', title: 'OS concluída', message: 'A solicitação de origem foi encerrada junto com a OS.' });
-    } else {
-      patchOrder(order.id, user.name, (o) => ({ ...o, statusId: STO.ANDAMENTO, validation: { ...v, result: 'nao', comment: comment.trim(), at: now } }),
-        [`${onBehalf ? `Registrou a validação ${by}` : 'Validou a conclusão'}: o problema NÃO foi resolvido${note} - status: Em andamento`]);
-      notify([order.responsibleId, ...(order.executor.kind === 'interno' ? [order.executor.userId] : [])], { kind: 'os', title: 'Validação recusada', text: `${order.id}: o solicitante informou que o problema persiste`, href });
-      toast.show({ type: 'warning', title: 'OS reaberta para ação', message: 'O comentário foi enviado ao responsável e ao executor.' });
-    }
+    applyOrderValidation(order, result, comment, user.name, onBehalf ? v.assignedTo : undefined, href);
+    if (result === 'sim') toast.show({ type: 'success', title: 'OS concluída', message: 'A solicitação de origem foi encerrada junto com a OS.' });
+    else toast.show({ type: 'warning', title: 'OS reaberta para ação', message: 'O comentário foi enviado ao responsável e ao executor.' });
   };
   const copy = async () => {
     const link = `${location.origin}/assinante/screens/${href}`;
@@ -611,11 +574,16 @@ function OsScreen() {
     ? <a className="text-link" href={`prestador.html?id=${order.executor.providerId}`}>{executorText(db, order.executor)}</a>
     : `${exec.name} (interno)`;
 
-  // Valores financeiros: orçado ≠ aprovado ≠ realizado (RF503). O orçamento só entra em "aprovado" depois da decisão e em "realizado" como item de custo lançado.
-  const budgeted = order.budget?.cents ?? order.costs.filter((c) => c.kind === 'orcamento').reduce((n, c) => n + c.cents, 0);
-  const approved = order.budget?.decision === 'aprovado' ? order.budget.cents : 0;
-  const realized = order.costs.filter((c) => !(c.kind === 'orcamento' && order.budget && order.budget.decision !== 'aprovado')).reduce((n, c) => n + c.cents, 0);
-  const budgetNote = !order.budget ? (budgeted ? 'Orçamento lançado como item de custo' : 'Sem orçamento') : order.budget.decision === 'aprovado' ? 'Orçamento aprovado' : order.budget.decision === 'reprovado' ? 'Orçamento reprovado' : 'Aguardando aprovação';
+  // Valores financeiros (RF503): três etapas distintas, e um valor pode aparecer em mais de uma.
+  // Orçado = orçamento do prestador (pendente ou aprovado; o reprovado não conta), sem duplicar o item espelho na lista de custos.
+  // Aprovado = orçamento aprovado + itens lançados direto no sistema do assinante (não passam pela aprovação do prestador).
+  // Realizado = itens lançados direto; o orçamento aprovado não vira custo realizado sozinho.
+  // 💡 Limitação: o modelo não distingue custo previsto de realizado nos itens lançados no sistema, então todo item lançado conta como realizado (a validar).
+  const directCosts = order.costs.filter((c) => !(c.kind === 'orcamento' && order.budget));
+  const directTotal = directCosts.reduce((n, c) => n + c.cents, 0);
+  const budgeted = order.budget ? (order.budget.decision === 'reprovado' ? 0 : order.budget.cents) : 0;
+  const approved = (order.budget?.decision === 'aprovado' ? order.budget.cents : 0) + directTotal;
+  const realized = directTotal;
 
   const eqCard = (
           <Card title="Equipamento">
@@ -892,7 +860,7 @@ function OsScreen() {
                   <Col span={6}><ReadField label="Valor" value={canSeeCosts ? formatMoney(order.budget.cents) : 'Restrito ao Administrador e ao Gestor'} /></Col>
                   <Col span={6}><ReadField label="Registrado por" value={`${order.budget.by} em ${formatDate(order.budget.registeredAt)}`} /></Col>
                   <Col span={12}><ReadField label="Descrição" value={order.budget.description} /></Col>
-                  <Col span={6}><ReadField label="Anexo" value={attachmentLink(order.budget.attachment)} /></Col>
+                  <Col span={6}><ReadField label="Anexos" value={<AttachmentsStack names={namesOf(order.budget)} label="orçamento" />} /></Col>
                   {order.budget.justification && <Col span={6}><ReadField label="Justificativa" value={order.budget.justification} /></Col>}
                 </Grid>
               </div>
@@ -944,8 +912,8 @@ function OsScreen() {
   );
 
   // ── Custos ──
-  type CostRow = Record<string, unknown> & { id: string; kind: string; isBudget: boolean; description: string; cents: number; attachment?: string };
-  const costRows: CostRow[] = order.costs.map((c) => ({ id: c.id, kind: COST_KIND_LABEL[c.kind], isBudget: c.kind === 'orcamento', description: c.description, cents: c.cents, attachment: c.attachment }));
+  type CostRow = Record<string, unknown> & { id: string; kind: string; isBudget: boolean; description: string; cents: number; attachments: string[] };
+  const costRows: CostRow[] = order.costs.map((c) => ({ id: c.id, kind: COST_KIND_LABEL[c.kind], isBudget: c.kind === 'orcamento', description: c.description, cents: c.cents, attachments: namesOf(c) }));
   const money = (c: number) => (canSeeCosts ? formatMoney(c) : 'Restrito');
   const rmBtn = (r: CostRow) => (canEdit ? <RowActions><RowAction icon={<IconTrash size={16} />} label="Remover item de custo" target={r.description} onClick={() => setDlg({ rm: r.id })} /></RowActions> : undefined);
   // Item "Orçamento de prestador" ainda não aprovado não é custo realizado: aparece com a situação da decisão
@@ -954,11 +922,11 @@ function OsScreen() {
   const costs = (
     <Stack gap="md">
       {canSeeCosts ? (
-        <DevNote note="Totais: orçado = valor do orçamento registrado; aprovado = só depois da decisão de um usuário do assinante; realizado = soma dos itens de custo lançados (o orçamento ainda não aprovado ou reprovado não entra). Um orçamento não é custo realizado enquanto não for aprovado. RGN003: os realizados alimentam o gasto do equipamento (RF304) e o Dashboard. Só Administrador e Gestor veem valores (RF304-RGN003).">
+        <DevNote note="Totais: orçado = orçamento enviado pelo prestador (pendente ou aprovado); aprovado = orçamento aprovado por um usuário do assinante + itens lançados direto no sistema; realizado = itens lançados direto (o orçamento aprovado não vira custo realizado sozinho). 💡 O modelo não distingue previsto de realizado nos itens lançados: pendente de validação. Um orçamento não é custo realizado enquanto não for aprovado. RGN003: os realizados alimentam o gasto do equipamento (RF304) e o Dashboard. Só Administrador e Gestor veem valores (RF304-RGN003).">
           <Grid>
-            <Col span={4} fill><KpiCard label="Orçado" value={formatMoney(budgeted)} description={budgetNote} /></Col>
-            <Col span={4} fill><KpiCard label="Aprovado" value={formatMoney(approved)} description={order.budget?.decision === 'aprovado' ? `Por ${order.budget.decidedBy}` : order.budget && !order.budget.decision ? 'Pendente de aprovação' : 'Nenhum orçamento aprovado'} /></Col>
-            <Col span={4} mobileFull fill><KpiCard label="Realizado" value={formatMoney(realized)} description="Soma dos itens de custo lançados" /></Col>
+            <Col span={4} fill><KpiCard label="Orçado" value={formatMoney(budgeted)} description="Total de orçamentos recebidos" /></Col>
+            <Col span={4} fill><KpiCard label="Aprovado" value={formatMoney(approved)} description="Total de custos autorizados" /></Col>
+            <Col span={4} mobileFull fill><KpiCard label="Realizado" value={formatMoney(realized)} description="Total de custos registrados" /></Col>
           </Grid>
         </DevNote>
       ) : <Feedback type="info" message="Os valores de custo são visíveis apenas para o Administrador e o Gestor de manutenção" />}
@@ -968,10 +936,10 @@ function OsScreen() {
         columns={[
           { key: 'kind', label: 'Tipo', render: (_, r) => kindCell(r) }, { key: 'description', label: 'Descrição' },
           { key: 'cents', label: 'Valor', align: 'right', render: (v) => money(Number(v)) },
-          { key: 'attachment', label: 'Anexo', render: (v) => (v ? String(v) : '-') },
+          { key: 'attachments', label: 'Anexos', render: (_, r) => <AttachmentsStack names={r.attachments} label={`item de custo ${r.description}`} /> },
           { key: 'id', label: 'Ações', sticky: 'right', render: (_, r) => rmBtn(r) ?? null },
         ]}
-        toCard={(r) => ({ title: r.description, subtitle: r.kind, badge: r.isBudget ? budgetBadge ?? undefined : undefined, fields: [{ label: 'Valor', value: money(r.cents) }, { label: 'Anexo', value: r.attachment ?? '-' }], actions: rmBtn(r) })}
+        toCard={(r) => ({ title: r.description, subtitle: r.kind, badge: r.isBudget ? budgetBadge ?? undefined : undefined, fields: [{ label: 'Valor', value: money(r.cents) }, { label: 'Anexos', value: <AttachmentsStack names={r.attachments} label={`item de custo ${r.description}`} /> }], actions: rmBtn(r) })}
       />
     </Stack>
   );
@@ -1127,7 +1095,7 @@ function OsScreen() {
                     <div><dt>Valor</dt><dd>{canSeeCosts ? formatMoney(order.budget.cents) : 'Restrito'}</dd></div>
                     <div><dt>Registrado por</dt><dd>{`${order.budget.by} em ${formatDate(order.budget.registeredAt)}`}</dd></div>
                     <div><dt>Descrição</dt><dd>{order.budget.description}</dd></div>
-                    <div><dt>Anexo</dt><dd>{attachmentLink(order.budget.attachment)}</dd></div>
+                    <div><dt>Anexos</dt><dd><AttachmentsStack names={namesOf(order.budget)} label="orçamento" /></dd></div>
                   </dl>
                 </Stack>
               ) : nextAction ? (

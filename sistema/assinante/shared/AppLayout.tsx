@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
 import {
-  IconBell, IconBuilding, IconBuildingStore, IconCalendarRepeat, IconClipboardList, IconHome2, IconLayoutGrid, IconLock, IconMenu2,
+  IconArrowRight, IconBell, IconChecks, IconBuilding, IconBuildingStore, IconCalendarRepeat, IconClipboardList, IconHome2, IconLayoutGrid, IconLock, IconMenu2,
   IconMessageReport, IconMicrowave, IconSettings, IconTool, IconUsers, IconX,
 } from '@tabler/icons-react';
 import { AppHeader, Button, Card, EmptyState, NavItemDef, Sidebar, Tooltip } from '@maglev/ds';
@@ -13,6 +13,7 @@ import { ThemeButton, UserMenu } from '../../admin/shared/UserMenu';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { formatDateTime } from '../../admin/shared/format';
 import { ScreenKey } from './data';
+import { NotificationIcon } from './notification-ui';
 import { updateSubDb, useSubSession } from './store';
 import { GlobalSearch, HelpButton } from './GlobalSearch';
 
@@ -56,8 +57,19 @@ function NotificationBell() {
   const { db, user } = useSubSession();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(0);
+  const [vw, setVw] = useState(0);
   const mine = db.notifications.filter((n) => n.userId === user.id).sort((a, b) => b.at.localeCompare(a.at));
   const unread = mine.filter((n) => !n.read).length;
+
+  // Mobile: o painel é fixo na viewport (margens laterais), logo abaixo do botão; --bell-top só vale na media query do CSS
+  useEffect(() => {
+    if (!open) return;
+    const place = () => { setTop(Math.round((rootRef.current?.getBoundingClientRect().bottom ?? 0) + 4)); setVw(document.documentElement.clientWidth); };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +81,7 @@ function NotificationBell() {
   }, [open]);
 
   const markRead = (id: string) => updateSubDb((d) => ({ ...d, notifications: d.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
+  const markAllRead = () => updateSubDb((d) => ({ ...d, notifications: d.notifications.map((n) => (n.userId === user.id ? { ...n, read: true } : n)) }));
   const label = unread ? `Notificações, ${unread} não lida${unread > 1 ? 's' : ''}` : 'Notificações';
   return (
     <div className="bell-root" ref={rootRef}>
@@ -77,19 +90,33 @@ function NotificationBell() {
       </Tooltip>
       {unread > 0 && <span className="bell-count" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
       {open && (
-        <div className="bell-panel" role="region" aria-label="Notificações recentes">
-          <div className="bell-head"><span className="user-menu-name">Notificações</span></div>
+        <div className="bell-panel" role="region" aria-label="Notificações recentes" style={{ '--bell-top': `${top}px`, '--bell-vw': `${vw}px` } as CSSProperties}>
+          <div className="bell-head">
+            <span className="bell-head-title">
+              <span className="user-menu-name">Notificações</span>
+              {unread > 0 && <span className="bell-head-count">{unread} não lida{unread > 1 ? 's' : ''}</span>}
+            </span>
+            {unread > 0 && <button type="button" className="bell-markall text-link" onClick={markAllRead}><IconChecks size={14} aria-hidden="true" />Marcar todas como lidas</button>}
+          </div>
           <div className="user-menu-sep" role="separator" />
+          <div className="bell-list">
           {mine.length === 0 && <p className="bell-empty">Você não tem notificações</p>}
           {mine.slice(0, 5).map((n) => (
             <a key={n.id} className={`bell-item${n.read ? '' : ' is-unread'}`} href={n.href} onClick={() => markRead(n.id)}>
-              <span className="bell-item-title">{n.title}</span>
-              <span className="bell-item-text">{n.text}</span>
-              <span className="cell-secondary">{formatDateTime(n.at)}</span>
+              <NotificationIcon n={n} />
+              <span className="bell-item-body">
+                <span className="bell-item-head">
+                  <span className="bell-item-title">{n.title}</span>
+                  {!n.read && <><span className="bell-dot" aria-hidden="true" /><span className="sr-only">Não lida</span></>}
+                </span>
+                <span className="bell-item-text">{n.text}</span>
+                <span className="bell-item-date">{formatDateTime(n.at)}</span>
+              </span>
             </a>
           ))}
+          </div>
           <div className="user-menu-sep" role="separator" />
-          <a className="bell-all text-link" href="notificacoes.html">Ver todas as notificações</a>
+          <a className="bell-all text-link" href="notificacoes.html">Ver todas as notificações<IconArrowRight size={14} aria-hidden="true" /></a>
         </div>
       )}
     </div>

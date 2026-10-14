@@ -72,7 +72,7 @@ Inclua as variantes de estado (erro, vazio, confirmação) e, onde fizer diferen
 - Ao abrir com `filter`, mostre o filtro aplicado no controle da tela (dropdown de status/filtro) para o usuário poder tirá-lo.
 
 ## Verificação
-- `npx tsc -p v2/tsconfig.json --noEmit` (use `../storybook-maglev/node_modules/.bin/tsc` se necessário) deve passar para os seus arquivos.
+- `npx tsc -p v2/tsconfig.json --noEmit` (use `node_modules/.bin/tsc` se necessário) deve passar para os seus arquivos.
 - Servidor próprio, **na porta que lhe foi atribuída** (outras portas são de outras pessoas): na raiz do projeto,
   `PORT=<porta> npx vite --config v2/vite.config.ts` (em background). Abra `http://127.0.0.1:<porta>/assinante/screens/<tela>.html` e
   confira também as variantes `#state=...`. Pode usar o navegador (abra a sua própria aba, feche ao terminar); no mínimo,

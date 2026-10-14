@@ -42,7 +42,10 @@ export const journeys: Journey[] = [
         screens: [
           {
             id: 'plano-novo-1', label: 'Passo 1 - Informações', path: `${s}/plano-form.html`,
-            variants: [v('plano-novo-required', 'Campos obrigatórios', 'plano-form.html#state=required')],
+            variants: [
+              v('plano-novo-required', 'Campos obrigatórios', 'plano-form.html#state=required'),
+              v('plano-novo-duplicate', 'Nome do plano já existente', 'plano-form.html#state=duplicate'),
+            ],
           },
           { id: 'plano-novo-2', label: 'Passo 2 - Programação (com prévia)', path: `${s}/plano-form.html#state=step2` },
           { id: 'plano-novo-3', label: 'Passo 3 - Executor', path: `${s}/plano-form.html#state=step3` },

@@ -1,11 +1,12 @@
-import { ReactNode, useEffect, useState } from 'react';
-import { Button, Dialog, Dropdown, Feedback, RadioButton, Stack, useToast } from '@maglev/ds';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { IconAlertTriangle } from '@tabler/icons-react';
+import { Badge, Button, Dialog, Dropdown, Feedback, ImageUpload, RadioButton, Stack, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
-import { Executor, SubDb, WorkOrder, SubUser, dayOnly } from './data';
+import { Executor, SubDb, WorkOrder, SubUser, dayOnly, nowLocal } from './data';
 import { techSpecialtiesText } from './prestadores';
 import { logEntry, notify, updateSubDb, useSubSession } from './store';
-import { Col, Grid, useRefs } from './ui';
-import { requiredMessage } from '../../admin/shared/format';
+import { CellPair, Col, Grid, useRefs } from './ui';
+import { formatDate, requiredMessage } from '../../admin/shared/format';
 
 /** Ids de status de OS (Admin RF407 - carga inicial). Situação (aberto, concluído…) sempre pela base do status. */
 export const STO = {
@@ -22,6 +23,11 @@ export function overdueDays(o: WorkOrder, base: string | undefined): number {
   const diff = Math.round((new Date(`${TODAY}T00:00:00`).getTime() - new Date(`${o.dueAt}T00:00:00`).getTime()) / 86_400_000);
   return diff > 0 ? diff : 0;
 }
+
+/** Coluna Prazo (lista geral de OS e detalhe do prestador): vencida = badge de alerta + "Vencida há N dias" (late = overdueDays); sem prazo = traço */
+export const dueCell = (dueAt: string, late: number): ReactNode => (!dueAt ? '—' : late > 0
+  ? <CellPair primary={<Badge status="error" solid icon={<IconAlertTriangle size={14} />}>{formatDate(dueAt)}</Badge>} secondary={`Vencida há ${late} ${late === 1 ? 'dia' : 'dias'}`} />
+  : formatDate(dueAt));
 
 /** OS que ainda pode ser alterada (RF502-FLU006: enquanto não concluída). */
 export const isEditable = (base: string | undefined) => base !== 'concluido' && base !== 'cancelado';
@@ -66,6 +72,65 @@ export function notifyAssignees(db: SubDb, order: Pick<WorkOrder, 'id' | 'subjec
   if (what.executor && order.executor.kind === 'interno') ids.push(order.executor.userId);
   notify(ids, { kind: 'os', title: 'Nova OS atribuída a você', text: `${order.id}: ${order.subject}`, href: `os.html?id=${order.id}` });
   return db;
+}
+
+/** Anexo (ImageUpload do DS, o mesmo de Nova solicitação) com envio simulado: guarda só o nome do arquivo; imagens ganham miniatura. */
+export function AttachmentField({ label, value, onChange, required, error }: { label: string; value: string; onChange: (name: string) => void; required?: boolean; error?: string }) {
+  const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>();
+  const timer = useRef<number>();
+  useEffect(() => () => { window.clearTimeout(timer.current); }, []);
+  useEffect(() => { if (!value) setPreviewUrl(undefined); }, [value]);
+  const onFile = (file: File | null) => {
+    if (!file) { setPreviewUrl(undefined); onChange(''); return; }
+    setLoading(true);
+    timer.current = window.setTimeout(() => { setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined); onChange(file.name); setLoading(false); }, 600);
+  };
+  return (
+    <ImageUpload
+      label={label} optional={!required} error={error} fileName={value} previewUrl={previewUrl} loading={loading} onChange={onFile}
+      accept="image/png,image/jpeg,application/pdf" helperText="JPG, PNG ou PDF"
+      labels={{ add: 'Adicionar anexo', replace: 'Trocar anexo', remove: 'Remover anexo', loading: 'Enviando anexo...', invalidType: 'Envie um arquivo JPG, PNG ou PDF' }}
+    />
+  );
+}
+
+/**
+ * Indicar a conclusão (RF503-FLU007/FLU008 / Prestador RF102-FLU007): a OS vai para "Aguardando validação" e o solicitante é notificado.
+ * A solução aplicada é obrigatória; quem valida é o solicitante da solicitação de origem (ou o contato da OS).
+ */
+export function applyOrderConclusion(db: SubDb, order: WorkOrder, solution: string, by: string) {
+  const req = db.requests.find((r) => r.id === order.requestId);
+  const who = req?.requesterName ?? order.contactName;
+  patchOrder(order.id, by, (o) => ({ ...o, statusId: STO.VALIDACAO, solution: solution.trim(), validation: { requestedAt: nowLocal(), assignedTo: who } }),
+    [`Indicou a conclusão - status: Aguardando validação (validação de ${who})`]);
+  notify(req?.requesterUserId ? [req.requesterUserId] : db.users.filter((u) => u.status === 'ativo' && u.name === who).map((u) => u.id), { kind: 'os', title: 'Validação pendente', text: `${order.id}: o problema foi resolvido?`, href: `os.html?id=${order.id}` });
+}
+
+/**
+ * Validação da conclusão pelo solicitante (RF503-FLU008-FLU010 / Colaborador RF004-FLU004): Sim encerra a OS e a solicitação de
+ * origem; Não devolve a OS ao responsável (Em andamento) com o comentário. Usada pela Área do assinante e pelo link do colaborador.
+ * `onBehalfOf`: nome do solicitante original quando outra pessoa registra a validação.
+ */
+export function applyOrderValidation(order: WorkOrder, result: 'sim' | 'nao', comment: string, by: string, onBehalfOf?: string, href = `os.html?id=${order.id}`) {
+  const v = order.validation!;
+  const text = comment.trim();
+  const note = text ? `: ${text}` : '';
+  const now = nowLocal();
+  const prefix = onBehalfOf ? `Registrou a validação em nome de ${onBehalfOf}` : 'Validou a conclusão';
+  if (result === 'sim') {
+    patchOrder(order.id, by, (o) => ({ ...o, statusId: STO.CONCLUIDA, validation: { ...v, result: 'sim', comment: text || undefined, at: now } }),
+      [`${prefix}: o problema foi resolvido${note}`, 'OS concluída - a solicitação de origem foi encerrada com ela']);
+    updateSubDb((d) => ({
+      ...d,
+      requests: d.requests.map((r) => (r.id === order.requestId ? { ...r, log: [...r.log, logEntry(by, `Encerrada com a conclusão da ${order.id} após a validação`)] } : r)),
+      equipments: d.equipments.map((e) => (e.id === order.equipmentId && e.statusId === 'STE-04' && !d.orders.some((x) => x.id !== order.id && x.equipmentId === e.id && x.statusId !== STO.CONCLUIDA && x.statusId !== STO.CANCELADA) ? { ...e, statusId: 'STE-01' } : e)),
+    }));
+  } else {
+    patchOrder(order.id, by, (o) => ({ ...o, statusId: STO.ANDAMENTO, validation: { ...v, result: 'nao', comment: text, at: now } }),
+      [`${prefix}: o problema NÃO foi resolvido${note} - status: Em andamento`]);
+    notify([order.responsibleId, ...(order.executor.kind === 'interno' ? [order.executor.userId] : [])], { kind: 'os', title: 'Validação recusada', text: `${order.id}: o solicitante informou que o problema persiste`, href });
+  }
 }
 
 /** "1.380,00" / "1380,5" / "1380.50" → centavos; vazio ou inválido → null. */
@@ -148,7 +213,7 @@ export function PlanFields({ db, value, onChange, categoryId, unitId, errors, cu
             <DevNote note="RGN002 / RF702-RGN004: só prestadores ativos que atendem a categoria do equipamento (e, se aprovado ZC002, o tipo). Prestador não tem login na plataforma - a atribuição vai para o log da OS.">
               <Dropdown
                 label="Prestador" required placeholder="Selecione o prestador"
-                options={providers.map((p) => ({ value: p.id, label: `${p.tradeName ?? p.name}${p.status === 'inativo' || !p.categoryIds.includes(categoryId) ? ' (indisponível)' : ''}` }))}
+                options={providers.map((p) => ({ value: p.id, label: `${p.tradeName ?? p.name}${p.status === 'inativo' || !p.categoryIds.includes(categoryId) ? ' (indisponível)' : ''}`, description: p.regions.length ? `Atende: ${p.regions.join(', ')}` : undefined }))}
                 value={value.providerId} onChange={(v) => set({ providerId: v, technician: '' })} error={errors.providerId}
                 helperText={`Ativos que atendem a categoria ${categoryName}`}
               />

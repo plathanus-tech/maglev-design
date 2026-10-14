@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
  */
 export function useHashState<T extends string>(allowed: readonly T[], fallback: T) {
   const read = useCallback((): T => {
-    const m = /state=([a-z]+)/.exec(location.hash);
+    const m = /state=([a-z0-9]+)/.exec(location.hash);
     return m && (allowed as readonly string[]).includes(m[1]) ? (m[1] as T) : fallback;
   }, [allowed, fallback]);
 

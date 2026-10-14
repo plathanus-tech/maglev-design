@@ -10,6 +10,7 @@ import { formatDateTime } from '../../admin/shared/format';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { Notification } from './data';
 import { updateSubDb, useSubSession } from './store';
+import { NotificationIcon } from './notification-ui';
 import { CellPair, RowAction, RowActions, TableToolbar, goTo } from './ui';
 
 /** Estados (variantes do navegador): idle · empty (sem notificações) · unread (só não lidas) */
@@ -54,11 +55,11 @@ function NotificacoesScreen() {
     <a className="text-link" href={n.href} onClick={() => markRead(n.id)}>{n.title}</a>
   );
   const actions = (n: Notification) => (
-    <RowActions><RowAction icon={<IconExternalLink size={16} />} label="Abrir item relacionado" target={n.title} onClick={() => open(n)} /></RowActions>
+    <RowActions><RowAction icon={<IconExternalLink size={16} />} label="Ver item relacionado" target={n.title} onClick={() => open(n)} /></RowActions>
   );
 
   const columns: TableColumn<Row>[] = [
-    { key: 'title', label: 'Notificação', render: (_, r) => <CellPair primary={titleLink(r)} secondary={r.text} /> },
+    { key: 'title', label: 'Notificação', render: (_, r) => <span className={`notif-cell${r.read ? '' : ' notif-unread'}`}><NotificationIcon n={r} /><CellPair primary={titleLink(r)} secondary={r.text} /></span> },
     { key: 'kind', label: 'Tipo', render: (v) => KIND_LABEL[v as Notification['kind']] },
     { key: 'at', label: 'Data e hora', render: (v) => formatDateTime(String(v)) },
     { key: 'read', label: 'Situação', render: (v) => readBadge(Boolean(v)) },
@@ -91,7 +92,7 @@ function NotificacoesScreen() {
               headingId="notifications-title" title="Lista de notificações" titleHidden toolbar={toolbar} emptyTitle={empty.title}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((n) => ({
-                id: n.id, title: titleLink(n), subtitle: n.text, badge: readBadge(n.read),
+                id: n.id, title: <span className="notif-cell"><NotificationIcon n={n} />{titleLink(n)}</span>, subtitle: n.text, badge: readBadge(n.read),
                 fields: fieldsFor([{ label: 'Tipo', value: KIND_LABEL[n.kind] }, { label: 'Data e hora', value: formatDateTime(n.at) }]),
                 actions: actions(n),
               }))}

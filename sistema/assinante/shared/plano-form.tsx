@@ -16,7 +16,7 @@ import { useRefs } from './ui';
 import { Col, Grid, ReadField, SectionLabel, Text, goTo, param, setFlash } from './ui';
 
 /**
- * RF601 - Criar/editar plano em 6 passos. Stepper de formulário próprio (form-stepper.tsx, mesma linguagem do Andamento da OS) + um Card por passo. Variantes: #state=required · step2 … step6 · ?id= (edição).
+ * RF601 - Criar/editar plano em 6 passos. Stepper de formulário próprio (form-stepper.tsx, mesma linguagem do Andamento da OS) + um Card por passo. Variantes: #state=required · duplicate (nome já usado por outro plano) · step2 … step6 · ?id= (edição).
  */
 const STEPS = ['Informações', 'Programação', 'Executor', 'Checklist', 'Evidências e anomalia', 'Revisão'];
 /** Rótulos do indicador de progresso (o nome completo fica no conteúdo da etapa). */
@@ -64,6 +64,11 @@ function PlanoFormScreen() {
   const startStep = /^step([2-6])$/.exec(initialState)?.[1];
   const [d, setD] = useState<Draft>(() => {
     if (editing) return fromPlan(editing);
+    if (initialState === 'duplicate') {
+      // Variante do navegador: nome igual ao de um plano existente, com um equipamento escolhido, para mostrar o erro do passo 1
+      const eqId = db.equipments.find((e) => unitIds.includes(e.unitId))?.id;
+      return { ...structuredClone(BLANK), name: db.plans[0]?.name ?? '', equipmentIds: eqId ? [eqId] : [] };
+    }
     if (!startStep) return structuredClone(BLANK);
     // Variantes do navegador: exemplo preenchido para abrir direto no passo
     const lava = db.equipments.filter((e) => e.name.startsWith('Lava-louças') && unitIds.includes(e.unitId)).slice(0, 2).map((e) => e.id);
@@ -83,9 +88,9 @@ function PlanoFormScreen() {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [step, setStep] = useState(editing ? 1 : Number(startStep ?? 1));
   const [maxStep, setMaxStep] = useState(editing ? 6 : Number(startStep ?? 1));
-  const [tried, setTried] = useState(initialState === 'required');
+  const [tried, setTried] = useState(initialState === 'required' || initialState === 'duplicate');
   const [banner, setBanner] = useState<'required' | 'multiple' | null>(null);
-  const [tick, setTick] = useState(initialState === 'required' ? 1 : 0);
+  const [tick, setTick] = useState(initialState === 'required' || initialState === 'duplicate' ? 1 : 0);
   const [saving, setSaving] = useState(false);
   const topRef = useRef<HTMLHeadingElement>(null);
 
@@ -147,7 +152,9 @@ function PlanoFormScreen() {
 
   // ── validação por passo (CTA002: não salva sem equipamento, periodicidade, executor e checklist) ──
   const errorsOf = (n: number): Record<string, string | undefined> => {
-    if (n === 1) return { name: !d.name.trim() ? requiredMessage('Nome do plano') : undefined, equipments: !d.equipmentIds.length ? requiredMessage('Equipamentos') : undefined };
+    if (n === 1) return { name: !d.name.trim() ? requiredMessage('Nome do plano')
+        : db.plans.some((p) => p.id !== editing?.id && p.name.trim().toLowerCase() === d.name.trim().toLowerCase()) ? 'Já existe um plano com esse nome. Informe um nome diferente'
+        : undefined, equipments: !d.equipmentIds.length ? requiredMessage('Equipamentos') : undefined };
     if (n === 2) {
       const day = Number(d.refDay);
       const dayErr = d.frequency === 'diaria' ? undefined

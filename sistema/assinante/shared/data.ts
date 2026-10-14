@@ -8,7 +8,7 @@
  */
 import { RecordStatus, Subscriber, seed as adminSeed, subscriberUsers } from '../../admin/shared/data';
 
-export const DB_VERSION = 22;
+export const DB_VERSION = 27;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
@@ -157,10 +157,10 @@ export interface Request {
 export interface Visit { id: string; date: string; from: string; to: string; technician: string; arrivedAt?: string; note?: string }
 export type CostKind = 'peca' | 'mao-de-obra' | 'orcamento' | 'outro';
 export const COST_KIND_LABEL: Record<CostKind, string> = { peca: 'Peça / material', 'mao-de-obra': 'Mão de obra', orcamento: 'Orçamento de prestador', outro: 'Outro' };
-export interface CostItem { id: string; kind: CostKind; description: string; cents: number; attachment?: string }
+export interface CostItem { id: string; kind: CostKind; description: string; cents: number; attachment?: string; /** Vários anexos (fotos e PDFs); `attachment` é o formato antigo, de um só. */ attachments?: string[] }
 /** Orçamento (RF503-FLU004): valor + descrição + anexo; aprovação só por usuário do assinante (RGN008). */
 export interface Budget {
-  cents: number; description: string; attachment: string; registeredAt: string; by: string;
+  cents: number; description: string; attachment: string; attachments?: string[]; registeredAt: string; by: string;
   decision?: 'aprovado' | 'reprovado'; decidedAt?: string; decidedBy?: string; justification?: string;
 }
 export type Executor = { kind: 'interno'; userId: string } | { kind: 'prestador'; providerId: string; technician?: string };
@@ -203,6 +203,12 @@ export interface WorkOrder {
   troubleshooting?: TroubleshootingRun;
   cancelReason?: string;
   execution?: Execution;
+  /** Aceite do atendimento pelo prestador (Prestador RF102-FLU002); sem isto, vale o status da OS. */
+  accepted?: { at: string; by: string };
+  /** Horas trabalhadas, informadas pelo prestador no atendimento (Prestador RF102). */
+  workedHours?: number;
+  /** Atividades realizadas informadas pelo prestador (uma por linha; opcional). Registros antigos ficam no histórico como "Atividade: …". */
+  activityList?: string[];
 }
 
 // ═══ Preventivas (RF601-RF603) ══════════════════════════════════════
@@ -715,6 +721,33 @@ export function seed(): SubDb {
     });
   });
 
+  // Prestador RF102 - variante "visita já agendada": OS aceita, sem orçamento, com a visita marcada e a chegada ainda por registrar
+  addOrder(eq(2, 'Freezer vertical'), {
+    subject: 'Borracha da porta do freezer com folga', statusId: 'STO-02', createdAt: daysAgo(2, 9), dueAt: dayOnly(2), priorityId: 'PRI-3', responsibleId: gestor.id,
+    executor: { kind: 'prestador', providerId: 'PRE-001', technician: 'Anderson Pires' }, reported: 'A porta do freezer não veda direito e forma gelo na borda',
+    accepted: { at: daysAgo(2, 10), by: 'Anderson Pires' },
+    visits: [{ id: 'V1', date: dayOnly(0), from: '14:00', to: '16:00', technician: 'Anderson Pires' }],
+    activities: [
+      log('Larissa Teixeira', 'Criou a OS a partir da solicitação', daysAgo(2, 9), 'OS-NEW-L1'),
+      log('Anderson Pires', 'Aceitou o atendimento - status: Em andamento', daysAgo(2, 10), 'OS-NEW-L2'),
+      log('Anderson Pires', `Agendou a visita para hoje (14:00 às 16:00) com Anderson Pires`, daysAgo(1, 9), 'OS-NEW-L3'),
+    ],
+  });
+
+  // Solicitante RF001/RF003 - exemplo de card com atendimento agendado e técnico: solicitação aprovada da Câmara fria 01 (equipamento do QR de demonstração)
+  const rAgendada = addRequest(eq(0, 'Câmara fria'), {
+    problemId: 'TSO-005', description: 'Barulho forte no compressor da câmara fria, parece peça solta. Começou ontem à noite.', statusId: 'STS-04', openedAt: hoursAgo(30),
+    log: [log(solicit.name, 'Abriu a solicitação', hoursAgo(30), 'ag1'), log(gestor.name, 'Iniciou a triagem', hoursAgo(28), 'ag2'), log(gestor.name, 'Aprovou a solicitação para criar OS', hoursAgo(26), 'ag3')],
+  });
+  const osAgendada = addOrder(eq(0, 'Câmara fria'), {
+    subject: 'Barulho no compressor da câmara fria', statusId: 'STO-02', createdAt: hoursAgo(25), dueAt: dayOnly(-3), priorityId: 'PRI-2', requestId: rAgendada.id, responsibleId: gestor.id,
+    executor: { kind: 'prestador', providerId: 'PRE-001', technician: 'Anderson Pires' }, reported: rAgendada.description,
+    accepted: { at: hoursAgo(24), by: 'Anderson Pires' },
+    visits: [{ id: 'V1', date: dayOnly(-2), from: '14:00', to: '16:00', technician: 'Anderson Pires' }],
+    activities: [log(gestor.name, 'Criou a OS a partir da solicitação', hoursAgo(25), 'ag-os1'), log('Anderson Pires', 'Aceitou o atendimento - status: Em andamento', hoursAgo(24), 'ag-os2')],
+  });
+  rAgendada.osId = osAgendada.id;
+
   // Estado de equipamentos extra (parado/inativo)
   setStatus(eq(3, 'Ar-condicionado'), 'STE-02');
   setStatus(eq(4, 'Chopeira'), 'STE-05');
@@ -765,6 +798,8 @@ export function seed(): SubDb {
 
   // Exemplos com fotos: Forno combinado 01 e Chapa 01 (foto do equipamento e foto da placa/etiqueta)
   equipments.filter((e) => e.name === 'Forno combinado 01').forEach((e) => { e.photoName = 'forno2.webp'; e.labelPhotoName = 'placa.webp'; });
+  equipments.filter((e) => e.name.startsWith('Câmara fria')).forEach((e) => { e.photoName = 'camara-fria.webp'; });
+  equipments.filter((e) => e.name.startsWith('Coifa')).forEach((e) => { e.photoName = 'coifa.jpg'; });
   equipments.filter((e) => e.name === 'Chapa 01').forEach((e) => { e.photoName = 'chapa.jpg'; e.labelPhotoName = 'images.jpg'; });
   // Mock visual do Histórico de manutenções: uma OS concluída do Forno combinado 01 com foto registrada na manutenção (as demais ficam sem foto)
   const fornoId = equipments.find((e) => e.name === 'Forno combinado 01')?.id;

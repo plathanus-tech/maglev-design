@@ -173,7 +173,7 @@ function EquipamentosScreen() {
     if (mode === 'expanded') setExpanded(new Set([...visibleUnits.map((u) => u.id), ...db.environments.filter((x) => unitIds.includes(x.unitId)).map((x) => x.id)]));
     if (mode === 'noresults') setQuery('Coifa industrial 99');
     if (mode === 'inactivate') setToggling(visible.find((e) => !isInactive(refs, e) && openOrdersOf(db, refs, e.id).length > 0) ?? visible[0] ?? null);
-    if (mode === 'qr' && visible[0]) setQr({ id: visible[0].id, mode: 'qr' });
+    if (mode === 'qr' && visible[0]) setQr({ id: visible[0].id, mode: 'label' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 

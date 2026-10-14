@@ -32,9 +32,10 @@ const logConfig = (kind: 'cadastro' | 'edicao' | 'ativacao' | 'inativacao' | 'ex
 type Header = (actions?: ReactNode) => ReactNode;
 const matches = (q: string, ...fields: string[]) => !q.trim() || fields.some((f) => normalize(f).includes(normalize(q)));
 
-type SimpleKey = 'categories' | 'requestTypes' | 'maintenanceTypes';
+type SimpleKey = 'categories' | 'specialties' | 'requestTypes' | 'maintenanceTypes';
 const PAGES = [
   { slug: 'categorias', label: 'Categorias de equipamentos', subtitle: 'Usadas no cadastro de equipamentos, de prestadores e nos filtros' },
+  { slug: 'especialidades', label: 'Especialidades', subtitle: 'Defina as especialidades técnicas disponíveis no cadastro de prestadores' },
   { slug: 'tipos-solicitacao', label: 'Tipos de solicitação', subtitle: 'Defina os tipos de problema disponíveis na abertura de solicitações' },
   { slug: 'tipos-manutencao', label: 'Tipos de manutenção', subtitle: 'Usados na triagem e nas ordens de serviço' },
   { slug: 'prioridades', label: 'Prioridades', subtitle: 'Níveis fixos de prioridade para solicitações e ordens de serviço, da maior para a menor' },
@@ -47,6 +48,11 @@ const SIMPLE: Record<SimpleKey, { singular: string; newLabel: string; hint: stri
     singular: 'categoria', newLabel: 'Nova categoria', linkLabel: 'equipamentos',
     hint: 'Usadas no cadastro de equipamentos, de prestadores e nos filtros',
     note: 'RF402: categoria é obrigatória no equipamento (Assinante RF301) e vincula prestadores às categorias atendidas (RF702). Troubleshooting fica no equipamento, não na categoria (RGN004). 💡 Ícone da categoria e “tipo de equipamento” como subnível (ZC002) seguem a confirmar - não entram.',
+  },
+  specialties: {
+    singular: 'especialidade', newLabel: 'Nova especialidade', linkLabel: 'prestadores',
+    hint: 'Exibidas como “Especialidades” no cadastro de prestadores e nos filtros',
+    note: 'RF408 (mesmo comportamento de Tipos de solicitação): a especialidade é escolhida no cadastro do prestador (Assinante RF701) e usada para filtrar prestadores. Inativar impede novos usos sem afetar os cadastros existentes; só é possível excluir uma especialidade sem prestadores vinculados. 💡 A confirmar: se a especialidade também restringe a atribuição da OS (hoje a atribuição considera só a categoria atendida).',
   },
   requestTypes: {
     singular: 'tipo de solicitação', newLabel: 'Novo tipo de solicitação', linkLabel: 'solicitações',
@@ -275,7 +281,7 @@ function StatusConfirmDialog({ name, deactivate, detail, onClose, onConfirm }: {
 }
 
 /** Singular dos rótulos de vínculo (usado quando há exatamente 1 vínculo). */
-const SINGULAR: Record<string, string> = { equipamentos: 'equipamento', 'solicitações': 'solicitação', registros: 'registro' };
+const SINGULAR: Record<string, string> = { prestadores: 'prestador', equipamentos: 'equipamento', 'solicitações': 'solicitação', registros: 'registro' };
 
 function DeleteDialog({ name, links, linkLabel, canInactivate, onClose, onDelete, onInactivate }: {
   name: string; links: number; linkLabel: string; canInactivate: boolean; onClose: () => void; onDelete: () => void; onInactivate: () => void;
@@ -708,6 +714,7 @@ function ConfiguracoesScreen() {
   const pane = () => {
     switch (page.slug) {
       case 'categorias': return <SimpleList dbKey="categories" mode={mode} active header={header} />;
+      case 'especialidades': return <SimpleList dbKey="specialties" mode={mode} active header={header} />;
       case 'tipos-solicitacao': return <SimpleList dbKey="requestTypes" mode={mode} active header={header} />;
       case 'tipos-manutencao': return <SimpleList dbKey="maintenanceTypes" mode={mode} active header={header} />;
       case 'prioridades': return <LevelList dbKey="priorities" mode={mode} active header={header} />;

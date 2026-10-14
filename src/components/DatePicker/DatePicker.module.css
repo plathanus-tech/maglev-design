@@ -30,10 +30,8 @@
 
 /* ── Calendário ──────────────────────────────────────────────────────── */
 .popup {
-  position: absolute;
-  top: calc(100% + var(--spacing-xs));
-  left: 0;
-  z-index: var(--z-dropdown);
+  position: fixed;   /* portal no <body>; top/left vêm do campo (inline) */
+  z-index: calc(var(--z-overlay) + 1);   /* acima de Dialog e rodapés */
   width: 20.5rem;
   max-width: calc(100vw - var(--spacing-xl));
   padding: var(--spacing-md);
@@ -168,5 +166,3 @@
 .inputWrap:has(.inputSm)::after { content: ""; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; pointer-events: none; }
 
 /* Posição adaptativa: para cima quando falta espaço abaixo do campo; à direita quando passaria da borda da tela */
-.popupUp { top: auto; bottom: calc(100% + var(--spacing-xs)); }
-.popupEnd { left: auto; right: 0; }

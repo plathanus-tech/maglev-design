@@ -62,6 +62,9 @@ export function PrototypeNav() {
   const [theme, setTheme] = useTheme();
   const [hover, setHover] = useState<{ src: string; rect: DOMRect } | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  // Cada clique recarrega a prévia do zero: sem isto, clicar numa tela cujo endereço já está em frameSrc (mas o iframe navegou por dentro, ou só o #state mudou) não fazia nada
+  const [frameKey, setFrameKey] = useState(0);
+  const reloadFrame = () => setFrameKey((k) => k + 1);
   const hideTimer = useRef<number>();
   const firstOf = (id: ActorId) => entries.find((e) => e.id === (journeysOf(id)[0]?.items[0] && ('screens' in journeysOf(id)[0].items[0] ? (journeysOf(id)[0].items[0] as FlowNode).screens[0].id : journeysOf(id)[0].items[0].id)));
   const [currentId, setCurrentId] = useState(() => startEntry?.id ?? firstOf(actorId)?.id ?? entries[0]?.id);
@@ -98,22 +101,25 @@ export function PrototypeNav() {
     setOpen((o) => (groups.every((g) => o.includes(g)) ? o : [...new Set([...o, ...groups])]));
   }, [currentId, entries]);
 
-  const select = (e: Entry) => { setCurrentId(e.id); setFrameSrc(srcFor(e, device)); };
+  const select = (e: Entry) => { setCurrentId(e.id); setFrameSrc(srcFor(e, device)); reloadFrame(); };
   /** Ator = frente do produto (Admin, Assinante…): troca a árvore de telas e abre a primeira tela do ator. */
   const changeActor = (id: ActorId) => {
     const first = firstOf(id);
     setActorId(id);
     setOpen((o) => [...new Set([...o, ...journeysOf(id).map((j) => j.id)])]);
-    if (first) select(first);
+    // Telas externas (prestador pelo link, colaborador pelo QR Code) são feitas para o celular: abrem já em Mobile
+    const external = id === 'prestador' || id === 'colaborador';
+    if (external) setDevice('mobile');
+    if (first) { setCurrentId(first.id); setFrameSrc(srcFor(first, external ? 'mobile' : device)); reloadFrame(); }
   };
-  const changeDevice = (d: Device) => { setDevice(d); setFrameSrc(srcFor(current, d)); };
+  const changeDevice = (d: Device) => { setDevice(d); setFrameSrc(srcFor(current, d)); reloadFrame(); };
   const toggle = (id: string) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
   const matches = (label: string) => !query.trim() || label.toLowerCase().includes(query.trim().toLowerCase());
 
-  const item = (id: string, label: string, variant = false, extra?: ReactNode) => {
+  const item = (id: string, label: string, variant = false, extra?: ReactNode, sub = false) => {
     const e = entries.find((x) => x.id === id)!;
     return matches(label) && (
-      <div key={id} className={`pn-item${variant ? ' pn-item--variant' : ''}${currentId === id ? ' is-active' : ''}`}>
+      <div key={id} className={`pn-item${variant ? ' pn-item--variant' : ''}${sub ? ' pn-item--sub' : ''}${currentId === id ? ' is-active' : ''}`}>
         <Thumb
           src={srcFor(e, device)}
           device={device}
@@ -146,7 +152,7 @@ export function PrototypeNav() {
           </button>
         ))}
         {hasVariants && expanded && (
-          <div className="pn-variants">{s.variants!.map((v) => item(v.id, v.label, true))}</div>
+          <div className="pn-variants">{s.variants!.map((v) => item(v.id, v.label, true, undefined, v.sub))}</div>
         )}
       </div>
     );
@@ -245,7 +251,7 @@ export function PrototypeNav() {
           </span>
         </div>
         <div className="pn-frame-wrap" data-device={device}>
-          <iframe ref={frameRef} className="pn-frame" title="Prévia da tela" src={frameSrc} />
+          <iframe key={frameKey} ref={frameRef} className="pn-frame" title="Prévia da tela" src={frameSrc} />
         </div>
       </main>
       {hover && <HoverPreview src={hover.src} device={device} rect={hover.rect} />}

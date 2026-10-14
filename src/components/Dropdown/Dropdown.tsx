@@ -45,6 +45,8 @@ export interface DropdownProps {
   emptyIcon?: ReactNode;
   /** Ação contextual (ex.: link) abaixo do texto de lista vazia; fecha o menu ao ser acionada. */
   emptyAction?: ReactNode;
+  /** Conteúdo fixo no campo no lugar do valor escolhido (ex.: ícone + “Ordenar por”), para controles estreitos em que o valor ficaria truncado. A opção marcada continua destacada na lista; informe o valor atual no `aria-label`. */
+  summary?: ReactNode;
 }
 
 /**
@@ -55,7 +57,7 @@ export interface DropdownProps {
 export function Dropdown({
   options, value, onChange, placeholder = 'Selecione...', disabled = false,
   label, labelAction, 'aria-label': ariaLabel, helperText, error, required, optional, className, size = 'md',
-  searchable = false, searchPlaceholder = 'Buscar', searchLabel = 'Buscar na lista', emptyText = 'Nenhum resultado', emptyIcon, emptyAction,
+  searchable = false, searchPlaceholder = 'Buscar', searchLabel = 'Buscar na lista', emptyText = 'Nenhum resultado', emptyIcon, emptyAction, summary,
 }: DropdownProps) {
   if (import.meta.env.DEV && !label && !ariaLabel) {
     console.warn('Dropdown: forneça `label` ou `aria-label` para que o campo tenha um nome acessível.');
@@ -155,7 +157,9 @@ export function Dropdown({
             onClick={() => (open ? setOpen(false) : openMenu())}
             onKeyDown={onKeyDown}
           >
-            {selected ? (
+            {summary ? (
+              <span className={styles.value}>{summary}</span>
+            ) : selected ? (
               <span className={styles.value}>
                 {selected.leading && <span className={styles.triggerLeading} aria-hidden="true">{selected.leading}</span>}
                 <span className={styles.valueText}>

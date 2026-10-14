@@ -2,8 +2,7 @@ import { Stack } from '@maglev/ds';
 
 /**
  * ⚠️ CONTEÚDO PLACEHOLDER (fictício). Os textos de Termos de Uso e Política de Privacidade serão fornecidos e validados
- * pelo cliente / jurídico / DPO e devem substituir este conteúdo. Está longo de propósito, para testar a rolagem interna
- * dos modais. Não é texto jurídico.
+ * pelo cliente / jurídico / DPO e devem substituir este conteúdo. Não é texto jurídico.
  */
 const SECTIONS: Record<'terms' | 'privacy', Array<[string, string]>> = {
   terms: [
@@ -31,18 +30,18 @@ const SECTIONS: Record<'terms' | 'privacy', Array<[string, string]>> = {
   ],
 };
 
-/** Corpo dos modais legais: região focável (rolagem por teclado) com o texto placeholder repetido para testar textos longos. */
-export function LegalText({ kind, label }: { kind: 'terms' | 'privacy'; label: string }) {
+/** Corpo dos modais legais: região focável (rolagem por teclado) com o texto placeholder. */
+export function LegalText({ kind, label, showNote = true }: { kind: 'terms' | 'privacy'; label: string; /** Nota de conteúdo provisório; some quando o modal já traz um aviso próprio */ showNote?: boolean }) {
   return (
     <div className="legal-scroll" tabIndex={0} role="region" aria-label={label}>
       <Stack gap="md">
-        <p className="field-note">Conteúdo provisório (placeholder): será substituído pelo documento fornecido e validado pelo cliente</p>
-        {[0, 1].flatMap((round) => SECTIONS[kind].map(([title, text]) => (
-          <section key={`${round}-${title}`}>
-            <h3 className="legal-heading">{round ? `${title} (repetição de teste)` : title}</h3>
+        {showNote && <p className="field-note">Conteúdo provisório (placeholder): será substituído pelo documento fornecido e validado pelo cliente</p>}
+        {SECTIONS[kind].map(([title, text]) => (
+          <section key={title}>
+            <h3 className="legal-heading">{title}</h3>
             <p className="page-text">{text}</p>
           </section>
-        )))}
+        ))}
       </Stack>
     </div>
   );

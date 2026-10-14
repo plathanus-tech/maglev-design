@@ -1,4 +1,5 @@
 import { ChangeEvent, KeyboardEvent, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconCalendar, IconChevronDown, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { Button } from '../Button/Button';
 import { FormField } from '../FormField/FormField';
@@ -182,8 +183,7 @@ export function DatePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   // Posição do calendário: abre para cima quando falta espaço embaixo (e há mais em cima) e alinha à direita quando passaria da borda da tela
-  const [dropUp, setDropUp] = useState(false);
-  const [alignEnd, setAlignEnd] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const focusDay = useRef(false);
 
   // Mantém o texto sincronizado quando `value` muda por fora.
@@ -192,7 +192,7 @@ export function DatePicker({
   // Fecha ao clicar fora.
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!anchorRef.current?.contains(e.target as Node)) setOpen(false); };
+    const onDown = (e: MouseEvent) => { const t = e.target as Node; if (!anchorRef.current?.contains(t) && !popupRef.current?.contains(t)) setOpen(false); };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
@@ -247,13 +247,28 @@ export function DatePicker({
     else if (!inRange(parsed)) setTouchedInvalid(labels.outOfRange);
   };
 
+  // O calendário vai num portal no <body> (position: fixed), acima de Dialog e rodapés, sem ser cortado por contêineres com overflow.
+  // Em telas estreitas fica centralizado na viewport; nas largas, alinhado ao campo; sempre dentro da viewport.
   useLayoutEffect(() => {
-    if (!open || !anchorRef.current || !popupRef.current) return;
-    const a = anchorRef.current.getBoundingClientRect();
-    const p = popupRef.current.getBoundingClientRect();
-    const gap = 16;
-    setDropUp(window.innerHeight - a.bottom < p.height + gap && a.top > window.innerHeight - a.bottom);
-    setAlignEnd(a.left + p.width > window.innerWidth - gap && a.right - p.width >= gap);
+    if (!open) return;
+    const place = () => {
+      if (!anchorRef.current || !popupRef.current) return;
+      const a = anchorRef.current.getBoundingClientRect();
+      const p = popupRef.current.getBoundingClientRect();
+      const gap = 16;
+      const vw = document.documentElement.clientWidth;
+      const vh = window.innerHeight;
+      const left = vw <= 640 ? (vw - p.width) / 2 : Math.min(Math.max(a.left, gap), Math.max(gap, vw - p.width - gap));
+      const below = a.bottom + 4;
+      const above = a.top - 4 - p.height;
+      let top = below + p.height + gap <= vh ? below : (above >= gap ? above : below);
+      top = Math.max(gap, Math.min(top, vh - p.height - gap));
+      setPos((c) => (c && c.top === top && c.left === left ? c : { top, left }));
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
   }, [open]);
 
   const openCalendar = () => {
@@ -357,8 +372,8 @@ export function DatePicker({
             </button>
           </div>
 
-          {open && (
-            <div ref={popupRef} role="dialog" aria-modal="true" aria-label={labels.calendar} className={cx(styles.popup, dropUp && styles.popupUp, alignEnd && styles.popupEnd)}>
+          {open && createPortal(
+            <div ref={popupRef} role="dialog" aria-modal="true" aria-label={labels.calendar} className={styles.popup} style={pos ? { top: pos.top, left: pos.left } : { top: 0, left: 0, visibility: 'hidden' }}>
               <div className={styles.header}>
                 <button
                   type="button" className={styles.navBtn} aria-label={labels.previousMonth}
@@ -443,7 +458,8 @@ export function DatePicker({
                   </Button>
                 </div>
               )}
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
       )}

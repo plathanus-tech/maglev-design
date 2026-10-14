@@ -14,6 +14,10 @@
   "include": [
     "admin",
     "assinante",
+    "prestador",
+    "colaborador",
+    "externo",
+    "emails",
     "prototype-nav",
     "vite-env.d.ts",
     "../src/css-modules.d.ts"

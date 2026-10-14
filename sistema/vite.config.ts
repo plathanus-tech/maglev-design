@@ -17,7 +17,7 @@ export const SCREENS = [
   'assinantes', 'assinante', 'assinante-form',
   'usuarios', 'usuario', 'usuario-form',
   'perfis', 'perfil-form',
-  'configuracoes-categorias', 'configuracoes-tipos-solicitacao', 'configuracoes-tipos-manutencao',
+  'configuracoes-categorias', 'configuracoes-especialidades', 'configuracoes-tipos-solicitacao', 'configuracoes-tipos-manutencao',
   'configuracoes-prioridades', 'configuracoes-criticidades', 'configuracoes-status',
 ];
 
@@ -26,6 +26,12 @@ export const SCREENS = [
  * Tela nova = criar o .html em assinante/screens/ e registrá-la no Navegador de Protótipo (prototype-nav/assinante/*.ts).
  */
 const SUBSCRIBER_SCREENS = readdirSync(here('./assinante/screens')).filter((f) => f.endsWith('.html')).map((f) => f.replace(/\.html$/, ''));
+
+/** Telas externas (sem login): Prestador de serviço (link) e Colaborador/Solicitante (QR Code). Mesma regra: todo .html vira entrada. */
+const screensOf = (dir: string) => readdirSync(here(`./${dir}/screens`)).filter((f) => f.endsWith('.html')).map((f) => f.replace(/\.html$/, ''));
+const PROVIDER_SCREENS = screensOf('prestador');
+const REQUESTER_SCREENS = screensOf('colaborador');
+const EMAIL_SCREENS = screensOf('emails');
 
 /**
  * Tela inexistente em /admin/screens/ responde 404. Sem isto o Vite devolve o index.html (o próprio
@@ -36,7 +42,7 @@ const screenNotFound = (): Plugin => ({
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       const path = decodeURIComponent((req.url ?? '').split('?')[0].split('#')[0]);
-      if ((path.startsWith('/admin/screens/') || path.startsWith('/assinante/screens/')) && path.endsWith('.html') && !existsSync(here(`.${path}`))) {
+      if ((['/admin/', '/assinante/', '/prestador/', '/colaborador/', '/emails/'].some((p) => path.startsWith(p + 'screens/'))) && path.endsWith('.html') && !existsSync(here(`.${path}`))) {
         res.statusCode = 404;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.end('<!doctype html><meta charset="utf-8"><title>Tela não encontrada</title><p>Tela não encontrada. Escolha outra tela no Navegador de Protótipo.</p>');
@@ -71,6 +77,9 @@ export default defineConfig(({ command }) => ({
       input: {
         ...Object.fromEntries(SCREENS.map((n) => [n, here(`./admin/screens/${n}.html`)])),
         ...Object.fromEntries(SUBSCRIBER_SCREENS.map((n) => [`assinante-${n}`, here(`./assinante/screens/${n}.html`)])),
+        ...Object.fromEntries(PROVIDER_SCREENS.map((n) => [`prestador-${n}`, here(`./prestador/screens/${n}.html`)])),
+        ...Object.fromEntries(REQUESTER_SCREENS.map((n) => [`colaborador-${n}`, here(`./colaborador/screens/${n}.html`)])),
+        ...Object.fromEntries(EMAIL_SCREENS.map((n) => [`emails-${n}`, here(`./emails/screens/${n}.html`)])),
         nav: here('./index.html'),
       },
     },

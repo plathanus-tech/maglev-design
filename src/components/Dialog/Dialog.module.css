@@ -78,3 +78,9 @@
   .footer > :first-child { order: 2; }
   .footer > :last-child { order: 1; }
 }
+
+/* Bottom sheet (prop `sheet`): só em telas estreitas */
+@media (max-width: 640px) {
+  .overlaySheet { align-items: flex-end; padding: 0; }
+  .dialogSheet { max-width: none; max-height: 85dvh; border-end-start-radius: 0; border-end-end-radius: 0; }
+}

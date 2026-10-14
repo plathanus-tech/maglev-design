@@ -226,3 +226,4 @@ button.pn-open-raw { border: 0; background: transparent; padding: 0; cursor: poi
 }
 .pn-select select option:disabled { color: var(--color-text-tertiary); }
 .pn-select svg { position: absolute; right: var(--spacing-sm); pointer-events: none; }
+.pn-item--sub { margin-left: var(--spacing-md); }

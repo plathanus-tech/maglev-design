@@ -6,10 +6,11 @@ import { formatCnpj, formatDate, formatMoney, formatNumber, formatPhone, noBreak
 import { useHashState } from '../../admin/shared/useHashState';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { ProviderContact, Technician, WorkOrder } from './data';
+import { dueCell, overdueDays } from './os-common';
 import { ResponsiveTable } from './ListKit';
 import { PROVIDER_KIND_LABEL, docKind, formatCpf, mainContact, orderCompletedAt, orderCostCents, providerName, providerOrders, techSpecialtiesText, withinDays } from './prestadores';
 import { ProviderStatusDialog } from './ProviderStatusDialog';
-import { unitName, useSubSession } from './store';
+import { useSubSession } from './store';
 import { Col, Grid, ReadField, goTo, param, recordStatusBadge, takeFlash, useRefs } from './ui';
 
 /** Estados: idle · inactivate / activate (RF701 - confirmação a partir do perfil) */
@@ -59,7 +60,6 @@ function PrestadorScreen() {
   const toRow = (o: WorkOrder, at: string): OrderRow => ({ id: o.id, order: o, equipment: eqName(o), at, cost: orderCostCents(o) });
   const open = orders.filter((o) => ['aberto', 'andamento', 'aguardando'].includes(base(o) ?? '')).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((o) => toRow(o, o.createdAt));
   const history = orders.filter((o) => ['concluido', 'cancelado'].includes(base(o) ?? '')).map((o) => toRow(o, orderCompletedAt(db, o))).sort((a, b) => b.at.localeCompare(a.at));
-  const units = [...new Set(orders.map((o) => db.equipments.find((e) => e.id === o.equipmentId)?.unitId).filter(Boolean))].map((u) => unitName(db, u as string));
 
   // Indicadores (💡 sugestão do RF703): só OS deste assinante (RGN001)
   const inPeriod = orders.filter((o) => withinDays(o.createdAt, PERIOD_DAYS));
@@ -68,21 +68,29 @@ function PrestadorScreen() {
   const totalCost = doneInPeriod.reduce((n, r) => n + r.cost, 0);
 
   const orderLink = (o: WorkOrder) => <a className="text-link" href={`os.html?id=${o.id}`}>{o.id}</a>;
-  const subjectCell = (o: WorkOrder) => (o.kind === 'preventiva' ? <Stack gap="2xs"><span>{o.subject}</span><Badge status="info">Preventiva</Badge></Stack> : o.subject);
+  const subjectCell = (o: WorkOrder) => (o.kind === 'preventiva' ? <Stack gap="xs" align="start"><span>{o.subject}</span><Badge status="info">Preventiva</Badge></Stack> : o.subject);
   const statusCell = (o: WorkOrder) => refs.statusBadge(o.statusId);
 
+  // Técnico responsável: o vínculo real da OS (executor.technician); sem técnico definido, "Não atribuído". Autônomo é o próprio responsável, sem a coluna
+  const techCell = (o: WorkOrder) => {
+    const t = o.executor.kind === 'prestador' ? o.executor.technician : undefined;
+    return t ? noBreak(t) : <span className="cell-muted">Não atribuído</span>;
+  };
+  // Prazo: igual à lista geral de OS (dueCell): dueAt = prazo da corretiva ou data prevista da preventiva; atraso por overdueDays
+  const dueOf = (o: WorkOrder) => dueCell(o.dueAt, overdueDays(o, base(o)));
   const openCols: TableColumn<OrderRow>[] = [
     { key: 'id', label: 'Nº', render: (_, r) => orderLink(r.order) },
     { key: 'subject', label: 'Assunto', render: (_, r) => subjectCell(r.order) },
+    ...(company ? [{ key: 'tech', label: 'Técnico responsável', render: (_: unknown, r: OrderRow) => techCell(r.order) }] : []),
     { key: 'status', label: 'Status', render: (_, r) => statusCell(r.order) },
-    { key: 'at', label: 'Aberta em', render: (_, r) => formatDate(r.at) },
+    { key: 'due', label: 'Prazo', render: (_, r) => dueOf(r.order) },
   ];
   const historyCols: TableColumn<OrderRow>[] = [
     { key: 'id', label: 'Nº', render: (_, r) => orderLink(r.order) },
     { key: 'subject', label: 'Assunto', render: (_, r) => subjectCell(r.order) },
     { key: 'equipment', label: 'Equipamento' },
     { key: 'status', label: 'Status', render: (_, r) => statusCell(r.order) },
-    { key: 'at', label: 'Data', render: (_, r) => formatDate(r.at) },
+    { key: 'at', label: 'Encerramento', render: (_, r) => formatDate(r.at) },
     ...(canSeeCosts ? [{ key: 'cost', label: 'Custo', align: 'right' as const, render: (_: unknown, r: OrderRow) => (r.cost ? formatMoney(r.cost) : '-') }] : []),
   ];
   const contactCols: TableColumn<ContactRow>[] = [
@@ -126,11 +134,6 @@ function PrestadorScreen() {
               </DevNote>
             </Col>
             <Col span={6}><ReadField label="Regiões atendidas" value={p.regions.join(', ')} /></Col>
-            <Col span={12}>
-              <DevNote note="RF703: unidades atendidas = unidades dos equipamentos das OS atribuídas a este prestador.">
-                <ReadField label="Unidades atendidas" value={units.length ? units.join(', ') : 'Nenhuma OS atribuída ainda'} />
-              </DevNote>
-            </Col>
           </Grid>
         </div>
       </Card>
@@ -156,7 +159,7 @@ function PrestadorScreen() {
       <DevNote note="RF703-CTA001: todas as OS atribuídas ao prestador (executor do tipo prestador) aparecem aqui, em andamento ou no histórico. Clique no número abre a OS (RF503).">
         <ResponsiveTable<OrderRow>
           id="provider-open" title="OS em andamento" subtitle="Ordens de serviço abertas, em andamento ou aguardando" columns={openCols} rows={open} emptyTitle="Nenhuma OS em andamento"
-          card={(r) => ({ id: r.id, title: r.order.subject, subtitle: r.order.id, badge: statusCell(r.order), fields: [{ label: 'OS', value: orderLink(r.order) }, { label: 'Aberta em', value: formatDate(r.at) }] })}
+          card={(r) => ({ id: r.id, title: r.order.subject, subtitle: r.order.id, badge: statusCell(r.order), fields: [{ label: 'OS', value: orderLink(r.order) }, ...(company ? [{ label: 'Técnico responsável', value: techCell(r.order) }] : []), { label: 'Prazo', value: dueOf(r.order) }] })}
         />
       </DevNote>
       <DevNote note={`Histórico de serviços: OS concluídas (e canceladas) com a data de conclusão. Custo só para quem pode ver custos (Administrador e Gestor - RF304-RGN003).`}>
@@ -164,7 +167,7 @@ function PrestadorScreen() {
           id="provider-history" title="OS concluídas e histórico de serviços" subtitle="Serviços já encerrados por este prestador" columns={historyCols} rows={history} emptyTitle="Nenhum serviço concluído"
           card={(r) => ({
             id: r.id, title: r.order.subject, subtitle: r.equipment, badge: statusCell(r.order),
-            fields: [{ label: 'OS', value: orderLink(r.order) }, { label: 'Data', value: formatDate(r.at) }, ...(canSeeCosts ? [{ label: 'Custo', value: r.cost ? formatMoney(r.cost) : '-' }] : [])],
+            fields: [{ label: 'OS', value: orderLink(r.order) }, { label: 'Encerramento', value: formatDate(r.at) }, ...(canSeeCosts ? [{ label: 'Custo', value: r.cost ? formatMoney(r.cost) : '-' }] : [])],
           })}
         />
       </DevNote>

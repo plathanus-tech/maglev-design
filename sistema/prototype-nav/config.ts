@@ -9,7 +9,8 @@ export interface ScreenNode {
   label: string;
   path: string;
   mobilePath?: string;
-  variants?: Array<{ id: string; label: string; path: string }>;
+  /** `sub`: subvariante, recuada sob a variante anterior (ex.: estados do troubleshooting dentro de "Com solução de problemas") */
+  variants?: Array<{ id: string; label: string; path: string; sub?: boolean }>;
 }
 export interface FlowNode { id: string; label: string; type: 'flow'; screens: ScreenNode[] }
 export interface Journey { id: string; label: string; items: Array<ScreenNode | FlowNode> }
@@ -171,6 +172,7 @@ export const journeys: Journey[] = [
           v('cfg-cat-deleteblocked', 'Exclusão bloqueada (com vínculos)', 'configuracoes-categorias.html#state=deleteblocked'),
         ],
       },
+      { id: 'cfg-especialidades', label: 'RF408 - Cadastro de Especialidades', path: `${s}/configuracoes-especialidades.html` },
       { id: 'cfg-tipos-solicitacao', label: 'RF403 - Tipos de solicitação', path: `${s}/configuracoes-tipos-solicitacao.html` },
       { id: 'cfg-tipos-manutencao', label: 'RF404 - Tipos de manutenção', path: `${s}/configuracoes-tipos-manutencao.html` },
       {

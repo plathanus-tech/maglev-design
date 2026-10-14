@@ -1,7 +1,7 @@
 import { ReactNode, StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  IconAdjustmentsHorizontal, IconAlertTriangle, IconFlag, IconLayoutDashboard, IconListDetails, IconLock, IconMenu2, IconMicrowave, IconX,
+  IconAdjustmentsHorizontal, IconAlertTriangle, IconFlag, IconLayoutDashboard, IconListDetails, IconUserCog, IconLock, IconMenu2, IconMicrowave, IconX,
   IconProgressCheck, IconShieldLock, IconTool, IconToolsKitchen2, IconUsers,
 } from '@tabler/icons-react';
 import { AppHeader, Breadcrumb, BreadcrumbItem, Button, Card, EmptyState, NavItemDef, Sidebar, Stack, ToastProvider } from '@maglev/ds';
@@ -32,6 +32,7 @@ const NAV: NavEntry[] = [
     id: 'configuracoes', screen: 'configuracoes', label: 'Configurações', icon: <IconAdjustmentsHorizontal size={16} />,
     children: [
       { id: 'configuracoes-categorias', label: 'Categorias', icon: <IconMicrowave size={16} />, href: 'configuracoes-categorias.html' },
+      { id: 'configuracoes-especialidades', label: 'Especialidades', icon: <IconUserCog size={16} />, href: 'configuracoes-especialidades.html' },
       { id: 'configuracoes-tipos-solicitacao', label: 'Tipos de solicitação', icon: <IconListDetails size={16} />, href: 'configuracoes-tipos-solicitacao.html' },
       { id: 'configuracoes-tipos-manutencao', label: 'Tipos de manutenção', icon: <IconTool size={16} />, href: 'configuracoes-tipos-manutencao.html' },
       { id: 'configuracoes-prioridades', label: 'Prioridades', icon: <IconFlag size={16} />, href: 'configuracoes-prioridades.html' },

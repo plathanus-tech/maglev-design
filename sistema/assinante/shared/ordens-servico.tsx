@@ -17,7 +17,7 @@ import { ordersVisible, unitName, equipmentOf, userName } from './store';
 import { useSubSession } from './store';
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, takeFlash, useRefs } from './ui';
-import { ClassifyDialog, ReassignDialog, STO, executorInfo, isEditable, overdueDays } from './os-common';
+import { ClassifyDialog, ReassignDialog, STO, dueCell, executorInfo, isEditable, overdueDays } from './os-common';
 import type { WorkOrder } from './data';
 import './os-summary.css';
 
@@ -179,9 +179,7 @@ function OrdensScreen() {
     applySummary(statusId); setPeriod('custom'); setFrom(last30); setTo('');
   };
 
-  const dueNode = (r: Row) => (r.late > 0
-    ? <CellPair primary={<Badge status="error" solid icon={<IconAlertTriangle size={14} />}>{formatDate(r.dueAt)}</Badge>} secondary={`Vencida há ${r.late} ${r.late === 1 ? 'dia' : 'dias'}`} />
-    : formatDate(r.dueAt));
+  const dueNode = (r: Row) => dueCell(r.dueAt, r.late);
 
   /** Desktop: olho + menu ⋮ (Editar, Classificar, Reatribuir). Cards no mobile: as quatro ações já abertas, como ícones. */
   const actions = (r: Row) => {

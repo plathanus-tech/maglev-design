@@ -20,13 +20,15 @@ export interface DialogProps {
   className?: string;
   /** Rótulo do botão de fechar (i18n). */
   closeLabel?: string;
+  /** Em telas estreitas (≤ 640px) abre como bottom sheet: ancorado no rodapé, largura total e altura limitada à viewport. Em telas maiores é o diálogo centralizado de sempre. */
+  sheet?: boolean;
 }
 
 /**
  * Diálogo modal: prende o foco, fecha com Esc/clique fora, trava o scroll do fundo
  * e devolve o foco ao elemento que o abriu.
  */
-export function Dialog({ open, onClose, title, subtitle, children, actions, size = 'md', className, closeLabel = 'Fechar' }: DialogProps) {
+export function Dialog({ open, onClose, title, subtitle, children, actions, size = 'md', className, closeLabel = 'Fechar', sheet = false }: DialogProps) {
   const titleId = useId();
   const subtitleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -64,7 +66,7 @@ export function Dialog({ open, onClose, title, subtitle, children, actions, size
   if (!open) return null;
 
   return (
-    <div className={styles.overlay} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={cx(styles.overlay, sheet && styles.overlaySheet)} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -72,7 +74,7 @@ export function Dialog({ open, onClose, title, subtitle, children, actions, size
         aria-labelledby={titleId}
         aria-describedby={subtitle ? subtitleId : undefined}
         tabIndex={-1}
-        className={cx(styles.dialog, styles[size], className)}
+        className={cx(styles.dialog, styles[size], sheet && styles.dialogSheet, className)}
       >
         <div className={styles.header}>
           <div className={styles.headings}>

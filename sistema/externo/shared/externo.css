@@ -1,0 +1,222 @@
+/* externo.css - casca das telas sem login (Prestador via link e Colaborador via QR Code). Só tokens existentes. */
+.ext-logo { display: inline-flex; align-items: center; }
+.ext-logo img { height: var(--spacing-xl); width: auto; }
+@media (max-width: 480px) { .ext-logo img { height: calc(var(--spacing-lg) + var(--spacing-xs)); } }
+.ext-context { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacing-2xs); min-width: 0; margin-right: var(--spacing-xs); line-height: var(--line-height-snug); }
+.ext-context-company { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); max-width: min(12rem, 40vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ext-context-area { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+@media (max-width: 380px) { .ext-context-company { max-width: 44vw; } }
+
+.ext-page { width: 100%; max-width: 40rem; margin-inline: auto; }
+.ext-page.is-wide { max-width: 56rem; }
+
+/* Cartão de item de lista (OS, solicitação): a área inteira é um link */
+.ext-item { display: flex; flex-direction: column; gap: var(--spacing-xs); padding: var(--spacing-md); text-decoration: none; color: var(--color-text-primary); }
+.ext-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-sm); }
+.ext-item-title { font-size: var(--font-size-md); font-weight: var(--font-weight-label); overflow-wrap: anywhere; }
+.ext-item-meta { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.ext-item-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs) var(--spacing-md); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.ext-link-card { display: block; border-radius: var(--radius-control); text-decoration: none; color: inherit; }
+.ext-link-card:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.ext-link-card:hover > * { border-color: var(--color-border-default); }
+
+/* Bloco de ação principal fixa no fim da tela (celular): botão largo, fácil de tocar com o polegar */
+.ext-actions { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.ext-actions > * { width: 100%; }
+@media (min-width: 640px) { .ext-actions { flex-direction: row; flex-wrap: wrap; } .ext-actions > * { width: auto; } }
+
+.ext-kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); margin: 0; }
+.ext-kv dt { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); text-transform: none; }
+.ext-kv dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 359px) { .ext-kv { grid-template-columns: minmax(0, 1fr); } }
+
+/* Foto do equipamento (resumo do QR Code) */
+.ext-eq-photo { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--radius-control); background: var(--color-bg-subtle); color: var(--color-text-tertiary); }
+.ext-eq-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Histórico em linguagem simples (acompanhamento): linha do tempo vertical compacta */
+.ext-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ext-history-item { position: relative; display: flex; flex-direction: column; gap: var(--spacing-2xs); padding: var(--spacing-sm) 0 var(--spacing-sm) var(--spacing-lg); border-left: var(--border-width-thin) solid var(--color-border-subtle); margin-left: var(--spacing-xs); }
+.ext-history-item::before { content: ''; position: absolute; left: calc(var(--spacing-xs) * -1 - var(--border-width-thin)); top: var(--spacing-md); width: var(--spacing-sm); height: var(--spacing-sm); border-radius: var(--radius-pill); background: var(--color-border-default); }
+.ext-history-item:first-child::before { background: var(--color-action-primary); }
+.ext-history-text { font-size: var(--font-size-md); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-history-date { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+
+.ext-kv-one { grid-template-columns: minmax(0, 1fr); }
+.ext-item-reported { margin: 0; font-size: var(--font-size-md); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ext-item-foot-item { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
+.ext-list { margin: 0; padding-left: var(--spacing-lg); display: flex; flex-direction: column; gap: var(--spacing-xs); overflow-wrap: anywhere; }
+.ext-visit { display: flex; flex-direction: column; gap: var(--spacing-xs); padding: var(--spacing-sm) 0; border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.ext-visit:first-child { border-top: 0; padding-top: 0; }
+.ext-visits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ext-visit .ext-item-head { flex-wrap: wrap; align-items: center; }
+.ext-visit-action { margin-top: var(--spacing-xs); }
+.ext-contact { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); }
+.ext-contact > div { display: flex; flex-direction: column; min-width: 0; }
+.ext-contact-label { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-secondary); }
+.ext-contact-name { font-weight: var(--font-weight-label); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-contact-phone { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); }
+
+/* Cabeçalho da página e acionador de filtros/ordenação */
+.ext-os-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-md); }
+.ext-os-header-text { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
+.ext-os-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); margin-bottom: calc(var(--spacing-sm) * -1); }
+.ext-filter-trigger { position: relative; display: inline-flex; flex-shrink: 0; margin-right: calc(var(--spacing-sm) * -1); }
+.ext-filter-trigger > button { position: relative; font-weight: var(--font-weight-label); }   /* tamanho vem do Button sm (Button/S, 14px) */
+.ext-filter-trigger > button::after { content: ''; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; }   /* área de toque de 44px com o botão de 36px */
+.ext-filter-count { display: inline-flex; align-items: center; justify-content: center; min-width: var(--spacing-md); height: var(--spacing-md); padding: 0 var(--spacing-xs); margin-left: var(--spacing-xs); border-radius: var(--radius-pill); background: var(--color-bg-brand); color: var(--color-text-brand); font-size: var(--font-size-xs); font-weight: var(--font-weight-heading); line-height: 1; }
+.ext-panel { width: 18rem; max-width: 100%; display: flex; flex-direction: column; gap: var(--spacing-md); }
+.ext-panel-foot { display: flex; justify-content: flex-end; }
+.ext-panel-section { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.ext-panel-title { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-heading); color: var(--color-text-primary); }
+.ext-count { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); }
+
+/* Estado vazio e acesso bloqueado: cartão compacto, centralizado, sem ocupar a página */
+/* Estado vazio direto sobre o fundo (sem cartão): ícone 32px, título 16px, descrição 14/20 */
+.ext-empty { width: 100%; max-width: 32rem; margin-inline: auto; padding-top: var(--spacing-md); }
+.ext-empty.is-inline { padding-top: 0; }
+.ext-empty.is-page { padding-top: calc(var(--spacing-xl) + var(--spacing-lg)); }   /* indisponibilidade: logo abaixo do header da aplicação */
+.ext-empty > div { gap: var(--spacing-sm); padding: 0 var(--spacing-md); }
+/* Ícone padrão dos estados vazios e de indisponibilidade: 32px, marca sobre fundo brand sutil, em círculo de 64px */
+.ext-empty > div > div:first-child { align-items: center; justify-content: center; width: calc(var(--spacing-xl) * 2); height: calc(var(--spacing-xl) * 2); margin-bottom: var(--spacing-sm); border-radius: var(--radius-pill); background: var(--color-bg-brand); color: var(--brand-primary); }
+.ext-empty h2 { font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); }
+.ext-empty p { max-width: 20rem; font: var(--text-body-s); }
+
+/* Lista de OS (Prestador RF101) */
+.ext-os-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--spacing-md); }
+.ext-os-list > li { min-width: 0; }
+.ext-os { transition: box-shadow var(--transition-fast); }
+/* Hover discreto (só com mouse), foco visível do link e feedback ao tocar no celular */
+.ext-os:focus-visible > * { border-color: var(--color-border-default); }
+@media (hover: hover) { .ext-os:hover > * { box-shadow: var(--shadow-xs); border-color: var(--color-border-default); } }
+.ext-os:active > * { background: var(--color-bg-subtle); }
+/* Cartão em três grupos: identificação (categoria, equipamento, OS, descrição) · classificação (prioridade, status) · execução (prazo, local) */
+.ext-os-card { display: flex; flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-md); }
+.ext-os-head { display: flex; align-items: flex-start; gap: var(--spacing-sm); }
+.ext-os-cat { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: calc(var(--spacing-xl) + var(--spacing-sm) + var(--spacing-xs)); height: calc(var(--spacing-xl) + var(--spacing-sm) + var(--spacing-xs)); border-radius: var(--radius-control); background: var(--color-bg-brand); color: var(--brand-primary); }
+.ext-os-lead { display: flex; flex-direction: column; flex: 1 1 auto; gap: var(--spacing-2xs); min-width: 0; }
+.ext-os-equipment { font-size: var(--font-size-xl); font-weight: var(--font-weight-heading); line-height: var(--line-height-snug); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-os-kind::before { content: " · "; white-space: pre; }
+.ext-os-kind { color: var(--color-text-tertiary); }
+.ext-os-cat .category-icon { color: inherit; }
+.ext-os-number { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.ext-os-problem { margin: calc(var(--spacing-2xs) * -1) 0 0; font: var(--text-body-s); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.ext-os-badges > *, .ext-os-tags > *, .ext-os-status > * { line-height: 1; }
+.ext-os-badges { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-xs) var(--spacing-sm); }
+.ext-os-tags { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); }
+.ext-os-status { display: inline-flex; min-width: 0; margin-left: auto; }
+.ext-os-meta { display: flex; flex-direction: column; gap: var(--spacing-sm); margin-top: var(--spacing-xs); padding-top: calc(var(--spacing-sm) + var(--spacing-xs)); border-top: var(--border-width-thin) solid var(--color-border-subtle); min-width: 0; }
+.ext-os-due, .ext-os-where { display: flex; align-items: flex-start; gap: var(--spacing-xs); min-width: 0; font-size: var(--font-size-sm); }
+.ext-os-due > svg, .ext-os-where > svg { flex-shrink: 0; margin-top: var(--spacing-2xs); color: var(--color-text-tertiary); }
+.ext-os-due > div, .ext-os-where > div { display: flex; flex-direction: column; min-width: 0; }
+.ext-os-due-date { color: var(--color-text-primary); font-weight: var(--font-weight-label); }
+.ext-os-due-rel { color: var(--color-text-secondary); }
+.ext-os-due-rel.is-late { color: var(--color-status-error-fg); font-weight: var(--font-weight-label); }
+.ext-os-due-rel.is-soon { color: var(--color-status-warning-fg); font-weight: var(--font-weight-label); }
+.ext-os-unit { font-weight: var(--font-weight-label); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-os-env { font-weight: var(--font-weight-body); }
+.ext-os-env::before { content: ' · '; }
+.ext-os-address { color: var(--color-text-secondary); overflow-wrap: anywhere; }
+@media (max-width: 360px) { .ext-os-equipment { font-size: var(--font-size-lg); } }
+
+
+/* Desktop: estado vazio de listagem com mais respiro abaixo do contador e conjunto mais estreito (indisponibilidade e inline mantêm o próprio posicionamento) */
+@media (min-width: 768px) {
+  .ext-empty:not(.is-page):not(.is-inline) { max-width: 22rem; padding-top: var(--spacing-lg); }
+}
+
+/* Atendimento da OS: cabeçalho, progresso, dados da OS e equipamento */
+.ext-at-head { display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing-xs); min-width: 0; }
+.ext-at-id { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.ext-at-id strong { color: var(--color-text-primary); font-weight: var(--font-weight-label); }
+.ext-next { display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing-2xs); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-control); background: var(--color-bg-subtle); }
+.ext-next-label { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.ext-next-title { font-weight: var(--font-weight-heading); color: var(--color-text-primary); }
+.ext-next-hint { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); }
+.ext-next-action { margin-top: var(--spacing-xs); }
+.ext-field { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
+.ext-field-label { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.ext-problem-text { margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-label); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md); }
+.ext-call { position: relative; display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--spacing-xs); min-height: 2.25rem; padding: 0 var(--spacing-md); border: var(--border-width-thin) solid var(--color-border-default); border-radius: var(--radius-control); background: var(--color-bg-surface); color: var(--color-text-primary); font: var(--text-body-s); font-weight: var(--font-weight-label); text-decoration: none; }
+.ext-call::after { content: ''; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; }   /* área de toque de 44px */
+@media (hover: hover) { .ext-call:hover { background: var(--color-bg-subtle); } }
+.ext-call:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+.ext-eq { display: flex; align-items: flex-start; gap: var(--spacing-md); min-width: 0; }
+.ext-eq-thumb { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 5rem; height: 5rem; padding: 0; border: 0; border-radius: var(--radius-control); background: var(--color-bg-brand); color: var(--brand-primary); overflow: hidden; }
+.ext-eq-thumb.is-photo { background: var(--color-bg-subtle); cursor: zoom-in; }
+.ext-eq-thumb.is-photo:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+.ext-eq-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ext-eq-main { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
+.ext-eq-name { font-size: var(--font-size-xl); font-weight: var(--font-weight-heading); line-height: var(--line-height-snug); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-eq-code { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-label); color: var(--color-text-primary); }
+.ext-eq-meta { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.ext-history-more { margin-top: var(--spacing-xs); margin-left: calc(var(--spacing-sm) * -1); }
+.ext-note { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); }
+.card-body-tight.ext-body-snug { margin-top: calc(var(--spacing-xs) * -4); }
+@media (max-width: 639px) { .ext-visit-action > button { width: 100%; } }   /* Registrar chegada ocupa toda a largura no celular */
+
+/* Pré-visualização de e-mail (só revisão de design): moldura centralizada, 375px no modo celular */
+.mail-frame-wrap { display: flex; justify-content: center; }
+.mail-frame { max-width: 100%; height: 50rem; border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-control); background: var(--color-bg-surface); }
+/* Cartão com cabeçalho: o corpo começa 16px abaixo do título/subtítulo (o padding inferior do cabeçalho já dá os 16px; zera o padding superior do corpo, que somava 32px) */
+.ext-shell section > header + div { padding-top: 0; }
+/* Aviso sob o cabeçalho da página: 12px visíveis acima e abaixo (o espaço padrão entre seções é maior) */
+.ext-notice-group { display: flex; flex-direction: column; gap: calc(var(--spacing-md) + var(--spacing-xs)); margin-bottom: calc((var(--spacing-lg) - var(--spacing-sm) - var(--spacing-xs)) * -1); }
+/* Solicitação em aberto: tipo (semibold), descrição (2 linhas no celular, 3 no desktop) e data de abertura */
+.ext-item-type { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-item-desc { margin: 0; font-size: var(--font-size-md); color: var(--color-text-primary); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (min-width: 768px) { .ext-item-desc { -webkit-line-clamp: 3; } }
+.ext-item-date { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+/* Estado de erro em tela inteira (equipamento não encontrado): centralizado na área abaixo do cabeçalho, um pouco acima do centro */
+.ext-empty.is-center { display: flex; flex-direction: column; justify-content: center; min-height: calc(100dvh - 10rem); padding-top: 0; padding-bottom: var(--spacing-xl); }
+.ext-empty.is-error > div > div:first-child { background: var(--color-status-error-bg); color: var(--color-status-error-fg); }
+/* Acompanhar solicitação: situação atual e indicadores do histórico nas cores semânticas */
+.ext-sit-head { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); }
+.ext-sit-type { font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-sit-desc { margin: 0; font-size: var(--font-size-md); line-height: var(--line-height-normal); color: var(--color-text-primary); white-space: pre-line; overflow-wrap: anywhere; }
+.ext-sit-value { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-label); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-pair-fit { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--spacing-md); }
+.ext-history-item[data-tone]::before { background: var(--color-border-default); }
+.ext-history-item[data-tone='info']::before { background: var(--color-status-info-fg); }
+.ext-history-item[data-tone='warning']::before { background: var(--color-status-warning-fg); }
+.ext-history-item[data-tone='success']::before { background: var(--color-status-success-fg); }
+.ext-history-item[data-tone='error']::before { background: var(--color-status-error-fg); }
+/* RF002: aviso e solicitações existentes formam um grupo (12px); divisor discreto antes do formulário */
+.ext-dup-group { display: flex; flex-direction: column; gap: calc(var(--spacing-sm) + var(--spacing-xs)); }
+.ext-divider { display: flex; align-items: center; gap: var(--spacing-md); color: var(--color-text-secondary); font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); font-weight: var(--font-weight-label); text-transform: uppercase; }
+.ext-divider::before, .ext-divider::after { content: ""; flex: 1 1 0; border-top: var(--border-width-thin) solid var(--color-border-muted); opacity: 0.28; }
+.ext-divider > span { flex: 0 1 auto; text-align: center; }
+.ext-empty.is-success > div > div:first-child { background: var(--color-status-success-bg); color: var(--color-status-success-fg); }
+/* Atendimento e técnico no card de solicitação: divisor + linhas "rótulo: valor"; lado a lado no desktop quando couber */
+.ext-item-extra { display: flex; flex-direction: column; gap: calc(var(--spacing-xs) + var(--spacing-2xs)); margin-top: var(--spacing-2xs); padding-top: var(--spacing-sm); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+@media (min-width: 640px) { .ext-item-extra { flex-direction: row; flex-wrap: wrap; column-gap: var(--spacing-lg); } }
+.ext-item-line { margin: 0; font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-primary); overflow-wrap: anywhere; min-width: 0; }
+.ext-item-line-label { color: var(--color-text-secondary); }
+.ext-hint { margin: calc(var(--spacing-xs) * -1) 0 0; font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-secondary); }
+.ext-history-detail { display: block; margin-top: var(--spacing-2xs); font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); overflow-wrap: anywhere; white-space: pre-line; }
+.ext-empty.is-warning > div > div:first-child { background: var(--color-status-warning-bg); color: var(--color-status-warning-fg); }
+.ext-pre { white-space: pre-line; overflow-wrap: anywhere; }
+.ext-money { display: block; font-weight: var(--font-weight-heading); }
+.ext-money-desc { display: block; margin-top: var(--spacing-2xs); }
+.ext-map-link { color: inherit; text-decoration: underline; text-decoration-color: var(--color-border-default); text-underline-offset: 0.2em; cursor: pointer; border-radius: var(--radius-control); }
+.ext-map-link:hover { color: var(--color-action-primary); text-decoration-color: currentColor; }
+.ext-map-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+/* Na lista de OS o endereço é texto secundário; só ganha aparência de link no hover/foco (o card inteiro já é o link principal) */
+.ext-map-link.is-quiet { position: relative; text-decoration: none; color: inherit; }
+.ext-map-link.is-quiet:hover, .ext-map-link.is-quiet:focus-visible { text-decoration: underline; text-underline-offset: 0.2em; color: inherit; }
+.ext-map-link.is-quiet::after { content: ''; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; }   /* área de toque maior sem mudar o layout */
+.ext-protocol { display: inline-flex; flex-direction: column; align-items: center; gap: var(--spacing-2xs); }
+.ext-protocol strong { font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); color: var(--color-text-primary); letter-spacing: 0.02em; }
+/* Confirmação do envio: botões empilhados, centralizados e com a mesma largura (a do maior) no desktop; largura total no celular */
+.ext-sent-actions { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; }
+.ext-sent-actions > * { width: 100%; }
+@media (min-width: 640px) { .ext-sent-actions { width: max-content; margin-inline: auto; } }
+/* Busca por código: resultado compacto */
+.ext-found-head { display: flex; align-items: center; gap: var(--spacing-md); }
+.ext-found-id { display: flex; flex-direction: column; min-width: 0; }
+.ext-found-name { font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-found-code { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); }
+.ext-found-id { flex: 1; }
+.ext-found-chevron { flex: none; color: var(--color-text-tertiary); }
+.ext-os-cat .category-icon { color: inherit; }

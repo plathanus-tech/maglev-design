@@ -355,6 +355,18 @@ const CATEGORIES = cfg('CAT', [
   ['Panificação', 'Masseiras, cilindros e modeladoras', 0, 'inativo'],
   ['Bebidas', 'Chopeiras e refrigeradores de bebidas', 0],
 ]).map((c) => ({ ...c, icon: CATEGORY_ICONS[c.name] }));
+/** DADOS DE DEMONSTRAÇÃO - especialidades dos prestadores (as mesmas usadas no cadastro de prestadores do assinante); "links" = prestadores vinculados. */
+const SPECIALTY_ITEMS = cfg('ESP', [
+  ['Refrigeração', 'Câmaras frias, freezers, balcões e mesas refrigeradas', 18],
+  ['Elétrica', 'Instalações, quadros, disjuntores e fiação dos equipamentos', 12],
+  ['Cocção', 'Fornos, fogões, chapas, fritadeiras e salamandras', 11],
+  ['Gás', 'Redes e conexões de gás e queimadores', 8],
+  ['Exaustão', 'Coifas, exaustores e dutos', 6],
+  ['Climatização', 'Ar-condicionado do salão e da cozinha', 9],
+  ['Hidráulica', 'Tubulações, válvulas e registros', 5],
+  ['Lavagem', 'Lava-louças e lava-panelas', 7],
+  ['Geral', 'Atendimentos que não exigem especialização', 4],
+]);
 const REQUEST_TYPES = cfg('TSO', [
   ['Não liga', 'O equipamento não liga ou desliga sozinho', 211],
   ['Não refrigera', 'Temperatura acima do esperado em equipamento de refrigeração', 186],
@@ -469,6 +481,7 @@ export interface Db {
   activity: Activity[];
   profiles: Profile[];
   categories: ConfigItem[];
+  specialties: ConfigItem[];
   requestTypes: ConfigItem[];
   maintenanceTypes: ConfigItem[];
   priorities: LevelItem[];
@@ -486,7 +499,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 8;
+export const DB_VERSION = 9;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.
@@ -531,6 +544,7 @@ export function seed(): Db {
     activity: buildActivity(ADMIN_USERS, subscribers),
     profiles: PROFILES,
     categories: CATEGORIES,
+    specialties: SPECIALTY_ITEMS,
     requestTypes: REQUEST_TYPES,
     maintenanceTypes: MAINTENANCE_TYPES,
     priorities: PRIORITIES,
