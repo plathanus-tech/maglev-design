@@ -97,7 +97,7 @@ function PrimeiroAcessoScreen() {
         <DevNote note="RF003-CTA002 / RGN002 / RGN003: link expirado (💡 7 dias) ou já utilizado (uso único); não há formulário nesses casos, então o subtítulo de ativação não aparece. Expirado = atenção (warning); já utilizado = informativo. O sistema só sabe que o link foi usado, não por quem, então a mensagem não afirma que a pessoa ativou a conta. Nos dois casos “Ir para o login” é a ação primária (a única disponível na interface; quem chega pelo link do convite não necessariamente veio do login), e a orientação de pedir novo convite fica no alert.">
           {isExpired
             ? <Feedback type="warning" title="O link do convite expirou" message="Entre em contato com o administrador da sua empresa para solicitar um novo convite." />
-            : <Feedback type="info" title="Este link de convite já foi utilizado" message="Se você já ativou sua conta, acesse a plataforma pelo login. Caso não reconheça essa ativação ou precise de ajuda, entre em contato com o administrador da sua empresa." />}
+            : <Feedback type="info" title="Este convite já foi utilizado" message="Se você não reconhece essa ativação, entre em contato com o administrador da sua empresa." />}
         </DevNote>
         <Button onClick={() => { window.location.href = 'login.html'; }}>Ir para o login</Button>
       </AuthLayout>
