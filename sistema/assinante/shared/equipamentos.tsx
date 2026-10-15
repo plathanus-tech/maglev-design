@@ -4,7 +4,7 @@ import {
   IconAlertTriangle, IconChevronDown, IconClipboardList, IconChecklist, IconChevronRight, IconCircleCheck, IconCircleOff, IconEye, IconMicrowave,
   IconPencil, IconPlayerStop, IconPlus, IconQrcode, IconReportMoney, IconSearch, IconTool, IconBuildingStore, IconLayoutGrid, IconPhoto, IconPrinter,
 } from '@tabler/icons-react';
-import { Button, Card, Checkbox, Dialog, EmptyState, Feedback, Input, KpiCard, Pagination, Stack, Tab, Table, TableColumn, useToast } from '@maglev/ds';
+import { Button, Card, Checkbox, Dialog, EmptyState, Feedback, Input, KpiCard, Pagination, Stack, Tab, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
@@ -12,7 +12,7 @@ import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
 import { MobileCardItem, MobileCardList } from '../../admin/shared/MobileCardList';
 import { useHashState } from '../../admin/shared/useHashState';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
-import { formatDate, formatMoney, formatNumber, normalize } from '../../admin/shared/format';
+import { formatDate, formatMoney, formatMoneyCompact, formatNumber, normalize } from '../../admin/shared/format';
 import { Environment, Equipment, Unit } from './data';
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { photoSrc } from './photos';
@@ -495,7 +495,7 @@ function EquipamentosScreen() {
             <KpiCard tone="error" label="Parados" value={formatNumber(kpis.stopped)} icon={<IconPlayerStop size={20} />} />
             <KpiCard tone="warning" label="Com alerta ou falha" value={formatNumber(kpis.alert)} icon={<IconAlertTriangle size={20} />} />
             <KpiCard tone="info" label="OS abertas vinculadas" value={formatNumber(kpis.openOrders)} icon={<IconClipboardList size={20} />} />
-            {canSeeCosts && <KpiCard tone="neutral" label="Gasto com manutenção · 30 dias" value={formatMoney(kpis.spent)} icon={<IconReportMoney size={20} />} />}
+            {canSeeCosts && <KpiCard tone="neutral" label="Gasto em manutenção · 30 dias" value={kpis.spent >= 100000 ? <Tooltip content={formatMoney(kpis.spent)}><span tabIndex={0} className="kpi-nowrap kpi-money-sm">{formatMoneyCompact(kpis.spent)}</span></Tooltip> : formatMoney(kpis.spent)} icon={<IconReportMoney size={20} />} />}
           </div>
         </DevNote>
 

@@ -3,7 +3,7 @@
    Estrutura, espaçamento e superfícies continuam vindo de Stack, Card, Table, Tab, Dialog… Nenhum token novo. */
 
 /* ── Indicadores: 5 KpiCard na mesma linha quando couberem ── */
-.eq-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--spacing-3xl) * 3), 1fr)); gap: var(--spacing-md); }
+.eq-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--spacing-3xl) * 3 + var(--spacing-md)), 1fr)); gap: var(--spacing-md); }
 .eq-kpis > * { min-width: 0; display: flex; }
 .eq-kpis > * > * { flex: 1; min-width: 0; }
 
@@ -205,3 +205,12 @@ button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(
 .eq-selmobile-row button:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-bg-surface); }
 .eq-selmobile-row button:active:not(:disabled) { color: var(--color-text-primary); }
 .eq-selmobile-note { font: var(--text-body-xs); color: var(--color-text-secondary); padding-bottom: var(--spacing-2xs); }
+
+/* KPI de valor monetário abreviado (ex.: R$ 125,37 mi): um degrau abaixo na escala de títulos (Heading/6) para caber inteiro no card, sem quebrar nem cortar */
+.kpi-money-sm { display: inline-block; font: var(--text-heading-6); letter-spacing: var(--text-heading-6-tracking); }
+
+/* Cards de KPI da lista: título numa área de até duas linhas (os valores começam na mesma altura) e ícone no topo */
+.eq-kpis > * { container: eqkpi / inline-size; }
+.eq-kpis > * > div > div > div:first-child { align-items: flex-start; min-height: calc(var(--font-size-md) * var(--line-height-snug) * 2); }
+/* Valor monetário abreviado: mesmo token dos demais valores (Heading/5) quando o card tem largura para ele; senão, um degrau abaixo (Heading/6) */
+@container eqkpi (min-width: 17rem) { .kpi-money-sm { font: var(--text-heading-5); letter-spacing: var(--text-heading-5-tracking); } }
