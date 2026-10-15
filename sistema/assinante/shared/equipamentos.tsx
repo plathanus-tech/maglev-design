@@ -12,7 +12,8 @@ import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
 import { MobileCardItem, MobileCardList } from '../../admin/shared/MobileCardList';
 import { useHashState } from '../../admin/shared/useHashState';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
-import { formatDate, formatMoney, formatMoneyCompact, formatNumber, normalize } from '../../admin/shared/format';
+import { formatDate, formatMoney, formatNumber, normalize } from '../../admin/shared/format';
+import { KpiMoney } from '../../admin/shared/kpi-value';
 import { Environment, Equipment, Unit } from './data';
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { photoSrc } from './photos';
@@ -495,7 +496,7 @@ function EquipamentosScreen() {
             <KpiCard tone="error" label="Parados" value={formatNumber(kpis.stopped)} icon={<IconPlayerStop size={20} />} />
             <KpiCard tone="warning" label="Com alerta ou falha" value={formatNumber(kpis.alert)} icon={<IconAlertTriangle size={20} />} />
             <KpiCard tone="info" label="OS abertas vinculadas" value={formatNumber(kpis.openOrders)} icon={<IconClipboardList size={20} />} />
-            {canSeeCosts && <KpiCard tone="neutral" label="Gasto em manutenção · 30 dias" value={kpis.spent >= 100000 ? <Tooltip content={formatMoney(kpis.spent)}><span tabIndex={0} className="kpi-nowrap kpi-money-sm">{formatMoneyCompact(kpis.spent)}</span></Tooltip> : formatMoney(kpis.spent)} icon={<IconReportMoney size={20} />} />}
+            {canSeeCosts && <KpiCard tone="neutral" label="Gasto em manutenção · 30 dias" value={<KpiMoney cents={kpis.spent} className="kpi-money-sm" />} icon={<IconReportMoney size={20} />} />}
           </div>
         </DevNote>
 

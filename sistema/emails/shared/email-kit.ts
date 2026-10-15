@@ -32,11 +32,11 @@ export const pill = (label: string, tone: PillTone) =>
 
 /** Título do e-mail */
 export const heading = (text: string) =>
-  `<tr><td style="font-family:${FONT};font-size:22px;line-height:30px;font-weight:700;color:${C.text};padding-bottom:12px;">${esc(text)}</td></tr>`;
+  `<tr><td style="font-family:${FONT};font-size:22px;line-height:30px;font-weight:700;color:${C.text};padding-bottom:12px;word-break:break-word;overflow-wrap:anywhere;">${esc(text)}</td></tr>`;
 
 /** Parágrafo(s) de texto; `html` já vem escapado/formatado por quem chama */
 export const paragraph = (html: string, bottom = 24) =>
-  `<tr><td style="font-family:${FONT};font-size:15px;line-height:24px;color:${C.textSecondary};padding-bottom:${bottom}px;">${html}</td></tr>`;
+  `<tr><td style="font-family:${FONT};font-size:15px;line-height:24px;color:${C.textSecondary};padding-bottom:${bottom}px;word-break:break-word;overflow-wrap:anywhere;">${html}</td></tr>`;
 
 export interface SummaryRow { label: string; /** HTML já escapado (use `esc`) */ value: string }
 /** Bloco de resumo em duas colunas (rótulo à esquerda, valor à direita) */
@@ -45,8 +45,8 @@ export const summary = (rows: SummaryRow[]) => {
     const border = i === rows.length - 1 ? '' : `border-bottom:1px solid ${C.line};`;
     return `
               <tr>
-                <td style="padding:10px 0;${border}font-family:${FONT};font-size:13px;line-height:18px;color:${C.textTertiary};width:36%;vertical-align:top;">${esc(r.label)}</td>
-                <td style="padding:10px 0 10px 12px;${border}font-family:${FONT};font-size:15px;line-height:22px;color:${C.text};vertical-align:top;">${r.value}</td>
+                <td style="padding:10px 0;${border}font-family:${FONT};font-size:13px;line-height:18px;color:${C.textTertiary};width:36%;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;">${esc(r.label)}</td>
+                <td style="padding:10px 0 10px 12px;${border}font-family:${FONT};font-size:15px;line-height:22px;color:${C.text};vertical-align:top;word-break:break-word;overflow-wrap:anywhere;">${r.value}</td>
               </tr>`;
   }).join('');
   return `<tr><td style="background:${C.panel};border-radius:8px;padding:6px 16px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${cells}
@@ -73,7 +73,7 @@ export const textLink = (href: string, label: string) =>
 
 /** Observação pequena e discreta (validade, "ignore este e-mail"…) */
 export const note = (text: string, top = 16) =>
-  `<tr><td align="center" style="padding-top:${top}px;font-family:${FONT};font-size:13px;line-height:20px;color:${C.textTertiary};">${text}</td></tr>`;
+  `<tr><td align="center" style="padding-top:${top}px;font-family:${FONT};font-size:13px;line-height:20px;color:${C.textTertiary};word-break:break-word;overflow-wrap:anywhere;">${text}</td></tr>`;
 
 /** Código de verificação em destaque */
 export const codeBox = (code: string) =>
@@ -110,7 +110,7 @@ export function emailLayout(s: EmailShell): string {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
           <tr>
             <td align="center" style="padding:0 0 24px 0;">
-              <img src="${s.logoUrl}" alt="MAGLEV" height="36" style="display:block;margin:0 auto;border:0;height:36px;width:auto;">
+              <img src="${s.logoUrl}" alt="MAGLEV" height="32" style="display:block;margin:0 auto;border:0;height:32px;width:auto;">
             </td>
           </tr>
           <tr>

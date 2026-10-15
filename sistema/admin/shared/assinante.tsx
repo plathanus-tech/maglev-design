@@ -11,7 +11,8 @@ import { useIsMobile } from './useMediaQuery';
 import {
   Contact, SUBSCRIBER_USER_STATUS, SubscriberUser, contactAreaLabel, subscriberName, subscriberUsers,
 } from './data';
-import { formatCep, formatCnpj, formatDateTime, formatMoney, formatNumber, formatPhone, noBreak, sinceParts } from './format';
+import { formatCep, formatCnpj, formatDateTime, formatNumber, formatPhone, noBreak, sinceParts } from './format';
+import { KpiMoney } from './kpi-value';
 import { Col, Grid, ReadField, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · deactivate / activate (RF204 aberto a partir do detalhe) */
@@ -104,7 +105,7 @@ function AssinanteScreen() {
           <Col span={3} fill><KpiCard label="Equipamentos" value={formatNumber(s.equipments)} icon={<IconFridge size={20} />} /></Col>
           <Col span={3} mobileFull fill>
             <DevNote note="Soma dos custos realizados das ordens de serviço do assinante (RF203).">
-              <KpiCard label="Valor gasto em manutenção" value={formatMoney(s.maintenanceCents)} icon={<IconReportMoney size={20} />} />
+              <KpiCard label="Valor gasto em manutenção" value={<KpiMoney cents={s.maintenanceCents} />} icon={<IconReportMoney size={20} />} />
             </DevNote>
           </Col>
         </Grid>

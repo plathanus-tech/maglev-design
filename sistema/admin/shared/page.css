@@ -386,3 +386,11 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 /* Logo como link para o início: não altera o tamanho nem a posição do logo */
 .logo-link { display: flex; align-items: center; height: 100%; border-radius: var(--radius-control-sm); }
 .logo-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+
+/* Linha da ordem dos status (modal Novo/Editar status): sequência numerada em linha, quebrando para a linha de baixo; o status atual fica destacado */
+.status-flow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-sm) var(--spacing-md); }
+.status-flow-item { display: inline-flex; align-items: center; gap: var(--spacing-xs); min-width: 0; position: relative; }
+.status-flow-item + .status-flow-item::before { content: ''; position: absolute; left: calc(var(--spacing-sm) * -1.5); top: 50%; width: var(--spacing-sm); border-top: var(--border-width-thin) solid var(--color-border-default); }
+.status-flow-num { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.status-flow-item.is-current { padding: var(--spacing-2xs) var(--spacing-xs); margin: calc(var(--spacing-2xs) * -1) calc(var(--spacing-xs) * -1); border-radius: var(--radius-pill); outline: var(--focus-ring-width) solid var(--color-action-primary); }
+.status-flow-item.is-current .status-flow-num { color: var(--color-text-primary); font-weight: var(--font-weight-label); }

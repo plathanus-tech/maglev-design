@@ -7,6 +7,7 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
 import { formatDate, formatDateTime, formatMoney } from '../../admin/shared/format';
+import { KpiMoney } from '../../admin/shared/kpi-value';
 import { RECURRENCE_DAYS, dayOnly, qrLink } from './data';
 import { unitName, environmentName, useSubSession } from './store';
 import { Col, Grid, ReadField, goTo, param, takeFlash, useRefs } from './ui';
@@ -305,7 +306,7 @@ function EquipamentoScreen() {
         <DevNote note="RF304: indicadores calculados dos registros do equipamento (CTA002). Downtime atual = tempo desde que entrou em status do tipo Parado até agora, zerado quando volta a operar (RGN005). Gasto com manutenção = custos realizados das OS (sem orçamento ainda não aprovado). Gasto só para Administrador e Gestor (RGN003 - 💡 a confirmar).">
           <div className="eq-kpis">
             <KpiCard label="OS abertas" value={data.open.length} icon={<IconClipboardList size={20} />} href={`ordens-servico.html?equipment=${eq.id}`} />
-            {canSeeCosts && <KpiCard label="Gasto com manutenção" value={formatMoney(data.spent)} description="Acumulado nas OS" icon={<IconReportMoney size={20} />} />}
+            {canSeeCosts && <KpiCard label="Gasto com manutenção" value={<KpiMoney cents={data.spent} />} description="Acumulado nas OS" icon={<IconReportMoney size={20} />} />}
             <KpiCard
               tone={isOverdue(data.next) ? 'error' : undefined} label="Próxima preventiva" value={data.next ? formatDate(data.next) : '-'} description={isOverdue(data.next) ? 'Vencida' : data.next ? 'Prevista' : 'Nenhuma agendada'}
               icon={<IconCalendarEvent size={20} />}

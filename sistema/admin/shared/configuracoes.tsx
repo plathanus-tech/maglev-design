@@ -634,6 +634,14 @@ function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }:
   const [tried, setTried] = useState(!!initialTried);
   const set = <K extends keyof StatusDraft>(k: K, v: StatusDraft[K]) => setD((x) => ({ ...x, [k]: v }));
   const positions = positionOptions(siblingsOf(all, d.module, item?.id));
+  // Linha da ordem: status do módulo na sequência, com o atual inserido na posição escolhida
+  const flow = (() => {
+    const sib = siblingsOf(all, d.module, item?.id);
+    const index = d.position === 'start' ? 0 : d.position === 'end' ? sib.length : sib.findIndex((x) => x.id === d.position.slice(6)) + 1;
+    const rows: Array<{ id: string; name: string; visual: Visual; current?: boolean }> = sib.map((x) => ({ id: x.id, name: x.name, visual: x.visual }));
+    rows.splice(index, 0, { id: '__current', name: d.name, visual: d.visual as Visual, current: true });
+    return rows;
+  })();
   const dup = all.some((s) => s.id !== item?.id && s.module === d.module && normalize(s.name) === normalize(d.name));
   const err = (ok: boolean, field: string) => (tried && !ok ? requiredMessage(field) : undefined);
   const errors = {
@@ -691,9 +699,23 @@ function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }:
             <RadioButton name="st-status" label="Status" orientation="horizontal" options={[{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }]} value={d.status} onChange={(v) => set('status', v as RecordStatus)} />
           </Col>
         )}
-        <Col span={12}>
-          <Stack direction="horizontal" gap="sm" align="center"><Text>Pré-visualização:</Text>{d.visual ? statusBadgeOf(d.visual, d.name || 'Nome do status') : <Text>escolha o tipo visual</Text>}</Stack>
-        </Col>
+        {d.module && (
+          <Col span={12}>
+            <DevNote note="Linha da ordem dos status do módulo/etapa: mostra os status atuais na sequência e onde este ficará (destacado), acompanhando a escolha de “Posição no fluxo”. É só leitura; a ordem numérica continua interna.">
+              <Stack gap="xs">
+                <Text>Ordem dos status neste módulo</Text>
+                <ol className="status-flow" aria-label="Ordem dos status neste módulo">
+                  {flow.map((f, i) => (
+                    <li key={f.id} className={f.current ? 'status-flow-item is-current' : 'status-flow-item'} aria-current={f.current ? 'step' : undefined}>
+                      <span className="status-flow-num" aria-hidden="true">{i + 1}</span>
+                      {f.current ? statusBadgeOf((d.visual || 'neutro') as Visual, d.name.trim() || 'Nome do status') : statusBadgeOf(f.visual, f.name)}
+                    </li>
+                  ))}
+                </ol>
+              </Stack>
+            </DevNote>
+          </Col>
+        )}
       </Grid>
     </Dialog>
   );

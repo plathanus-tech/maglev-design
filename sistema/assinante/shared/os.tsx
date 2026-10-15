@@ -18,6 +18,7 @@ import { photoSrc } from './photos';
 import { IMPACT_LABEL, COST_KIND_LABEL, CostKind, NO_UNIT, WorkOrder, nowLocal } from './data';
 import { equipmentOf, environmentName, logEntry, notify, ordersVisible, unitName, updateSubDb, useSubSession, userName } from './store';
 import { CellPair, Col, Grid, ReadField, RowAction, RowActions, Text, TroubleshootingNotes, goTo, param, takeFlash, useRefs } from './ui';
+import { KpiMoney } from '../../admin/shared/kpi-value';
 import { AttachmentsField, AttachmentsStack, AttachmentsView, namesOf, Picked } from './attachments';
 import {
   AttachmentField, ReassignDialog, STO, applyOrderValidation, applyOrderConclusion, executorInfo, executorText, isEditable, notifyProviderLog, overdueDays, parseCents, patchOrder, providerLabel,
@@ -924,9 +925,9 @@ function OsScreen() {
       {canSeeCosts ? (
         <DevNote note="Totais: orçado = orçamento enviado pelo prestador (pendente ou aprovado); aprovado = orçamento aprovado por um usuário do assinante + itens lançados direto no sistema; realizado = itens lançados direto (o orçamento aprovado não vira custo realizado sozinho). 💡 O modelo não distingue previsto de realizado nos itens lançados: pendente de validação. Um orçamento não é custo realizado enquanto não for aprovado. RGN003: os realizados alimentam o gasto do equipamento (RF304) e o Dashboard. Só Administrador e Gestor veem valores (RF304-RGN003).">
           <Grid>
-            <Col span={4} fill><KpiCard label="Orçado" value={formatMoney(budgeted)} description="Total de orçamentos recebidos" /></Col>
-            <Col span={4} fill><KpiCard label="Aprovado" value={formatMoney(approved)} description="Total de custos autorizados" /></Col>
-            <Col span={4} mobileFull fill><KpiCard label="Realizado" value={formatMoney(realized)} description="Total de custos registrados" /></Col>
+            <Col span={4} fill><KpiCard label="Orçado" value={<KpiMoney cents={budgeted} />} description="Total de orçamentos recebidos" /></Col>
+            <Col span={4} fill><KpiCard label="Aprovado" value={<KpiMoney cents={approved} />} description="Total de custos autorizados" /></Col>
+            <Col span={4} mobileFull fill><KpiCard label="Realizado" value={<KpiMoney cents={realized} />} description="Total de custos registrados" /></Col>
           </Grid>
         </DevNote>
       ) : <Feedback type="info" message="Os valores de custo são visíveis apenas para o Administrador e o Gestor de manutenção" />}

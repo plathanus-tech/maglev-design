@@ -3,6 +3,7 @@ import { IconCircleCheck, IconCircleOff, IconClipboardList, IconClock, IconPenci
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatCnpj, formatDate, formatMoney, formatNumber, formatPhone, noBreak } from '../../admin/shared/format';
+import { KpiMoney } from '../../admin/shared/kpi-value';
 import { useHashState } from '../../admin/shared/useHashState';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { ProviderContact, Technician, WorkOrder } from './data';
@@ -204,7 +205,7 @@ function PrestadorScreen() {
               <KpiCard label="Tempo médio de atendimento" value={avgDays === null ? '-' : formatDuration(avgDays)} description="Da abertura à conclusão" icon={<IconClock size={20} />} />
             </Col>
             {canSeeCosts && (
-              <Col span={4} mobileFull fill><KpiCard label={`Custo total · ${PERIOD_DAYS} dias`} value={formatMoney(totalCost)} description="Das OS concluídas no período" icon={<IconReportMoney size={20} />} /></Col>
+              <Col span={4} mobileFull fill><KpiCard label={`Custo total · ${PERIOD_DAYS} dias`} value={<KpiMoney cents={totalCost} />} description="Das OS concluídas no período" icon={<IconReportMoney size={20} />} /></Col>
             )}
           </Grid>
         </DevNote>

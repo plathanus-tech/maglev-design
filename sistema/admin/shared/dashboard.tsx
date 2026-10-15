@@ -10,6 +10,7 @@ import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
 import { Db, LevelItem, Ticket, subscriberName, visualBadge } from './data';
 import { formatNumber, openedAgo } from './format';
+import { KpiCount } from './kpi-value';
 import { useColumnPrefs } from './ColumnsControl';
 import { useHashState } from './useHashState';
 import { Col, Grid, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
@@ -140,7 +141,7 @@ function DashboardScreen() {
       + (trend ? ` O comparativo (dado de demonstração) muda com o período: ${REFERENCE[period]}.` : ' Sem comparativo: não há histórico adequado para esta métrica.');
     return (
       <Col span={3} key={label} fill>
-        <DevNote note={full}><KpiCard label={label} value={formatNumber(value)} icon={icon} trend={trend} description={description} href={href} /></DevNote>
+        <DevNote note={full}><KpiCard label={label} value={<KpiCount value={value} />} icon={icon} trend={trend} description={description} href={href} /></DevNote>
       </Col>
     );
   };

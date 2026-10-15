@@ -57,16 +57,42 @@ export const requiredMessage = (field: string) => `O campo ${field} é obrigató
 export const formatMoney = (cents: number) =>
   (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-/** Valor abreviado (mil, mi, bi) no formato brasileiro, ex.: R$ 2,21 mi. Abaixo de mil devolve o valor completo. */
+/** Valor monetário a partir deste limite (R$ 100 mil, em centavos) é abreviado nos KPIs; abaixo dele aparece completo. */
+const MONEY_COMPACT_FROM_CENTS = 10_000_000;
+const round2 = (n: number) => Number(n.toFixed(2));
+/** Abrevia um número (já em unidades) em mil/mi/bi com até 2 casas, sem zeros desnecessários; o arredondamento nunca deixa "1.000 mil" (sobe para mi) nem "1.000 mi" (sobe para bi). */
+function abbreviate(v: number, units: Array<[number, string]>) {
+  let i = units.findIndex(([div]) => v >= div);
+  if (i < 0) i = units.length - 1;
+  let n = round2(v / units[i][0]);
+  while (n >= 1000 && i > 0) { i -= 1; n = round2(v / units[i][0]); }
+  return { n: n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }), suffix: units[i][1] };
+}
+const UNITS_ASC: Array<[number, string]> = [[1e9, 'bi'], [1e6, 'mi'], [1e3, 'mil']];
+
+/** O valor monetário do KPI é abreviado (a partir de R$ 100 mil)? Use para decidir se mostra o tooltip com o valor completo. */
+export const isMoneyCompact = (cents: number) => Math.abs(cents) >= MONEY_COMPACT_FROM_CENTS;
+
+/**
+ * Valor monetário de KPI (em centavos), no padrão pt-BR: completo abaixo de R$ 100 mil; a partir daí "mil", "mi" e "bi" com até duas casas
+ * (R$ 125,37 mil · R$ 2,21 mi · R$ 1,25 bi). Sempre calculado do valor numérico original, nunca de texto. Para tabelas, formulários e
+ * detalhes use `formatMoney` (valor completo).
+ */
 export const formatMoneyCompact = (cents: number) => {
-  const v = Math.abs(cents / 100);
-  const [div, suffix] = v >= 1e9 ? [1e9, 'bi'] : v >= 1e6 ? [1e6, 'mi'] : v >= 1e3 ? [1e3, 'mil'] : [1, ''];
-  if (!suffix) return formatMoney(cents);
-  const n = (cents / 100 / div).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  return `R$ ${n} ${suffix}`;
+  if (!isMoneyCompact(cents)) return formatMoney(cents);
+  const { n, suffix } = abbreviate(Math.abs(cents) / 100, UNITS_ASC);
+  return `${cents < 0 ? '-' : ''}R$ ${n} ${suffix}`;
 };
 
 export const formatNumber = (n: number) => n.toLocaleString('pt-BR');
+
+/** Quantidade de KPI: completa enquanto legível (1.802, 12.450); só a partir de 1 milhão abrevia (1,2 mi), com a mesma regra do dinheiro. */
+export const isCountCompact = (n: number) => Math.abs(n) >= 1e6;
+export const formatCountCompact = (n: number) => {
+  if (!isCountCompact(n)) return formatNumber(n);
+  const { n: txt, suffix } = abbreviate(Math.abs(n), [[1e9, 'bi'], [1e6, 'mi']]);
+  return `${n < 0 ? '-' : ''}${txt} ${suffix}`;
+};
 
 export const formatDate = (iso: string) => new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).toLocaleDateString('pt-BR');
 export const formatDateTime = (iso: string) => {

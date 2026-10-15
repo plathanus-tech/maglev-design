@@ -13,6 +13,7 @@ import { useHashState } from './useHashState';
 import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
 import { KPI_HISTORY, Subscriber, activeUsersCount, subscriberName } from './data';
+import { KpiMoney } from './kpi-value';
 import { formatCnpj, formatDate, formatMoney, formatMoneyCompact, formatNumber, formatSince, noBreak, onlyDigits, tenureMonths } from './format';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
 
@@ -187,7 +188,7 @@ function AssinantesScreen() {
           </Col>
           <Col span={3} mobileFull fill>
             <DevNote note="Soma dos custos realizados das ordens de serviço de todos os assinantes (RF201), comparada com o total de há 7 dias. Variação em cinza (neutra): gastar mais ou menos não é, por si só, bom ou ruim para a plataforma - confirmar. Pagamentos não passam pela plataforma.">
-              <KpiCard label="Gasto em manutenção" value={kpis.spent >= 100000 ? <Tooltip content={formatMoney(kpis.spent)}><span tabIndex={0} className="kpi-nowrap">{formatMoneyCompact(kpis.spent)}</span></Tooltip> : formatMoney(kpis.spent)} trend={kpis.spentTrend} icon={<IconReportMoney size={20} />} />
+              <KpiCard label="Gasto em manutenção" value={<KpiMoney cents={kpis.spent} />} trend={kpis.spentTrend} icon={<IconReportMoney size={20} />} />
             </DevNote>
           </Col>
           <Col span={3} mobileFull fill>

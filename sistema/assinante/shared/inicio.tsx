@@ -11,6 +11,7 @@ import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile, useMediaQuery } from '../../admin/shared/useMediaQuery';
 import { useHashState } from '../../admin/shared/useHashState';
 import { formatMoney, formatNumber } from '../../admin/shared/format';
+import { KpiMoney } from '../../admin/shared/kpi-value';
 import { greeting, todayText } from './saudacao';
 import { DEMO_NOW, Equipment, Request, WorkOrder, dayOnly } from './data';
 import { equipmentOf, ordersVisible, requestsVisible, unitName, userName, useSubSession } from './store';
@@ -500,7 +501,7 @@ function InicioScreen() {
                   <Card padding="none">
                     <div className="ag2-stat">
                       <span className="ag2-stat-head"><span className="ag2-stat-label">Gastos de manutenção</span><KpiIcon><IconCoin size={20} /></KpiIcon></span>
-                      <span className="ag2-stat-value">{formatMoney(spend)}</span>
+                      <span className="ag2-stat-value"><KpiMoney cents={spend} /></span>
                       <span className="ag2-stat-note">Custos realizados nas OS do período</span>
                     </div>
                   </Card>
