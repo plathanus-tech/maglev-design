@@ -123,20 +123,44 @@ function OrdensScreen() {
   };
   const executorKey = (o: WorkOrder) => (o.executor.kind === 'interno' ? `u:${o.executor.userId}` : `p:${o.executor.providerId}`);
 
-  /** Ordenação padrão “Atenção necessária”: 1) vencidas (prazo mais antigo primeiro); 2) não vencidas por etapa do fluxo e, dentro dela, prazo mais próximo (sem prazo por último); 3) encerradas, atualização mais recente primeiro. */
-  const FLOW = [STO.APROVACAO, STO.ABERTA, STO.VALIDACAO, STO.ANDAMENTO, STO.ORCAMENTO, STO.PECA, STO.PRESTADOR] as string[];
+  /**
+   * Ordenação padrão operacional “Atenção necessária” (só OS não encerradas; encerradas e canceladas vão para o fim, pela atualização mais recente):
+   * 1) vencidas, por urgência = dias de atraso + peso de prioridade e criticidade do equipamento (assim uma vencida crítica não fica abaixo de uma
+   *    menos urgente); desempate: mais antiga;
+   * 2) não vencidas de prioridade Emergência/Alta: prazo mais próximo, depois criticidade do equipamento e a mais antiga;
+   * 3) em andamento (demais): criticidade do equipamento, prazo mais próximo, depois sem atualização há mais tempo;
+   * 4) abertas / aguardando atendimento: prioridade, criticidade do equipamento, prazo, mais antiga;
+   * 5) pendências (orçamento, aprovação, peça, prestador, validação): as que pedem ação do assinante primeiro, depois prazo, criticidade e tempo de espera.
+   * Empate final por número da OS (estável). 💡 Pesos do atraso (prioridade +14/+7, criticidade A/B +7/+3 dias) são proposta, a validar com o negócio.
+   */
+  const ACTION_STATUSES = [STO.APROVACAO, STO.PECA, STO.VALIDACAO] as string[];
+  const PENDING_STATUSES = [STO.ORCAMENTO, STO.APROVACAO, STO.PECA, STO.PRESTADOR, STO.VALIDACAO] as string[];
   const lastUpdate = (o: WorkOrder) => o.activities[o.activities.length - 1]?.at ?? o.createdAt;
+  const priorityRank = (o: WorkOrder) => Number(o.priorityId.replace(/\D/g, '')) || 9;   // PRI-1 Emergência … PRI-4 Baixa
+  const critRank = (o: WorkOrder) => ({ 'CRI-A': 0, 'CRI-B': 1, 'CRI-C': 2 } as Record<string, number>)[db.equipments.find((e) => e.id === o.equipmentId)?.criticalityId ?? ''] ?? 2;
+  const isHigh = (o: WorkOrder) => priorityRank(o) <= 2;   // Emergência ou Alta
+  const lateScore = (o: WorkOrder) => overdueDays(o, refs.base(o.statusId)) + (priorityRank(o) === 1 ? 14 : priorityRank(o) === 2 ? 7 : 0) + (critRank(o) === 0 ? 7 : critRank(o) === 1 ? 3 : 0);
+  const tier = (o: WorkOrder) => {
+    const base = refs.base(o.statusId);
+    if (!isEditable(base)) return 5;
+    if (overdueDays(o, base) > 0) return 0;
+    if (isHigh(o)) return 1;
+    if (o.statusId === STO.ANDAMENTO) return 2;
+    if (PENDING_STATUSES.includes(o.statusId)) return 4;
+    return 3;
+  };
+  const byDue = (a: WorkOrder, b: WorkOrder) => (!a.dueAt !== !b.dueAt ? (a.dueAt ? -1 : 1) : (a.dueAt || '').localeCompare(b.dueAt || ''));
   const attentionOrder = (a: WorkOrder, b: WorkOrder) => {
-    const group = (o: WorkOrder) => { const base = refs.base(o.statusId); return !isEditable(base) ? 2 : overdueDays(o, base) > 0 ? 0 : 1; };
-    const ga = group(a), gb = group(b);
-    if (ga !== gb) return ga - gb;
-    if (ga === 2) return lastUpdate(b).localeCompare(lastUpdate(a));
-    if (ga === 1) {
-      const fa = FLOW.indexOf(a.statusId), fb = FLOW.indexOf(b.statusId);
-      if (fa !== fb) return (fa < 0 ? FLOW.length : fa) - (fb < 0 ? FLOW.length : fb);
-      if (!a.dueAt !== !b.dueAt) return a.dueAt ? -1 : 1;
-    }
-    return (a.dueAt || '').localeCompare(b.dueAt || '');
+    const ta = tier(a), tb = tier(b);
+    if (ta !== tb) return ta - tb;
+    let c = 0;
+    if (ta === 0) c = lateScore(b) - lateScore(a);
+    else if (ta === 1) c = byDue(a, b) || critRank(a) - critRank(b);
+    else if (ta === 2) c = critRank(a) - critRank(b) || byDue(a, b) || lastUpdate(a).localeCompare(lastUpdate(b));
+    else if (ta === 3) c = priorityRank(a) - priorityRank(b) || critRank(a) - critRank(b) || byDue(a, b);
+    else if (ta === 4) c = Number(ACTION_STATUSES.includes(b.statusId)) - Number(ACTION_STATUSES.includes(a.statusId)) || byDue(a, b) || critRank(a) - critRank(b) || lastUpdate(a).localeCompare(lastUpdate(b));
+    else c = lastUpdate(b).localeCompare(lastUpdate(a));
+    return c || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
   };
 
   const filtered = useMemo(() => {
@@ -152,10 +176,13 @@ function OrdensScreen() {
       && (!term || normalize(`${o.id} ${o.subject} ${eqName(o)} ${unitName(db, unitOf(o))}`).includes(term)));
     if (sort.key === 'attention') return rows.sort(attentionOrder);
     const dir = sort.dir === 'asc' ? 1 : -1;
+    const FLOW = [STO.APROVACAO, STO.ABERTA, STO.VALIDACAO, STO.ANDAMENTO, STO.ORCAMENTO, STO.PECA, STO.PRESTADOR, STO.CONCLUIDA, STO.CANCELADA] as string[];
     return rows.sort((a, b) => {
+      if (sort.key === 'priorityId') return (priorityRank(b) - priorityRank(a)) * dir || a.id.localeCompare(b.id);   // desc = mais urgente primeiro
+      if (sort.key === 'statusId') return (FLOW.indexOf(a.statusId) - FLOW.indexOf(b.statusId)) * dir || a.id.localeCompare(b.id);
       const va = sort.key === 'dueAt' ? a.dueAt : sort.key === 'id' ? a.id : a.createdAt;
       const vb = sort.key === 'dueAt' ? b.dueAt : sort.key === 'id' ? b.id : b.createdAt;
-      return va.localeCompare(vb) * dir;
+      return va.localeCompare(vb) * dir || a.id.localeCompare(b.id);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, quick, sub, query, status, type, priority, unit, executor, period, from, to, equipment, sort, db]);
@@ -202,8 +229,8 @@ function OrdensScreen() {
   const columns: TableColumn<Row>[] = [
     { key: 'id', label: 'Nº da OS', sortable: true, render: (v) => <a className="text-link" href={`os.html?id=${v}`}>{String(v)}</a> },
     { key: 'subject', label: 'Assunto' },
-    { key: 'statusId', label: 'Status', render: (v) => refs.statusBadge(String(v)) },
-    { key: 'priorityId', label: 'Prioridade', render: (v) => refs.priorityBadge(String(v)) },
+    { key: 'statusId', label: 'Status', sortable: true, render: (v) => (ACTION_STATUSES.includes(String(v)) ? <CellPair primary={refs.statusBadge(String(v))} secondary="Requer ação" /> : refs.statusBadge(String(v))) },
+    { key: 'priorityId', label: 'Prioridade', sortable: true, render: (v) => refs.priorityBadge(String(v)) },
     { key: 'unit', label: 'Unidade' },
     { key: 'equipment', label: 'Equipamento' },
     { key: 'maintTypeId', label: 'Tipo de manutenção', render: (v) => refs.maintType(String(v))?.name ?? '-' },
@@ -353,7 +380,7 @@ function OrdensScreen() {
                 <Table<Row>
                   caption="Lista de ordens de serviço" toolbar={toolbar} columns={shownColumns} rows={pageRows}
                   sortKey={sort.key as keyof Row} sortDir={sort.dir}
-                  onSort={(k) => setSort((s) => (s.key === k ? { key: s.key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: String(k), dir: 'desc' }))}
+                  onSort={(k) => setSort((s) => (s.key === k ? (s.dir === 'desc' ? { key: s.key, dir: 'asc' } : { key: 'attention', dir: 'asc' }) : { key: String(k), dir: 'desc' }))}
                   empty={{ ...empty, action: filtered.length === 0 && visible.length > 0 ? <Button variant="secondary" size="sm" onClick={clearAll}>Limpar filtros</Button> : undefined }}
                   pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
                 />
