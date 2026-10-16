@@ -101,6 +101,17 @@ export function PrototypeNav() {
     setOpen((o) => (groups.every((g) => o.includes(g)) ? o : [...new Set([...o, ...groups])]));
   }, [currentId, entries]);
 
+  // Mantém o item ativo à vista no menu lateral: quando a tela muda (clique no protótipo, link, voltar), rola até ele depois de a árvore expandir
+  const lastShown = useRef<string>();
+  useEffect(() => {
+    if (lastShown.current === currentId && !collapsed) return;
+    const t = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>('#pn-sidebar .pn-item.is-active');
+      if (el) { el.scrollIntoView({ block: 'nearest' }); lastShown.current = currentId; }
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [currentId, open, collapsed]);
+
   const select = (e: Entry) => { setCurrentId(e.id); setFrameSrc(srcFor(e, device)); reloadFrame(); };
   /** Ator = frente do produto (Admin, Assinante…): troca a árvore de telas e abre a primeira tela do ator. */
   const changeActor = (id: ActorId) => {
