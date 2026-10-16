@@ -426,7 +426,7 @@ function PlanoFormScreen() {
               <Col span={12}>
                 <DevNote note="RF702-RGN004 / CTA001: só prestadores ativos (RF701-RGN001) que atendem as categorias de todos os equipamentos selecionados. Se mudar os equipamentos, a lista muda.">
                   <Dropdown
-                    label="Prestador padrão" required options={providers.map((p) => ({ value: p.id, label: p.tradeName ?? p.name }))} value={d.providerId}
+                    label="Prestador padrão" required options={providers.map((p) => ({ value: p.id, label: p.tradeName ?? p.name, description: p.regions.length ? `Atende: ${p.regions.join(', ')}` : undefined }))} value={d.providerId}
                     onChange={(v) => setD((x) => ({ ...x, providerId: v, technician: '' }))} error={shown('providerId')} placeholder="Selecione o prestador"
                     helperText={categories.length ? `Atendem as categorias: ${categories.map((c) => refs.category(c)?.name ?? c).join(', ')}` : undefined}
                   />
@@ -437,7 +437,7 @@ function PlanoFormScreen() {
               {provider?.kind !== 'autonomo' && <Col span={12}>
                 <Dropdown
                   optional label="Técnico" placeholder="Qualquer técnico do prestador" value={d.technician} onChange={(v) => set('technician', v)}
-                  options={[{ value: '', label: 'Qualquer técnico do prestador' }, ...(provider?.technicians ?? []).map((t) => ({ value: t.name, label: t.specialties.length ? `${t.name} · ${techSpecialtiesText(t)}` : t.name }))]}
+                  options={[{ value: '', label: 'Qualquer técnico do prestador' }, ...(provider?.technicians ?? []).map((t) => ({ value: t.name, label: t.name, description: t.specialties.length ? techSpecialtiesText(t) : undefined }))]}
                 />
               </Col>}
             </>

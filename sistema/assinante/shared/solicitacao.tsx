@@ -11,6 +11,7 @@ import { IMPACT_LABEL, PROFILE_LABEL, Request, hoursAgo } from './data';
 import { photoSrc } from './photos';
 import { executorName, realizedCents } from './equipamento-lib';
 import './solicitacao.css';
+import { ShareButton } from './share-button';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { environmentName, equipmentOf, getSubDb, unitIdOfEquipment, unitName, userName, useSubSession } from './store';
 import { CellPair, Col, Grid, ReadField, goTo, param, takeFlash, useRefs, TroubleshootingNotes } from './ui';
@@ -201,6 +202,7 @@ function SolicitacaoScreen() {
           subtitle={`${problem} · ${eq.name}`}
           breadcrumb={[{ label: 'Solicitações', href: 'solicitacoes.html' }, { label: req.id }]}
           actions={req.osId || req.duplicateOf ? headerActions : undefined}
+          iconActions={<ShareButton kind="solicitacao" id={req.id} />}
         />
 
         {req.osId && (

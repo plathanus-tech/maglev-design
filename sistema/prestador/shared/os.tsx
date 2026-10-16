@@ -9,6 +9,8 @@ import '../../assinante/shared/preventivas.css';
 import { ReadField } from '../../admin/shared/ui';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
 import { COST_KIND_LABEL, CostKind, WorkOrder, nowLocal } from '../../assinante/shared/data';
+import { CopyCode } from '../../assinante/shared/copy-code';
+import { ShareButton } from '../../assinante/shared/share-button';
 import { AttachmentsField, AttachmentsStack, AttachmentsView, namesOf, Picked } from '../../assinante/shared/attachments';
 import { AttachmentField, STO, applyOrderConclusion, dueCell, overdueDays, parseCents, patchOrder } from '../../assinante/shared/os-common';
 import { getSubDb, notify } from '../../assinante/shared/store';
@@ -137,8 +139,11 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
       <Stack gap="md">
         {back}
         <header className="ext-at-head">
-          <h1 className="page-title">{preventive ? 'Atendimento da preventiva' : 'Atendimento da OS'}</h1>
-          <p className="ext-at-id"><strong>{order.id}</strong> · {order.subject}</p>
+          <div className="ext-at-title">
+            <h1 className="page-title">{preventive ? 'Atendimento da preventiva' : 'Atendimento da OS'}</h1>
+            <span className="ext-at-share"><ShareButton kind={preventive ? 'preventiva' : 'os'} id={order.id} /></span>
+          </div>
+          <p className="ext-at-id"><CopyCode code={order.id} /> · {order.subject}</p>
           {refs.statusBadge(order.statusId)}
         </header>
       </Stack>

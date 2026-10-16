@@ -1,8 +1,9 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { IconChevronRight } from '@tabler/icons-react';
 import { Button, Card, Feedback, Input, Stack } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { CategoryIcon } from '../../admin/shared/IconPicker';
+import { normalize } from '../../admin/shared/format';
 import { PageHeader } from '../../externo/shared/ExternalLayout';
 import { useSubDb } from '../../assinante/shared/store';
 import { linkToEquipment, useRefs } from './lib';
@@ -22,23 +23,76 @@ export function EquipmentSearch({ demo }: { demo?: 'found' | 'notfound' }) {
   const found = searched ? db.equipments.find((e) => e.code.toUpperCase() === searched.toUpperCase()) : undefined;
   const unit = db.units.find((u) => u.id === found?.unitId);
   const env = db.environments.find((x) => x.id === found?.environmentId);
+  // Sugestões enquanto digita (código ou nome), só entre os equipamentos do assinante do acesso; no máximo 6
+  const [openList, setOpenList] = useState(false);
+  const [active, setActive] = useState(-1);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const suggestions = useMemo(() => {
+    const q = normalize(typed);
+    if (!q) return [];
+    return db.equipments.filter((e) => normalize(e.code).includes(q) || normalize(e.name).includes(q))
+      .sort((a, b) => Number(normalize(b.code).startsWith(q)) - Number(normalize(a.code).startsWith(q)) || a.code.localeCompare(b.code)).slice(0, 6);
+  }, [db.equipments, typed]);
+  const showList = openList && !!typed && !(searched && found);
+  useEffect(() => {
+    if (!openList) return;
+    const onDown = (e: MouseEvent) => { if (!rootRef.current?.contains(e.target as Node)) setOpenList(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [openList]);
+  const pick = (eqCode: string) => { setCode(eqCode); setSearched(eqCode); setOpenList(false); setActive(-1); };
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') { if (showList) { e.preventDefault(); setOpenList(false); } return; }
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && suggestions.length) {
+      e.preventDefault(); setOpenList(true);
+      setActive((i) => (e.key === 'ArrowDown' ? (i + 1) % suggestions.length : (i <= 0 ? suggestions.length - 1 : i - 1)));
+    } else if (e.key === 'Enter' && showList && active >= 0 && suggestions[active]) {
+      e.preventDefault(); pick(suggestions[active].code);
+    }
+  };
 
   const submit = (ev: FormEvent) => {
     ev.preventDefault();
     if (!typed) return;
     setSearched(typed);
+    setOpenList(false);
   };
 
   return (
     <Stack gap="lg">
       <PageHeader title="Encontrar equipamento" subtitle="Informe o código de identificação do equipamento" />
-      <DevNote note="Colaborador RF001 (acesso pelo endereço, sem QR Code): o código é comparado sem diferenciar maiúsculas de minúsculas e sem espaços nas pontas, só entre os equipamentos do assinante do acesso (nada de sugestões nem lista). O resultado mostra apenas identificação; valor, custos e dados administrativos não aparecem. Selecionar leva ao mesmo resumo do QR Code. 💡 Se o endereço identificar só o assinante, a busca cobre todas as unidades dele; seleção de unidade fica pendente de validação.">
+      <DevNote note="Colaborador RF001 (acesso pelo endereço, sem QR Code): o código é comparado sem diferenciar maiúsculas de minúsculas e sem espaços nas pontas, só entre os equipamentos do assinante do acesso (sugestões enquanto digita, só deste assinante, até 6, por código ou nome; sem listagem geral). O resultado mostra apenas identificação; valor, custos e dados administrativos não aparecem. Selecionar leva ao mesmo resumo do QR Code. 💡 Se o endereço identificar só o assinante, a busca cobre todas as unidades dele; seleção de unidade fica pendente de validação.">
         <form onSubmit={submit} noValidate>
           <Stack gap="md">
-            <Input
-              label="Código do equipamento" placeholder="Ex.: PAT-1000" autoComplete="off" autoCapitalize="characters" spellCheck={false}
-              value={code} onChange={(e) => { setCode(e.target.value); setSearched(null); }}
-            />
+            <div className="ext-suggest" ref={rootRef}>
+              <Input
+                label="Código do equipamento" placeholder="Ex.: PAT-1000" autoComplete="off" autoCapitalize="characters" spellCheck={false}
+                value={code} onChange={(e) => { setCode(e.target.value); setSearched(null); setOpenList(true); setActive(-1); }}
+                onFocus={() => setOpenList(true)} onKeyDown={onKeyDown}
+                role="combobox" aria-expanded={showList && suggestions.length > 0} aria-controls={listId} aria-autocomplete="list"
+                aria-activedescendant={showList && active >= 0 ? `${listId}-opt-${active}` : undefined}
+              />
+              {showList && suggestions.length > 0 && (
+                <div className="ext-suggest-panel">
+                  <div id={listId} role="listbox" aria-label="Equipamentos encontrados">
+                    {suggestions.map((e, i) => (
+                      <div
+                        key={e.id} id={`${listId}-opt-${i}`} role="option" aria-selected={active === i}
+                        className={`ext-suggest-option${active === i ? ' is-active' : ''}`}
+                        onMouseEnter={() => setActive(i)} onMouseDown={(ev) => ev.preventDefault()} onClick={() => pick(e.code)}
+                      >
+                        <span className="ext-suggest-icon" aria-hidden="true"><CategoryIcon id={refs.category(e.categoryId)?.icon} size={16} /></span>
+                        <span className="ext-suggest-text">
+                          <span>{e.name}</span>
+                          <span className="ext-suggest-desc">{e.code} · {db.units.find((u) => u.id === e.unitId)?.name ?? ''}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="ext-actions"><Button type="submit" variant={found ? 'secondary' : 'primary'} disabled={!typed}>Buscar equipamento</Button></div>
           </Stack>
         </form>

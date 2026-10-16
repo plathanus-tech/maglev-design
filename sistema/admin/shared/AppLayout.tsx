@@ -165,25 +165,30 @@ function NoAccess() {
 }
 
 /** Cabeçalho de página: trilha (opcional), título, subtítulo e ações à direita. */
-export function PageHeader({ title, subtitle, breadcrumb, actions, badge }: {
+export function PageHeader({ title, subtitle, breadcrumb, actions, badge, iconActions }: {
   title: string;
   subtitle?: ReactNode;
   breadcrumb?: BreadcrumbItem[];
   actions?: ReactNode;
   /** Ex.: status do registro ao lado do título (detalhe). */
   badge?: ReactNode;
+  /** Ações só de ícone (ex.: Compartilhar): ficam no lado oposto do título, alinhadas a ele (também no celular), sem esticar como as ações com texto. */
+  iconActions?: ReactNode;
 }) {
   const isMobile = useIsMobile();
   return (
     <Stack gap="sm" as="header" className="page-header">
       {breadcrumb && <Breadcrumb items={breadcrumb} />}
       <Stack direction={isMobile ? 'vertical' : 'horizontal'} justify="between" align={isMobile ? 'stretch' : 'end'} gap="md" wrap>
-        <Stack gap="2xs">
-          <Stack direction="horizontal" align="center" gap="sm" wrap>
-            <h1 className="page-title">{title}</h1>
-            {badge}
+        <Stack direction="horizontal" justify="between" align="start" gap="sm">
+          <Stack gap="2xs">
+            <Stack direction="horizontal" align="center" gap="sm" wrap>
+              <h1 className="page-title">{title}</h1>
+              {badge}
+            </Stack>
+            {subtitle && <p className="page-text">{subtitle}</p>}
           </Stack>
-          {subtitle && <p className="page-text">{subtitle}</p>}
+          {iconActions}
         </Stack>
         {actions && <Stack direction={isMobile ? 'vertical' : 'horizontal'} align={isMobile ? 'stretch' : 'center'} gap="sm" wrap className={isMobile ? 'page-actions-full' : undefined}>{actions}</Stack>}
       </Stack>

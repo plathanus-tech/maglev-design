@@ -6,6 +6,7 @@ import { formatDateTime, requiredMessage } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
 import { Request, nowLocal } from '../../assinante/shared/data';
+import { ShareButton } from '../../assinante/shared/share-button';
 import { STO, applyOrderValidation } from '../../assinante/shared/os-common';
 import { STS } from '../../assinante/shared/solicitacoes-shared';
 import { logEntry, notify, updateSubDb, useSubDb } from '../../assinante/shared/store';
@@ -88,7 +89,7 @@ function Tracking({ request: r0, mode }: { request: Request; mode: Mode }) {
   if (justSent) return <SentCard request={r} />;
   return (
     <Stack gap="lg">
-      <PageHeader title={`Solicitação ${r.id}`} subtitle={eq ? `${eq.name} · ${db.units.find((u) => u.id === eq.unitId)?.name ?? ''}` : undefined} />
+      <PageHeader title={`Solicitação ${r.id}`} subtitle={eq ? `${eq.name} · ${db.units.find((u) => u.id === eq.unitId)?.name ?? ''}` : undefined} iconActions={<ShareButton kind="solicitacao" id={r.id} url={linkToRequestByToken(r.id)} />} />
 
 
       <DevNote note="Colaborador RF004-FLU002 / RGN002: o solicitante vê o problema que registrou (tipo e descrição completa), o status e a abertura; técnico responsável (só o nome) e atendimento agendado (a “Previsão de atendimento” da especificação, só quando há data e horário agendados); sem responsável da triagem, prazo, empresa prestadora, contatos, custos nem dados internos. O status usa o mapeamento simplificado da RGN002, sobre o mesmo status da tela administrativa (ex.: Em triagem = Em análise para o solicitante; Convertida em OS e Aprovada = Em atendimento). A mensagem de encaminhamento só aparece quando a solicitação foi aprovada ou virou OS.">

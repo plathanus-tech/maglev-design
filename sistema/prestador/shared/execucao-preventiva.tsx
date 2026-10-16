@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { Button } from '@maglev/ds';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
+import { CopyCode } from '../../assinante/shared/copy-code';
+import { ShareButton } from '../../assinante/shared/share-button';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
 import { ExecucaoCore } from '../../assinante/shared/execucao-preventiva-core';
 import { goTo } from '../../assinante/shared/ui';
@@ -28,7 +30,7 @@ function ExecucaoPrestadorScreen() {
       actor={{ name: actorName, phone, canEdit: true }}
       deny={(order) => (order.executor.kind === 'prestador' && order.executor.providerId === provider.id && (!technician || order.executor.technician === technician.name)
         ? null : { title: 'Sem acesso a esta OS', message: 'Esta OS não está atribuída a você' })}
-      header={({ order, plan, badge }) => <PageHeader title="Executar preventiva" subtitle={`${order.id} · ${plan.name}`} badge={badge} />}
+      header={({ order, plan, badge }) => <PageHeader title="Executar preventiva" subtitle={<><CopyCode code={order.id} /> · {plan.name}</>} badge={badge} iconActions={<ShareButton kind="preventiva" id={order.id} />} />}
       equipmentLabel={(_, name) => name}
       onCancel={({ order }) => goTo(osLink(order.id))}
       viewOnlyText="Esta execução está somente para leitura"

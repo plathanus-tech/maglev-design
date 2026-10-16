@@ -222,7 +222,7 @@ export function PlanFields({ db, value, onChange, categoryId, unitId, errors, cu
           {provider?.kind !== 'autonomo' && <Col span={6}>
             <Dropdown
               label="Técnico do prestador" optional placeholder={provider ? 'Selecione o técnico' : 'Escolha o prestador primeiro'}
-              options={(provider?.technicians ?? []).map((t) => ({ value: t.name, label: t.specialties.length ? `${t.name} · ${techSpecialtiesText(t)}` : t.name }))}
+              options={(provider?.technicians ?? []).map((t) => ({ value: t.name, label: t.name, description: t.specialties.length ? techSpecialtiesText(t) : undefined }))}
               value={value.technician} onChange={(v) => set({ technician: v })} disabled={!provider}
             />
           </Col>}
