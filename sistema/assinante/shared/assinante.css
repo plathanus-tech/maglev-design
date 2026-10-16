@@ -117,7 +117,7 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 .app-focused .form-page { max-width: none; }
 .app-focused-logo { display: inline-flex; align-items: center; border-radius: var(--radius-control); }
 .app-focused-logo:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
-.app-focused-logo img { height: var(--spacing-xl); width: auto; }
+.app-focused-logo .logo-light, .app-focused-logo .logo-dark { height: var(--spacing-xl); width: auto; }   /* mais específico que ".logo img { height: 100% }" do AppHeader */
 
 /* Retorno explícito do layout focado: discreto, acima do título */
 .back-link { display: inline-flex; align-items: center; gap: var(--spacing-xs); align-self: flex-start; font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-secondary); text-decoration: none; border-radius: var(--radius-control-sm); }

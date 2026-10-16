@@ -1,7 +1,8 @@
 /* externo.css - casca das telas sem login (Prestador via link e Colaborador via QR Code). Só tokens existentes. */
 .ext-logo { display: inline-flex; align-items: center; }
-.ext-logo img { height: var(--spacing-xl); width: auto; }
-@media (max-width: 480px) { .ext-logo img { height: calc(var(--spacing-lg) + var(--spacing-xs)); } }
+/* Especificidade acima de ".logo img { height: 100% }" do AppHeader (a ordem dos CSS muda no build publicado) */
+.ext-logo .logo-light, .ext-logo .logo-dark { height: var(--spacing-xl); width: auto; }
+@media (max-width: 480px) { .ext-logo .logo-light, .ext-logo .logo-dark { height: calc(var(--spacing-lg) + var(--spacing-xs)); } }
 .ext-context { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacing-2xs); min-width: 0; margin-right: var(--spacing-xs); line-height: var(--line-height-snug); }
 .ext-context-company { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-secondary); max-width: min(12rem, 40vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ext-context-area { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
