@@ -4,7 +4,7 @@ import { C, FONT, SummaryRow, button, codeBox, emailLayout, esc, heading, note, 
  * Templates dos e-mails transacionais da Maglev (complemento à Especificação; nenhum é disparado no protótipo).
  * Cada template recebe os dados e os links por parâmetro; nada sensível vai no e-mail além do que o destinatário já pode ver.
  */
-export type TemplateId = 'nova-os' | 'convite' | 'recuperacao-senha' | 'acao-pendente' | 'atualizacao' | 'preventiva-vencida';
+export type TemplateId = 'nova-os' | 'convite' | 'recuperacao-senha' | 'acao-pendente' | 'atualizacao' | 'preventiva-vencida' | 'inativacao-prevista';
 
 // ─── Nova OS atribuída (Prestador) ───
 export interface NovaOsEmailData {
@@ -176,4 +176,23 @@ export const preventiveOverdueNotification = (d: PreventiveOverdueData): OsNotif
   ctaLabel: 'Ver ordem de serviço',
   subject: `Preventiva vencida: ${d.osNumber} · ${d.equipment}`,
   preheader: `${d.osNumber}: a preventiva de ${d.equipment} está vencida há ${d.overdueDays} ${d.overdueDays === 1 ? 'dia' : 'dias'}.`,
+});
+
+/** Exemplo 4 · aviso antes da inativação do ambiente (assinante inadimplente): mesmo modelo das notificações, com prazo e impacto. Vai para administradores e gestores do assinante */
+export interface SuspensionNoticeData { recipientName: string; company: string; deadline: string; daysLeft: number }
+export const suspensionNoticeNotification = (d: SuspensionNoticeData): OsNotificationData => ({
+  recipientName: d.recipientName, title: 'O acesso da sua empresa será inativado',
+  message: `Há uma pendência na conta da empresa <strong>${esc(d.company)}</strong> na Maglev. Se ela não for regularizada até o prazo abaixo, o ambiente será inativado. Fale com o suporte para regularizar.`,
+  summary: [
+    { label: 'Empresa', value: `<strong>${esc(d.company)}</strong>` },
+    { label: 'Inativação prevista', value: `<strong>${esc(d.deadline)}</strong>` },
+    { label: 'Prazo restante', value: pill(`${d.daysLeft} ${d.daysLeft === 1 ? 'dia' : 'dias'}`, 'warning') },
+    { label: 'Acesso', value: 'Todos os usuários da empresa ficam sem acesso até a reativação' },
+    { label: 'QR Codes já colados', value: 'Deixam de abrir solicitações; a pessoa vê que o serviço está indisponível' },
+    { label: 'Chamados em andamento', value: 'Ficam congelados e o histórico não pode ser consultado até a reativação' },
+    { label: 'Seus dados', value: 'Nada é excluído; ao regularizar, tudo volta como estava, inclusive os mesmos QR Codes' },
+  ],
+  ctaLabel: 'Falar com o suporte',
+  subject: `Seu acesso à Maglev será inativado em ${d.deadline}`,
+  preheader: `Regularize a pendência da empresa ${d.company} até ${d.deadline} para manter o acesso.`,
 });

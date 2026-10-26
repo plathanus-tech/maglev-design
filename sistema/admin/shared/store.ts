@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActionKey, Activity, ActivityKind, ActivityModule, AdminUser, DB_VERSION, Db, Profile, ScreenKey, seed } from './data';
+import { SUSPENSION_GRACE_DAYS, AccessSession, ActionKey, Activity, ActivityKind, ActivityModule, AdminUser, DB_VERSION, Db, Profile, ScreenKey, Subscriber, seed, subscriberName } from './data';
+import { addDaysIso } from './format';
+import { AccessAlert, deviceLabel, isAtypical, ACCESS_POLICY } from './access-security';
+import { QrReason, RegEquipment, currentQr, qrReasonLabel, tokenFor } from './qr-registry';
 
 /**
  * "Banco" do protótipo: carga inicial + alterações feitas nas telas, salvos em localStorage.
@@ -34,6 +37,73 @@ export function updateDb(fn: (db: Db) => Db) { setDb(fn(getDb())); }
 export function logActivity(userId: string, module: ActivityModule, kind: ActivityKind, action: string) {
   const entry: Activity = { id: `ACT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, at: new Date().toISOString(), userId, module, kind, action };
   updateDb((db) => ({ ...db, activity: [...(db.activity ?? []), entry] }));
+}
+
+/** Reenvia o convite de primeiro acesso de um usuário do Admin com convite pendente (atualiza a data do envio e registra a ação). */
+export function resendAdminInvite(actorId: string, user: AdminUser) {
+  const today = new Date().toISOString().slice(0, 10);
+  updateDb((db) => ({ ...db, adminUsers: db.adminUsers.map((u) => (u.id === user.id ? { ...u, invitedAt: today } : u)) }));
+  logActivity(actorId, 'Usuários', 'edicao', `Reenviou o convite de acesso para ${user.name}`);
+}
+
+/**
+ * Inativa o código QR atual de um equipamento do assinante, com motivo, e já gera o novo código (sem exclusão: o antigo
+ * fica no histórico). Registra a ação do usuário do Admin. Devolve o novo código.
+ */
+export function inactivateQr(actorId: string, subscriber: Subscriber, equipment: RegEquipment, reason: QrReason, detail?: string): string {
+  const db = getDb();
+  const oldToken = currentQr(equipment, db.qrEvents).token;
+  const newToken = tokenFor(`${subscriber.id}-${equipment.id}-${Date.now()}`);
+  const at = new Date().toISOString();
+  updateDb((d) => ({ ...d, qrEvents: [...d.qrEvents, { id: `QRE-${Date.now()}`, subscriberId: subscriber.id, equipmentId: equipment.id, at, byUserId: actorId, reason, detail: detail?.trim() || undefined, oldToken, newToken }] }));
+  logActivity(actorId, 'Assinantes', 'inativacao', `Inativou o código QR do equipamento ${equipment.name} (${subscriberName(subscriber)}) e gerou um novo código. Motivo: ${qrReasonLabel(reason).toLowerCase()}`);
+  return newToken;
+}
+
+/** Marca o assinante como inadimplente (manual) e abre o prazo de regularização antes da inativação do ambiente. */
+export function markOverdue(actorId: string, subscriber: Subscriber) {
+  const suspendAt = addDaysIso(SUSPENSION_GRACE_DAYS);
+  updateDb((db) => ({ ...db, subscribers: db.subscribers.map((s) => (s.id === subscriber.id ? { ...s, status: 'inadimplente', overdueSince: addDaysIso(0), suspendAt } : s)) }));
+  logActivity(actorId, 'Assinantes', 'edicao', `Marcou o assinante ${subscriberName(subscriber)} como inadimplente (inativação prevista para ${suspendAt.split('-').reverse().join('/')})`);
+  return suspendAt;
+}
+/** Volta o assinante inadimplente para Ativo (regularizado): o aviso e o prazo deixam de valer. */
+export function regularize(actorId: string, subscriber: Subscriber) {
+  updateDb((db) => ({ ...db, subscribers: db.subscribers.map((s) => (s.id === subscriber.id ? { ...s, status: 'ativo', overdueSince: undefined, suspendAt: undefined } : s)) }));
+  logActivity(actorId, 'Assinantes', 'edicao', `Marcou o assinante ${subscriberName(subscriber)} como ativo (regularizado)`);
+}
+
+/**
+ * Registra o acesso (login) e detecta os eventos da política: novo dispositivo, horário atípico e tentativas de senha falhas antes do acesso.
+ * “Contexto inesperado” (rede/região) depende de dados do servidor e não é detectado no protótipo. Devolve os alertas gerados.
+ */
+export function recordAccess(user: AdminUser, failedAttempts = 0): AccessAlert[] {
+  const db = getDb();
+  const device = deviceLabel();
+  const now = new Date();
+  const alerts: AccessAlert[] = [];
+  if (!db.accessSessions.some((x) => x.userId === user.id && x.device === device)) alerts.push('novo-dispositivo');
+  if (isAtypical(now)) alerts.push('horario-atipico');
+  if (failedAttempts >= ACCESS_POLICY.failedAttempts) alerts.push('tentativas-falhas');
+  const entry = { id: `ACS-${Date.now()}`, userId: user.id, at: now.toISOString(), device, alerts, status: 'ativa' as const };
+  updateDb((d) => ({ ...d, accessSessions: [...d.accessSessions.map((x) => (x.userId === user.id && x.status === 'ativa' ? { ...x, status: 'expirada' as const } : x)), entry] }));
+  return alerts;
+}
+
+/** Encerra uma sessão ativa de outro usuário (ação de resposta do administrador); com `passwordReset`, exige nova senha no próximo acesso. */
+export function endSession(actorId: string, session: AccessSession, passwordReset: boolean) {
+  const target = getDb().adminUsers.find((u) => u.id === session.userId);
+  updateDb((d) => ({
+    ...d,
+    accessSessions: d.accessSessions.map((x) => (x.id === session.id ? { ...x, status: 'encerrada' as const, endedAt: new Date().toISOString(), endedBy: actorId, passwordReset, reviewed: true } : x)),
+    adminUsers: passwordReset ? d.adminUsers.map((u) => (u.id === session.userId ? { ...u, mustReset: true } : u)) : d.adminUsers,
+  }));
+  logActivity(actorId, 'Usuários', 'edicao', `Encerrou a sessão de ${target?.name ?? 'um usuário'}${passwordReset ? ' e pediu nova senha' : ''}`);
+}
+
+/** O administrador viu o alerta: some da notificação. */
+export function markAccessReviewed(id: string) {
+  updateDb((d) => ({ ...d, accessSessions: d.accessSessions.map((x) => (x.id === id ? { ...x, reviewed: true } : x)) }));
 }
 
 export function resetDb() {

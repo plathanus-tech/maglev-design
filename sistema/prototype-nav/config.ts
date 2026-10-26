@@ -30,6 +30,7 @@ export const journeys: Journey[] = [
           v('login-invalid', 'E-mail ou senha incorretos', 'login.html#state=invalid'),
           v('login-domain', 'E-mail fora do domínio @maglev.com.br', 'login.html#state=domain'),
           v('login-inactive', 'Usuário inativo', 'login.html#state=inactive'),
+          v('login-pending', 'Convite pendente', 'login.html#state=pending'),
           v('login-passwordchanged', 'Senha alterada com sucesso', 'login.html#state=passwordchanged'),
         ],
       },
@@ -62,6 +63,17 @@ export const journeys: Journey[] = [
               v('senha-saveerror', 'Erro ao salvar', 'criar-nova-senha.html#state=saveerror'),
             ],
           },
+        ],
+      },
+      {
+        id: 'primeiro-acesso', label: 'Primeiro acesso via convite', path: `${s}/primeiro-acesso.html`,
+        variants: [
+          v('pa-required', 'Campos obrigatórios', 'primeiro-acesso.html#state=required'),
+          v('pa-criteria', 'Política de senha não atendida', 'primeiro-acesso.html#state=criteriaunmet'),
+          v('pa-mismatch', 'Senhas diferentes', 'primeiro-acesso.html#state=mismatch'),
+          v('pa-terms', 'Termos não aceitos', 'primeiro-acesso.html#state=termsrequired'),
+          v('pa-expired', 'Link expirado', 'primeiro-acesso.html#state=expired'),
+          v('pa-used', 'Link já utilizado', 'primeiro-acesso.html#state=used'),
         ],
       },
     ],
@@ -103,6 +115,8 @@ export const journeys: Journey[] = [
         variants: [
           v('assinante-detalhe-overdue', 'Assinante inadimplente', 'assinante.html?id=ASS-0008'),
           v('assinante-detalhe-inactive', 'Ambiente inativo (com histórico)', 'assinante.html?id=ASS-0013'),
+          v('assinante-detalhe-equipamentos', 'Aba Equipamentos (QR Codes)', 'assinante.html?id=ASS-0001#state=equipamentos'),
+          v('assinante-detalhe-overdue-modal', 'Marcar como inadimplente (confirmação)', 'assinante.html?id=ASS-0001#state=overdue'),
         ],
       },
       {
@@ -122,6 +136,7 @@ export const journeys: Journey[] = [
       {
         id: 'usuarios', label: 'RF301 - Listar usuários', path: `${s}/usuarios.html`,
         variants: [
+          v('usuarios-pending', 'Filtro Convite pendente (reenviar convite)', 'usuarios.html#state=pending'),
           v('usuarios-noresults', 'Busca sem resultados', 'usuarios.html#state=noresults'),
           v('usuarios-columns', 'Personalizar colunas', 'usuarios.html#state=columns'),
           v('usuarios-deactivate', 'Inativar usuário (confirmação)', 'usuarios.html#state=deactivate'),
@@ -138,7 +153,11 @@ export const journeys: Journey[] = [
       { id: 'usuario-editar', label: 'RF302 - Editar usuário', path: `${s}/usuario-form.html?id=USR-0003` },
       {
         id: 'usuario-detalhe', label: 'RF301 - Visualizar usuário', path: `${s}/usuario.html?id=USR-0003`,
-        variants: [v('usuario-detalhe-self', 'O próprio usuário (não pode se inativar)', 'usuario.html?id=USR-0001')],
+        variants: [
+          v('usuario-detalhe-self', 'O próprio usuário (não pode se inativar)', 'usuario.html?id=USR-0001'),
+          v('usuario-detalhe-pending', 'Convite pendente (reenviar convite)', 'usuario.html?id=USR-0013'),
+          v('usuario-detalhe-acessos', 'Acessos e sessões com alerta (encerrar sessão)', 'usuario.html?id=USR-0005#historico'),
+        ],
       },
       {
         id: 'perfis', label: 'RF303 - Perfis de acesso', path: `${s}/perfis.html`,

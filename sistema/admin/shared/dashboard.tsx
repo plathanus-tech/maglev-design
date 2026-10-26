@@ -1,19 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  IconAlertOctagon, IconAlertTriangle, IconBuilding, IconCalendarRepeat, IconFridge, IconMessageReport, IconTool, IconUserCheck, IconUserExclamation,
+  IconAlertOctagon, IconAlertTriangle, IconBuilding, IconCalendarRepeat, IconFridge, IconMessageReport, IconSearch, IconTool, IconUserCheck, IconUserExclamation,
 } from '@tabler/icons-react';
-import { Badge, Card, Dropdown, KpiCard, KpiTrend, Stack, Table, TableColumn } from '@maglev/ds';
+import { Button, Card, Dialog, Dropdown, Input, KpiCard, KpiTrend, Stack, Table, TableColumn } from '@maglev/ds';
+import { FilterControl } from './FilterControl';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { MobileCardList } from './MobileCardList';
 import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
 import { Db, LevelItem, Ticket, subscriberName, visualBadge } from './data';
-import { formatNumber, openedAgo } from './format';
+import { formatDateTime, formatNumber, normalize, openedAgo } from './format';
 import { KpiCount } from './kpi-value';
 import { useColumnPrefs } from './ColumnsControl';
 import { useHashState } from './useHashState';
-import { Col, Grid, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
+import { Col, Grid, ReadField, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
 
 /** Estados: idle · empty (nenhum chamado em aberto - todos resolvidos) */
 const STATES = ['idle', 'empty'] as const;
@@ -75,19 +76,20 @@ function openTickets(db: Db, mode: Mode) {
 }
 
 /** Destaque de atenção: número grande + rótulo sobre superfície semântica suave (tokens status-error / status-warning). */
-function AttentionItem({ tone, icon, value, label }: { tone: 'critical' | 'warning'; icon: JSX.Element; value: number; label: string }) {
+function AttentionItem({ tone, icon, value, label, active, onClick }: { tone: 'critical' | 'warning'; icon: JSX.Element; value: number; label: string; active: boolean; onClick: () => void }) {
   return (
-    <div className={`attention-item attention-${tone}`}>
+    <button type="button" className={`attention-item attention-${tone}`} aria-pressed={active} onClick={onClick}>
       <span className="attention-icon" aria-hidden="true">{icon}</span>
-      <div className="attention-text">
+      <span className="attention-text">
         <span className="attention-value">{formatNumber(value)}</span>
         <span className="attention-label">{label}</span>
-      </div>
-    </div>
+      </span>
+    </button>
   );
 }
 
-type Row = Record<string, unknown> & Ticket & { subscriber: string; openedAgo: string; kind: string };
+type Row = Record<string, unknown> & Ticket & { subscriber: string; openedAgo: string; updatedAgo: string; kind: string };
+const NO_RESPONSIBLE = 'sem-responsavel';
 
 function DashboardScreen() {
   const { db, can } = useSession();
@@ -95,7 +97,14 @@ function DashboardScreen() {
   const isMobile = useIsMobile();
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<Period>('7d');
+  const [query, setQuery] = useState('');
+  const [situation, setSituation] = useState('todos');
+  const [responsible, setResponsible] = useState('todos');
+  const [criticality, setCriticality] = useState('todos');
+  const [priority, setPriority] = useState('todos');
+  const [selected, setSelected] = useState<Ticket | null>(null);
   const tickets = useMemo(() => openTickets(db, mode), [db, mode]);
+  useEffect(() => setPage(1), [query, situation, responsible, criticality, priority]);
 
   const live = db.subscribers.filter((s) => s.status !== 'inativo');
   const kpis = {
@@ -114,25 +123,76 @@ function DashboardScreen() {
   const levelBadge = (l: LevelItem) => levelBadgeOf(l.visual, l.name);
   const statusBadge = (id: string) => { const s = db.statuses.find((x) => x.id === id)!; return statusBadgeOf(s.visual, s.name); };
 
-  const rows: Row[] = tickets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((t) => ({
+  const toRow = (t: Ticket): Row => ({
     ...t,
     kind: t.type === 'os' ? 'Ordem de serviço' : 'Solicitação',
     subscriber: subscriberName(sub(t.subscriberId)),
     openedAgo: openedAgo(t.hoursAgo),
-  }));
+    updatedAgo: openedAgo(t.updatedHoursAgo),
+  });
+  // Filtros da lista (situação, responsável, criticidade) + busca por protocolo, assinante, unidade ou equipamento; os destaques e KPIs seguem contando tudo
+  const visible = useMemo(() => tickets.filter((t) => {
+    const q = normalize(query);
+    return (situation === 'todos' || t.statusId === situation)
+      && (responsible === 'todos' || (responsible === NO_RESPONSIBLE ? !t.responsible : t.responsible === responsible))
+      && (criticality === 'todos' || t.criticalityId === criticality)
+      && (priority === 'todos' || t.priorityId === priority)
+      && (!q || normalize(`${t.id} ${subscriberName(db.subscribers.find((s) => s.id === t.subscriberId)!)} ${t.unit} ${t.equipment}`).includes(q));
+  }), [tickets, db, query, situation, responsible, criticality, priority]);
+  // Clicar no destaque filtra a lista abaixo para esses chamados (clicar de novo limpa); os demais filtros e a busca são zerados para a lista bater com o número do card
+  const focusAttention = (kind: 'criticality' | 'priority') => {
+    const on = kind === 'criticality' ? criticality === 'CRI-A' && priority === 'todos' : priority === 'PRI-1' && criticality === 'todos';
+    setQuery(''); setSituation('todos'); setResponsible('todos');
+    setCriticality(kind === 'criticality' && !on ? 'CRI-A' : 'todos');
+    setPriority(kind === 'priority' && !on ? 'PRI-1' : 'todos');
+    if (!on) window.setTimeout(() => document.getElementById('chamados-em-aberto')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
+  const rows: Row[] = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(toRow);
 
+  const situationOptions = [
+    { value: 'todos', label: 'Todas as situações' },
+    ...db.statuses.filter((s) => tickets.some((t) => t.statusId === s.id)).map((s) => ({ value: s.id, label: s.name })),
+  ];
+  const responsibleOptions = [
+    { value: 'todos', label: 'Todos os responsáveis' },
+    ...[...new Set(tickets.map((t) => t.responsible).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, 'pt-BR')).map((r) => ({ value: r, label: r })),
+    { value: NO_RESPONSIBLE, label: 'Sem responsável' },
+  ];
+  const criticalityOptions = [{ value: 'todos', label: 'Todas as criticidades' }, ...db.criticalities.map((c) => ({ value: c.id, label: c.name }))];
+  const priorityOptions = [{ value: 'todos', label: 'Todas as prioridades' }, ...db.priorities.map((p) => ({ value: p.id, label: p.name }))];
   const subscriberLink = (t: Row) => <a className="text-link" href={`assinante.html?id=${t.subscriberId}`}>{t.subscriber}</a>;
+  const protocolLink = (t: Ticket) => <button type="button" className="text-link link-button" aria-haspopup="dialog" onClick={() => setSelected(t)}>{t.id}</button>;
 
   const columns: TableColumn<Row>[] = [
+    { key: 'id', label: 'Protocolo', render: (_, r) => protocolLink(r) },
     { key: 'subscriber', label: 'Assinante', render: (_, r) => (can('assinantes') ? subscriberLink(r) : r.subscriber) },
     { key: 'unit', label: 'Unidade' },
     { key: 'equipment', label: 'Equipamento' },
     { key: 'priorityId', label: 'Prioridade', render: (v) => levelBadge(prio(String(v))) },
     { key: 'criticalityId', label: 'Criticidade', render: (v) => levelBadge(crit(String(v))) },
-    { key: 'statusId', label: 'Status', render: (v) => statusBadge(String(v)) },
+    { key: 'statusId', label: 'Situação', render: (v) => statusBadge(String(v)) },
     { key: 'openedAgo', label: 'Aberto há', align: 'right' },
+    { key: 'updatedAgo', label: 'Última atualização', align: 'right', render: (v) => `há ${v}` },
   ];
   const { columns: shownColumns, control, fieldsFor } = useColumnPrefs('dashboard-chamados', columns, { mobileFixed: ['subscriber', 'statusId'] });
+  const toolbar = (
+    <TableToolbar
+      search={<Input type="search" aria-label="Buscar chamado por protocolo, assinante, unidade ou equipamento" placeholder="Buscar por protocolo, assinante ou unidade" iconLeft={<IconSearch size={20} />} value={query} onChange={(e) => setQuery(e.target.value)} />}
+      filters={(
+        <FilterControl
+          note="Filtros da lista de chamados: Situação (status atual do chamado), Responsável (quem atende; inclui “Sem responsável”) , Criticidade e Prioridade. Os destaques e os KPIs acima continuam contando todos os chamados em aberto."
+          filters={[
+            { id: 'situation', label: 'Situação', options: situationOptions, value: situation, onChange: setSituation },
+            { id: 'responsible', label: 'Responsável', options: responsibleOptions, value: responsible, onChange: setResponsible },
+            { id: 'criticality', label: 'Criticidade', options: criticalityOptions, value: criticality, onChange: setCriticality },
+            { id: 'priority', label: 'Prioridade', options: priorityOptions, value: priority, onChange: setPriority },
+          ]}
+        />
+      )}
+      columns={control}
+    />
+  );
+
 
   const kpi = (note: string, label: string, value: number, icon: JSX.Element, description?: string, href?: string) => {
     const t = TREND_DEMO[period][TREND_KEY[label]];
@@ -182,42 +242,47 @@ function DashboardScreen() {
           </Stack>
         </DevNote>
 
-        <DevNote note="Resumo de atenção (RF101-RGN004): chamados em aberto (solicitações + OS) com Criticidade A e com Prioridade Emergência, destacados em vermelho (crítico) e warning. Um chamado pode entrar nos dois destaques. A distribuição completa por nível não é exibida aqui.">
+        <DevNote note="Resumo de atenção (RF101-RGN004): chamados em aberto (solicitações + OS) com Criticidade A e com Prioridade Emergência, destacados em vermelho (crítico) e warning. Um chamado pode entrar nos dois destaques. A distribuição completa por nível não é exibida aqui. Cada destaque é clicável: filtra a lista “Chamados em aberto” logo abaixo para esses chamados (criticidade A ou prioridade Emergência), zera os demais filtros e rola até a lista; clicar de novo remove o filtro.">
           <Card
             title="Chamados que exigem atenção"
             subtitle={`${tickets.length} ${tickets.length === 1 ? 'chamado em aberto no total' : 'chamados em aberto no total'}`}
           >
             <div className="card-body-tight">
               <div className="attention-grid">
-                <AttentionItem tone="critical" icon={<IconAlertOctagon size={24} />} value={tickets.filter((t) => t.criticalityId === 'CRI-A').length} label={`Criticidade ${crit('CRI-A').name.replace(' - ', ' — ')}`} />
-                <AttentionItem tone="warning" icon={<IconAlertTriangle size={24} />} value={tickets.filter((t) => t.priorityId === 'PRI-1').length} label={`Prioridade ${prio('PRI-1').name}`} />
+                <AttentionItem tone="critical" icon={<IconAlertOctagon size={24} />} value={tickets.filter((t) => t.criticalityId === 'CRI-A').length} label={`Criticidade ${crit('CRI-A').name.replace(' - ', ' — ')}`} active={criticality === 'CRI-A' && priority === 'todos'} onClick={() => focusAttention('criticality')} />
+                <AttentionItem tone="warning" icon={<IconAlertTriangle size={24} />} value={tickets.filter((t) => t.priorityId === 'PRI-1').length} label={`Prioridade ${prio('PRI-1').name}`} active={priority === 'PRI-1' && criticality === 'todos'} onClick={() => focusAttention('priority')} />
               </div>
             </div>
           </Card>
         </DevNote>
 
+        <div id="chamados-em-aberto">
         <DevNote note="Lista tudo o que não está fechado, independentemente da data (RF101-RGN002): solicitações com status ≠ encerrada e OS ≠ concluída/cancelada. Ordem: criticidade (A › B › C), depois prioridade (Emergência › Baixa), depois o mais antigo - críticos no topo e destacados (CTA003). Status com o tipo visual configurado (RF407). 10 por página; no mobile vira lista de cards.">
           {isMobile ? (
             <MobileCardList
               headingId="open-tickets-title"
               title="Chamados em aberto"
               subtitle="Solicitações e ordens de serviço ainda não resolvidas"
-              toolbar={<TableToolbar columns={control} />}
+              toolbar={toolbar}
               emptyTitle={empty.title}
               page={page}
               pageSize={PAGE_SIZE}
-              total={tickets.length}
+              total={visible.length}
               onPageChange={setPage}
               items={rows.map((t) => ({
                 id: t.id,
                 title: can('assinantes') ? subscriberLink(t) : t.subscriber,
                 badge: statusBadge(t.statusId),
                 fields: fieldsFor([
+                  { label: 'Protocolo', value: protocolLink(t) },
+                  { label: 'Solicitante', value: t.requester },
+                  { label: 'Responsável', value: t.responsible ?? 'Sem responsável' },
                   { label: 'Unidade', value: t.unit },
                   { label: 'Equipamento', value: t.equipment },
                   { label: 'Prioridade', value: levelBadge(prio(t.priorityId)) },
                   { label: 'Criticidade', value: levelBadge(crit(t.criticalityId)) },
                   { label: 'Aberto há', value: t.openedAgo },
+                  { label: 'Última atualização', value: `há ${t.updatedAgo}` },
                 ]),
               }))}
             />
@@ -225,15 +290,46 @@ function DashboardScreen() {
             <Table<Row>
               title="Chamados em aberto"
               subtitle="Solicitações e ordens de serviço ainda não resolvidas, de todos os assinantes"
+              toolbar={toolbar}
               columns={shownColumns}
-              actions={control}
               rows={rows}
               empty={empty}
-              pagination={{ page, pageSize: PAGE_SIZE, total: tickets.length, onPageChange: setPage }}
+              pagination={{ page, pageSize: PAGE_SIZE, total: visible.length, onPageChange: setPage }}
             />
           )}
         </DevNote>
+        </div>
       </Stack>
+
+      {selected && (() => {
+        const r = toRow(selected);
+        return (
+          <Dialog
+            open onClose={() => setSelected(null)} size="md"
+            title={`Chamado ${r.id}`} subtitle={`${r.kind} · ${r.subscriber}`}
+            actions={(
+              <>
+                {can('assinantes') && <Button size="sm" onClick={() => { window.location.href = `assinante.html?id=${r.subscriberId}`; }}>Ver perfil do assinante</Button>}
+              </>
+            )}
+          >
+            <DevNote note="Ficha resumida do chamado (protocolo): o operador vê o que originou o alerta sem abrir o perfil da empresa. Assinante leva ao perfil do assinante; unidade, solicitante, situação, criticidade e última atualização vêm do chamado. O chamado em si é tratado na Área do assinante; o Admin só acompanha (RF101).">
+              <Grid>
+                <Col span={6} mobileFull><ReadField label="Assinante" value={can('assinantes') ? subscriberLink(r) : r.subscriber} /></Col>
+                <Col span={6} mobileFull><ReadField label="Unidade" value={r.unit} /></Col>
+                <Col span={6} mobileFull><ReadField label="Solicitante" value={r.requester} /></Col>
+                <Col span={6} mobileFull><ReadField label="Responsável" value={r.responsible ?? 'Sem responsável'} /></Col>
+                <Col span={6} mobileFull><ReadField label="Situação" value={statusBadge(r.statusId)} /></Col>
+                <Col span={6} mobileFull><ReadField label="Criticidade" value={levelBadge(crit(r.criticalityId))} /></Col>
+                <Col span={6} mobileFull><ReadField label="Prioridade" value={levelBadge(prio(r.priorityId))} /></Col>
+                <Col span={6} mobileFull><ReadField label="Equipamento" value={r.equipment} /></Col>
+                <Col span={6} mobileFull><ReadField label="Aberto há" value={r.openedAgo} /></Col>
+                <Col span={6} mobileFull><ReadField label="Última atualização" value={`${formatDateTime(new Date(Date.now() - r.updatedHoursAgo * 3_600_000).toISOString())} (há ${r.updatedAgo})`} /></Col>
+              </Grid>
+            </DevNote>
+          </Dialog>
+        );
+      })()}
     </AppLayout>
   );
 }

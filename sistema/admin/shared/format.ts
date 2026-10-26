@@ -113,6 +113,14 @@ export function sinceParts(iso: string, now = new Date()) {
 }
 export const formatSince = (iso: string) => { const p = sinceParts(iso); return `${p.date} · ${p.tenure}`; };
 
+/** Dias de hoje até a data (ISO `YYYY-MM-DD`); negativo = já passou. */
+export const daysUntil = (iso: string) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(`${iso.slice(0, 10)}T00:00:00`).getTime() - today.getTime()) / 86_400_000);
+};
+export const addDaysIso = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+export const daysText = (n: number) => (n === 1 ? '1 dia' : `${n} dias`);
+
 export const openedAgo = (hours: number) => {
   if (hours < 1) return 'menos de 1 h';
   if (hours < 24) return `${hours} h`;

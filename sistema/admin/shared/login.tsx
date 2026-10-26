@@ -5,17 +5,22 @@ import { AuthLayout, mountScreen } from './AuthLayout';
 import { useHashState } from './useHashState';
 import { getPrototypePassword } from './recovery';
 import { CORPORATE_DOMAIN, isCorporateEmail, isValidEmail, requiredMessage } from './format';
-import { getDb, setSessionUser } from './store';
+import { getDb, recordAccess, setSessionUser, updateDb } from './store';
 import { DevNote } from './dev-notes/DevNote';
 
 /**
  * Estados (o navegador de protótipo abre cada um via #state=):
  *  idle · required · invalid (credenciais incorretas - mensagem genérica, RF001-FLU005)
  *  · domain (e-mail fora de @maglev.com.br - RGN005) · inactive (usuário inativo - RGN001)
- *  · passwordchanged (retorno da recuperação de senha)
+ *  · pending (convite ainda não aceito) · passwordchanged (retorno da recuperação de senha)
  */
-const STATES = ['idle', 'required', 'invalid', 'domain', 'inactive', 'passwordchanged'] as const;
+const STATES = ['idle', 'required', 'invalid', 'domain', 'inactive', 'pending', 'passwordchanged'] as const;
 type Mode = (typeof STATES)[number];
+
+/** Tentativas de senha incorretas seguidas por e-mail (só nesta aba): alimentam o alerta “Tentativas de senha falhas” no próximo acesso. */
+const failsKey = (email: string) => `maglev.v2.loginfails.${email.trim().toLowerCase()}`;
+const getFails = (email: string) => { try { return Number(sessionStorage.getItem(failsKey(email))) || 0; } catch { return 0; } };
+const setFails = (email: string, n: number) => { try { n ? sessionStorage.setItem(failsKey(email), String(n)) : sessionStorage.removeItem(failsKey(email)); } catch { /* sem storage */ } };
 
 const INVALID_MESSAGE = 'E-mail ou senha incorretos. Esqueceu a sua senha? Clique em “Esqueci minha senha” para recuperá-la.';
 const DOMAIN_MESSAGE = `Use seu e-mail corporativo ${CORPORATE_DOMAIN}`;
@@ -33,6 +38,7 @@ function LoginScreen() {
   useEffect(() => {
     if (mode === 'domain') setEmail((v) => (v && !isCorporateEmail(v) ? v : 'ana.ribeiro@gmail.com'));
     if (mode === 'inactive') setEmail((v) => v || 'kleber.antunes@maglev.com.br');
+    if (mode === 'pending') setEmail((v) => v || getDb().adminUsers.find((u) => u.status === 'convite')?.email || '');
   }, [mode]);
 
   // Retorno da recuperação de senha: aviso temporário (Toast), some sozinho
@@ -59,24 +65,39 @@ function LoginScreen() {
     focusAfterSubmit.current = true;
     if (!email.trim() || !password) return go('required');
     if (isValidEmail(email) && !isCorporateEmail(email)) return go('domain');
-    if (!isValidEmail(email) || password !== getPrototypePassword()) return go('invalid');
+    if (!isValidEmail(email) || password !== getPrototypePassword()) { setFails(email, getFails(email) + 1); return go('invalid'); }
     const db = getDb();
     const user = db.adminUsers.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
     if (user?.status === 'inativo') return go('inactive');
+    if (user?.status === 'convite') return go('pending');
     focusAfterSubmit.current = false;
+    // Sessão encerrada com pedido de nova senha: a pessoa precisa redefinir a senha antes de entrar
+    if (user?.mustReset) {
+      updateDb((d) => ({ ...d, adminUsers: d.adminUsers.map((u) => (u.id === user.id ? { ...u, mustReset: false } : u)) }));
+      window.location.href = 'recuperar-senha.html';
+      return;
+    }
+    // Registra o acesso (dispositivo, horário) e marca os alertas da política de segurança
+    if (user) { recordAccess(user, getFails(email)); setFails(email, 0); }
     setSessionUser(user?.id ?? 'USR-0001');
     setMode('idle');
     setLoading(true);
     window.setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
   };
 
-  const clearErrors = () => { if (['invalid', 'required', 'domain', 'inactive'].includes(mode)) setMode('idle'); };
+  const clearErrors = () => { if (['invalid', 'required', 'domain', 'inactive', 'pending'].includes(mode)) setMode('idle'); };
 
   return (
     <AuthLayout title="Acesse o painel administrativo" subtitle="Entre com seu e-mail corporativo para acessar o painel da Maglev">
       {mode === 'inactive' && (
         <DevNote note="RF001-RGN001 / CTA003: só usuários Ativos acessam. O aviso aparece apenas depois de e-mail e senha corretos, para não revelar contas a quem não tem a senha.">
           <Feedback type="error" title="Seu acesso está inativo" message="Fale com um administrador da plataforma para reativar o seu usuário." />
+        </DevNote>
+      )}
+
+      {mode === 'pending' && (
+        <DevNote note="Convite ainda não aceito: o usuário só entra depois do primeiro acesso. Como no estado Inativo, o aviso aparece apenas depois de e-mail e senha corretos. Se o link expirou, outro administrador reenvia o convite (Usuários).">
+          <Feedback type="info" title="Seu convite ainda não foi aceito" message="Use o link do convite enviado ao seu e-mail para criar sua senha e ativar o acesso. Se o link expirou, peça a um administrador para reenviar o convite." />
         </DevNote>
       )}
 

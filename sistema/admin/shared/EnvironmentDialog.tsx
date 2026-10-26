@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Button, Dialog, Dropdown, Feedback, Stack, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from './dev-notes/DevNote';
 import { INACTIVATION_REASONS, InactivationReason, Subscriber, subscriberName } from './data';
-import { getSessionUser, logActivity, nowIso, updateDb } from './store';
+import { getSessionUser, logActivity, nowIso, updateDb, useSession } from './store';
+import { IconClipboardList, IconQrcode, IconUsers } from '@tabler/icons-react';
+import { ImpactSection, countOf, impactOf, overdueNoticeItem } from './OverdueDialog';
 import { Text } from './ui';
 import { requiredMessage } from './format';
 
@@ -13,6 +15,7 @@ import { requiredMessage } from './format';
  */
 export function EnvironmentDialog({ subscriber, onClose }: { subscriber: Subscriber | null; onClose: () => void }) {
   const toast = useToast();
+  const { db } = useSession();
   const [reason, setReason] = useState<InactivationReason | ''>('');
   const [other, setOther] = useState('');
   const [tried, setTried] = useState(false);
@@ -68,9 +71,25 @@ export function EnvironmentDialog({ subscriber, onClose }: { subscriber: Subscri
             <Feedback
               type="warning"
               title="O assinante perde o acesso imediatamente"
-              message="Usuários e solicitações via QR Code serão bloqueados. Os dados serão mantidos."
+              message="Os usuários e os QR Codes vinculados serão bloqueados"
             />
           </DevNote>
+          {(() => {
+            const i = impactOf(db, subscriber);
+            const deadline = overdueNoticeItem(subscriber);
+            return (
+              <ImpactSection
+                title="O que será afetado"
+                items={[
+                  ...(deadline ? [deadline] : []),
+                  { icon: <IconUsers size={16} />, text: <><strong>{countOf(i.users, 'usuário ativo', 'usuários ativos')}</strong> terão o acesso bloqueado</> },
+                  { icon: <IconQrcode size={16} />, text: <><strong>{countOf(i.qr, 'QR Code', 'QR Codes')}</strong> deixarão de abrir solicitações</> },
+                  { icon: <IconClipboardList size={16} />, text: <><strong>{countOf(i.tickets, 'chamado em aberto', 'chamados em aberto')}</strong> ficam congelados até a reativação</> },
+                ]}
+                preserved={{ title: 'Nada é excluído', text: 'Dados e histórico ficam preservados. Ao reativar, o acesso, os QR Codes, os chamados e o histórico voltam a funcionar.' }}
+              />
+            );
+          })()}
           <Dropdown
             label="Motivo"
             required

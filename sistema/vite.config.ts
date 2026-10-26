@@ -12,7 +12,7 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 /** Telas do produto (uma entrada por tela). Registrar também em prototype-nav/config.ts. */
 export const SCREENS = [
-  'login', 'recuperar-senha', 'codigo-verificacao', 'criar-nova-senha',
+  'login', 'recuperar-senha', 'codigo-verificacao', 'criar-nova-senha', 'primeiro-acesso',
   'dashboard',
   'assinantes', 'assinante', 'assinante-form',
   'usuarios', 'usuario', 'usuario-form',

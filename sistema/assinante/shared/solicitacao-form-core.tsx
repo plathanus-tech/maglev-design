@@ -13,7 +13,7 @@ import { IS_THUMB, STS, isOpenBase } from './solicitacoes-shared';
 import { OpenRequestCard } from '../../colaborador/shared/open-request-card';
 
 import { LegalText } from './legal-placeholder';
-import './primeiro-acesso.css';
+import '../../admin/shared/primeiro-acesso.css';
 import './solicitacao-form.css';
 
 /** Estados: idle · required · duplicate (aviso de duplicidade) · troubleshooting (aviso + Começar) · tip1 · lasttip · tipsdone (volta ao formulário) · resolved */

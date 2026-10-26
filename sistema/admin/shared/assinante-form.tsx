@@ -246,8 +246,8 @@ function AssinanteFormScreen() {
                     {d.status === 'inativo' ? (
                       <ReadField label="Status do assinante" value="Inativo - use “Ativar ambiente” no detalhe" />
                     ) : (
-                      <DevNote note="Status alterado manualmente (RF201-RGN002). Inativo não aparece aqui: inativar é a ação “Inativar ambiente” (RF204), que pede confirmação e motivo e bloqueia usuários e QR Codes.">
-                        <RadioButton name="status" label="Status do assinante" orientation="horizontal" options={STATUS_OPTIONS} value={d.status} onChange={(v) => set('status', v as SubscriberStatus)} />
+                      <DevNote note="O status não é editado aqui: Ativo ⇄ Inadimplente muda pelas ações do detalhe do assinante (“Marcar como inadimplente” / “Marcar como ativo”), que abrem o prazo de regularização e avisam os gestores (RF201-RGN002). Inativo é “Inativar ambiente” (RF204).">
+                        <ReadField label="Status do assinante" value={STATUS_OPTIONS.find((o) => o.value === d.status)?.label} />
                       </DevNote>
                     )}
                   </Col>

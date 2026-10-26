@@ -2,7 +2,7 @@ import { MouseEvent, ReactElement, ReactNode } from 'react';
 import { IconAlertTriangle, IconCircle, IconCircleCheck, IconCircleX, IconInfoCircle } from '@tabler/icons-react';
 import { Badge, Button, Stack, Tooltip } from '@maglev/ds';
 import {
-  RECORD_STATUS_LABEL, RecordStatus, SUBSCRIBER_STATUS_BADGE, SUBSCRIBER_STATUS_LABEL, SubscriberStatus, Visual, visualBadge,
+  ADMIN_USER_STATUS, AdminUserStatus, RECORD_STATUS_LABEL, RecordStatus, SUBSCRIBER_STATUS_BADGE, SUBSCRIBER_STATUS_LABEL, SubscriberStatus, Visual, visualBadge,
 } from './data';
 
 /**
@@ -13,6 +13,8 @@ import {
 
 export const subscriberStatusBadge = (s: SubscriberStatus) => <Badge status={SUBSCRIBER_STATUS_BADGE[s]} dot>{SUBSCRIBER_STATUS_LABEL[s]}</Badge>;
 export const recordStatusBadge = (s: RecordStatus) => <Badge status={s === 'ativo' ? 'success' : 'neutral'} dot>{RECORD_STATUS_LABEL[s]}</Badge>;
+/** Estado de acesso do usuário do Admin: Convite pendente · Ativo · Inativo. */
+export const adminUserStatusBadge = (s: AdminUserStatus) => <Badge status={ADMIN_USER_STATUS[s].badge} dot>{ADMIN_USER_STATUS[s].label}</Badge>;
 /**
  * Badge de status (RF407): o ícone substitui o ponto e vem do tipo visual - os mesmos ícones do Feedback para
  * informativo, sucesso, atenção e crítico (erro); neutro usa um círculo.

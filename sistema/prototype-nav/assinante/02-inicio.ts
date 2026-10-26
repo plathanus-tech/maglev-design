@@ -16,6 +16,7 @@ export const journeys: Journey[] = [
         id: 'inicio', label: 'RF101 - Início (Central do trabalho)', path: `${s}/inicio.html`,
         variants: [
           v('inicio-empty', 'Sem pendências', 'inicio.html#state=empty'),
+          v('inicio-suspension', 'Aviso de inativação prevista (gestor)', `inicio.html?as=${userIdOf('gestor', getSubDb())}#state=suspension`),
           v('inicio-gestor', 'Perfil Gestor de manutenção', `inicio.html?as=${userIdOf('gestor', getSubDb())}`),
           v('inicio-executor', 'Perfil Executor (só suas OS)', `inicio.html?as=${userIdOf('executor', getSubDb())}`),
         ],

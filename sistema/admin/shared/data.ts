@@ -3,6 +3,8 @@
  * assinantes, unidades e equipamentos são de cozinha profissional.
  * Tipos e carga inicial seguem a Especificação Funcional (v0.4) - só o que é do Admin e está no contrato.
  */
+import { QrReason, seedQrEvents } from './qr-registry';
+import { AccessAlert, seedAccessSessions } from './access-security';
 import { BadgeStatus } from '@maglev/ds';
 
 // ═══ Tipo visual (RF407 / RNF014) ════════════════════════════════════
@@ -74,9 +76,21 @@ export interface Subscriber {
   /** Solicitações abertas nos últimos 30 dias (ranking "Clientes com mais solicitações · 30 dias"). */
   requests30d: number;
   envHistory: EnvChange[];
+  /** Só com status Inadimplente: dia em que foi marcado e dia previsto para a inativação do ambiente (prazo de regularização). */
+  overdueSince?: string;
+  suspendAt?: string;
 }
 
+/** Prazo, em dias, que o assinante inadimplente tem para regularizar antes de o ambiente ser inativado (💡 7 dias por enquanto). */
+export const SUSPENSION_GRACE_DAYS = 7;
+
 export const subscriberName = (s: Pick<Subscriber, 'tradeName' | 'legalName'>) => s.tradeName || s.legalName;
+
+/** Inativação do código QR de um equipamento (com motivo); `newToken` é o código gerado na hora, no lugar de `oldToken`. */
+export interface QrEvent {
+  id: string; subscriberId: string; equipmentId: string; at: string; byUserId: string;
+  reason: QrReason; /** Descrição, quando o motivo é "Outro". */ detail?: string; oldToken: string; newToken: string;
+}
 
 // ═══ Usuários do assinante (somente leitura no Admin - RF203-RGN001) ═══
 export const SUBSCRIBER_PROFILES = ['Administrador', 'Gestor de manutenção', 'Solicitante / Gestor da unidade', 'Executor'];
@@ -96,9 +110,28 @@ export interface SubscriberUser { id: string; name: string; email: string; profi
 export type ActivityModule = 'Assinantes' | 'Usuários' | 'Perfis de acesso' | 'Configurações';
 export type ActivityKind = 'cadastro' | 'edicao' | 'ativacao' | 'inativacao' | 'exclusao';
 export interface Activity { id: string; at: string; userId: string; module: ActivityModule; kind: ActivityKind; action: string }
-export interface AdminUser { id: string; name: string; email: string; phone: string; profileId: string; status: RecordStatus; createdAt: string;
+/** Estado de acesso do usuário do Admin: convite pendente (ainda não fez o primeiro acesso), ativo ou inativo. */
+export type AdminUserStatus = RecordStatus | 'convite';
+export const ADMIN_USER_STATUS: Record<AdminUserStatus, { label: string; badge: BadgeStatus }> = {
+  convite: { label: 'Convite pendente', badge: 'info' },
+  ativo: { label: 'Ativo', badge: 'success' },
+  inativo: { label: 'Inativo', badge: 'neutral' },
+};
+/** Um acesso ao painel (login) e a sessão dele. `alerts` = eventos da política de segurança; `reviewed` = o administrador já viu o alerta. */
+export interface AccessSession {
+  id: string; userId: string; at: string; device: string; /** Só aproximada (ex.: “Região diferente do habitual”); sem geolocalização precisa. */ region?: string;
+  alerts: AccessAlert[]; status: 'ativa' | 'encerrada' | 'expirada';
+  endedAt?: string; endedBy?: string; /** Foi pedido nova senha ao encerrar. */ passwordReset?: boolean; reviewed?: boolean;
+}
+export interface AdminUser { id: string; name: string; email: string; phone: string; profileId: string; status: AdminUserStatus; createdAt: string;
+  /** Data de entrada: dia em que a pessoa concluiu o primeiro acesso (ISO `YYYY-MM-DD`). Sem valor enquanto o convite está pendente. */
+  joinedAt?: string;
+  /** Data do último envio do convite (ISO `YYYY-MM-DD`); atualizada a cada reenvio. */
+  invitedAt?: string;
   /** Preferências de comunicação (só a própria conta edita). Sem valor: e-mail ligado, WhatsApp desligado. */
-  notifyEmail?: boolean; notifyWhatsapp?: boolean }
+  notifyEmail?: boolean; notifyWhatsapp?: boolean;
+  /** Sessão encerrada com pedido de nova senha: no próximo acesso a pessoa precisa redefinir a senha. */
+  mustReset?: boolean }
 
 export type ScreenKey = 'dashboard' | 'assinantes' | 'usuarios' | 'perfis' | 'configuracoes';
 export type ActionKey = 'visualizar' | 'cadastrar' | 'editar' | 'excluir' | 'ativar';
@@ -153,6 +186,12 @@ export interface Ticket {
   id: string; type: TicketType; subscriberId: string; unit: string; equipment: string;
   /** id da prioridade (PRI-1 Emergência … PRI-4 Baixa) e da criticidade (CRI-A … CRI-C). */
   priorityId: string; criticalityId: string; statusId: string; hoursAgo: number;
+  /** Quem abriu o chamado (pessoa do assinante). */
+  requester: string;
+  /** Responsável pelo atendimento (prestador ou equipe interna); vazio = ainda sem responsável. */
+  responsible?: string;
+  /** Há quantas horas houve a última atualização (sempre ≤ hoursAgo). */
+  updatedHoursAgo: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -260,6 +299,8 @@ function buildSubscribers(): Subscriber[] {
       maintenanceCents: units * 185_000 + ((i * 3719) % 240_000) * 10,
       requests30d: featured ? [64, 52, 47, 39, 33, 28][i] : 1 + ((i * 7) % 22),
       envHistory,
+      // DADOS DE DEMONSTRAÇÃO: quem já está inadimplente tem o prazo em curso
+      ...(status === 'inadimplente' ? { overdueSince: '2026-10-22', suspendAt: '2026-10-29' } : {}),
     });
   }
   // Totais coerentes com o protótipo v1: 342 unidades e 1.876 equipamentos.
@@ -315,6 +356,17 @@ const PROFILES: Profile[] = [
   },
 ];
 
+/** DADOS DE DEMONSTRAÇÃO - convites pendentes (cadastro = primeiro envio; invitedAt = último envio). */
+const PENDING_INVITES = [
+  { createdAt: '2026-09-28', invitedAt: '2026-10-05' },
+  { createdAt: '2026-10-08', invitedAt: '2026-10-08' },
+];
+/** DADOS DE DEMONSTRAÇÃO - quem já acessou: cadastro e, no dia seguinte, a entrada (primeiro acesso). */
+const usedDates = (i: number) => {
+  const created = new Date(Date.UTC(2026, 4 + (i % 4), 3 + i * 2));
+  return { createdAt: created.toISOString().slice(0, 10), joinedAt: new Date(created.getTime() + 86_400_000).toISOString().slice(0, 10) };
+};
+
 const ADMIN_USERS: AdminUser[] = ([
   ['Ana Paula Ribeiro', 'PER-ADM', 'ativo'],
   ['Carlos Henrique Souza', 'PER-ADM', 'ativo'],
@@ -328,13 +380,15 @@ const ADMIN_USERS: AdminUser[] = ([
   ['Kleber Antunes', 'PER-SUP', 'inativo'],
   ['Letícia Fontes', 'PER-SUP', 'ativo'],
   ['Murilo Bastos', 'PER-IMP', 'inativo'],
-] as Array<[string, string, RecordStatus]>).map(([name, profileId, status], i) => ({
+  ['Natália Corrêa', 'PER-SUP', 'convite'],
+  ['Otávio Reis', 'PER-IMP', 'convite'],
+] as Array<[string, string, AdminUserStatus]>).map(([name, profileId, status], i) => ({
   id: `USR-${pad(i + 1, 4)}`,
   name,
   email: `${slug(name).split('.').filter((_, k, a) => k === 0 || k === a.length - 1).join('.')}@maglev.com.br`,
   phone: `489${pad(9100_0000 + i * 431_77, 8)}`,
   profileId, status,
-  createdAt: new Date(Date.UTC(2026, 4 + (i % 4), 3 + i * 2)).toISOString().slice(0, 10),
+  ...(status === 'convite' ? PENDING_INVITES[i - 12] : usedDates(i)),
 }));
 
 const cfg = (prefix: string, rows: Array<[string, string, number, RecordStatus?]>): ConfigItem[] =>
@@ -461,6 +515,7 @@ function buildTickets(subscribers: Subscriber[]): Ticket[] {
   for (let i = 0; i < 18; i++) {
     fixed.push([i % 3 === 1 ? 'os' : 'solicitacao', 6 + ((i * 11) % (open.length - 6)), i % 3 === 0 ? 'PRI-3' : 'PRI-4', i % 4 === 0 ? 'CRI-B' : 'CRI-C', 180 + i * 26]);
   }
+  const responsibles = ['Frio Sul Refrigeração', 'Chama Viva Manutenção', 'Equipe interna', 'Climatec Serviços', undefined];
   return fixed.map(([type, si, priorityId, criticalityId, hoursAgo], i) => ({
     id: `${type === 'os' ? 'OS' : 'SOL'}-${pad(2000 + i * 7, 5)}`,
     type,
@@ -470,6 +525,10 @@ function buildTickets(subscribers: Subscriber[]): Ticket[] {
     priorityId, criticalityId,
     statusId: type === 'os' ? osStatus[i % osStatus.length] : solStatus[i % solStatus.length],
     hoursAgo,
+    requester: PEOPLE[(i * 7 + si) % PEOPLE.length],
+    // Solicitação ainda em triagem não tem responsável; OS sempre tem alguém (ou "sem responsável" em alguns casos)
+    responsible: type === 'solicitacao' && i % 2 === 0 ? undefined : responsibles[(i * 3 + si) % responsibles.length],
+    updatedHoursAgo: Math.max(1, Math.floor(hoursAgo / (2 + (i % 4)))),
   }));
 }
 
@@ -490,6 +549,10 @@ export interface Db {
   tickets: Ticket[];
   /** Planos de preventiva existentes (dado agregado da área do assinante). */
   preventivePlans: number;
+  /** Inativações de código QR de equipamentos dos assinantes (cada uma gera um novo código; o antigo fica no histórico). */
+  qrEvents: QrEvent[];
+  /** Acessos e sessões dos usuários do Admin, com alertas de segurança (ver access-security.ts). */
+  accessSessions: AccessSession[];
 }
 
 /**
@@ -499,7 +562,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 9;
+export const DB_VERSION = 14;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.
@@ -508,6 +571,7 @@ export const DB_VERSION = 9;
 function buildActivity(users: AdminUser[], subs: Subscriber[]): Activity[] {
   const out: Activity[] = [];
   users.forEach((u, i) => {
+    if (u.status === 'convite') return; // convite pendente: ainda não acessou, sem histórico
     const total = i === 1 ? 24 : 3 + ((i * 5) % 9);
     for (let n = 0; n < total; n++) {
       const sub = subscriberName(subs[(i * 7 + n * 5) % subs.length]);
@@ -552,5 +616,7 @@ export function seed(): Db {
     statuses: STATUSES,
     tickets: buildTickets(subscribers),
     preventivePlans: 214,
+    qrEvents: seedQrEvents(subscribers),
+    accessSessions: seedAccessSessions(ADMIN_USERS),
   };
 }

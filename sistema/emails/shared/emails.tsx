@@ -7,7 +7,7 @@ import { param } from '../../assinante/shared/ui';
 import logoLight from '../../../public/maglev-logo.svg';
 import {
   CONVITE_VARS, NOVA_OS_VARS, OS_NOTIFICATION_VARS, RECUPERACAO_CODE_VAR, RECUPERACAO_VARS, TemplateId,
-  budgetApprovalNotification, conviteSubject, novaOsSubject, osUpdateNotification, preventiveOverdueNotification, recuperacaoSubject,
+  budgetApprovalNotification, conviteSubject, suspensionNoticeNotification, novaOsSubject, osUpdateNotification, preventiveOverdueNotification, recuperacaoSubject,
   renderConviteEmail, renderNovaOsEmail, renderOsNotification, renderRecuperacaoEmail,
 } from './templates';
 
@@ -24,6 +24,8 @@ const orcamento = { recipientName: 'Larissa', osNumber: 'OS-000009', equipment: 
 const atualizacao = { recipientName: 'Fernanda', osNumber: 'OS-000011', equipment: 'Coifa 01', unit: 'Cantina Dona Rosa Centro', status: 'Em andamento', statusTone: 'info' as const, detail: 'Retirada do motor agendada para 05/10/2026, das 10:00 às 12:00.' };
 
 const vencida = { recipientName: 'Larissa', osNumber: 'OS-000048', plan: 'Preventiva mensal das câmaras frias', equipment: 'Câmara fria 01', unit: 'Cantina Dona Rosa Centro', dueDate: '03/10/2026', overdueDays: 2, responsible: 'Larissa Teixeira' };
+
+const inativacao = { recipientName: 'Larissa', company: 'Cantina Dona Rosa', deadline: '02/11/2026', daysLeft: 7 };
 
 const TEMPLATES: Meta[] = [
   {
@@ -55,6 +57,11 @@ const TEMPLATES: Meta[] = [
     id: 'preventiva-vencida', label: 'Notificação de preventiva vencida', subject: preventiveOverdueNotification(vencida).subject, to: 'Responsável e gestores do assinante',
     note: 'Mesma base das demais notificações de OS, com o atraso em destaque (etiqueta de erro, como no produto). O botão leva à OS preventiva na Área do assinante, respeitando o perfil do destinatário.',
     html: (vars) => renderOsNotification(preventiveOverdueNotification(vencida), vars ? OS_NOTIFICATION_VARS : { ctaUrl: abs('/assinante/screens/os.html?id=OS-000048'), logoUrl: logoUrl() }),
+  },
+  {
+    id: 'inativacao-prevista', label: 'Inativação prevista do ambiente', subject: suspensionNoticeNotification(inativacao).subject, to: 'Administradores e gestores do assinante',
+    note: 'Enviado quando o Admin marca o assinante como Inadimplente: abre o prazo de regularização (7 dias, 💡 por enquanto) e informa o impacto da inativação (acesso, QR Codes já colados, chamados em andamento, histórico e dados). O mesmo conteúdo aparece num modal ao entrar na Área do assinante. O botão abre o contato com o suporte Maglev; não há pagamento na plataforma.',
+    html: (vars) => renderOsNotification(suspensionNoticeNotification(inativacao), vars ? OS_NOTIFICATION_VARS : { ctaUrl: 'mailto:suporte@maglev.com.br', logoUrl: logoUrl() }),
   },
 ];
 

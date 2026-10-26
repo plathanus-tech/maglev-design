@@ -3,7 +3,7 @@ import {
   IconCircleCheck, IconCircleOff, IconEye, IconMessageReport, IconPencil, IconPlus, IconReportMoney, IconSearch,
   IconUserCheck, IconUserExclamation,
 } from '@tabler/icons-react';
-import { Button, Dropdown, Input, KpiCard, KpiTrend, Stack, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
+import { Button, Input, KpiCard, KpiTrend, Stack, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { EnvironmentDialog } from './EnvironmentDialog';
@@ -12,7 +12,8 @@ import { useColumnPrefs } from './ColumnsControl';
 import { useHashState } from './useHashState';
 import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
-import { KPI_HISTORY, Subscriber, activeUsersCount, subscriberName } from './data';
+import { FilterControl } from './FilterControl';
+import { KPI_HISTORY, PLANS, Subscriber, activeUsersCount, subscriberName } from './data';
 import { KpiMoney } from './kpi-value';
 import { formatCnpj, formatDate, formatMoney, formatMoneyCompact, formatNumber, formatSince, noBreak, onlyDigits, tenureMonths } from './format';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
@@ -28,6 +29,7 @@ const STATUS_OPTIONS = [
   { value: 'inadimplente', label: 'Inadimplente' },
   { value: 'inativo', label: 'Inativo' },
 ];
+const PLAN_OPTIONS = [{ value: 'todos', label: 'Todos os planos' }, ...PLANS.map((p) => ({ value: p, label: p }))];
 
 const matches = (s: Subscriber, q: string) => {
   const term = q.trim().toLowerCase();
@@ -67,6 +69,7 @@ function AssinantesScreen() {
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState(() => { const p = param('status'); return STATUS_OPTIONS.some((o) => o.value === p) ? (p as string) : 'todos'; });
+  const [plan, setPlan] = useState('todos');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [toggling, setToggling] = useState<Subscriber | null>(null);
@@ -79,7 +82,7 @@ function AssinantesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, status, sortDir]);
+  useEffect(() => setPage(1), [query, status, plan, sortDir]);
 
   const kpis = useMemo(() => {
     const active = db.subscribers.filter((s) => s.status === 'ativo').length;
@@ -98,8 +101,8 @@ function AssinantesScreen() {
   }, [db]);
 
   const filtered = useMemo(() => db.subscribers
-    .filter((s) => (status === 'todos' || s.status === status) && matches(s, query))
-    .sort((a, b) => subscriberName(a).localeCompare(subscriberName(b), 'pt-BR') * (sortDir === 'asc' ? 1 : -1)), [db, query, status, sortDir]);
+    .filter((s) => (status === 'todos' || s.status === status) && (plan === 'todos' || s.plan === plan) && matches(s, query))
+    .sort((a, b) => subscriberName(a).localeCompare(subscriberName(b), 'pt-BR') * (sortDir === 'asc' ? 1 : -1)), [db, query, status, plan, sortDir]);
   const pageRows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((s) => ({ ...s, activeUsers: activeUsersCount(s) }));
 
   const actions = (s: Subscriber) => {
@@ -126,6 +129,7 @@ function AssinantesScreen() {
       render: (_, r) => <CellPair primary={r.tradeName} secondary={r.legalName} />,
     },
     { key: 'cnpj', label: 'CNPJ', render: (v) => noBreak(formatCnpj(String(v))) },
+    { key: 'plan', label: 'Plano contratado' },
     { key: 'status', label: 'Status', render: (v) => subscriberStatusBadge(v as Subscriber['status']) },
     {
       key: 'since', label: 'Cliente desde',
@@ -135,7 +139,6 @@ function AssinantesScreen() {
     { key: 'activeUsers', label: 'Usuários ativos', align: 'right' },
     { key: 'maintenanceCents', label: 'Gasto em manutenção', align: 'right', render: (v) => formatMoney(Number(v)) },
     { key: 'equipments', label: 'Equipamentos', align: 'right', render: (v) => formatNumber(Number(v)) },
-    { key: 'plan', label: 'Plano / contratação' },
     { key: 'id', label: 'Ações', sticky: 'right', render: (_, r) => actions(r) },
   ];
 
@@ -152,15 +155,19 @@ function AssinantesScreen() {
           onChange={(e) => setQuery(e.target.value)}
         />
       )}
-      status={(
-        <DevNote note="Status do assinante: Ativo · Inadimplente · Inativo (RF201-RGN002), alterado manualmente - a cobrança é feita fora da plataforma.">
-          <Dropdown aria-label="Filtrar por status" options={STATUS_OPTIONS} value={status} onChange={setStatus} />
-        </DevNote>
+      filters={(
+        <FilterControl
+          note="Agrupador de filtros: Status do assinante (Ativo · Inadimplente · Inativo, RF201-RGN002, alterado manualmente - a cobrança é feita fora da plataforma) e Plano contratado."
+          filters={[
+            { id: 'status', label: 'Status', options: STATUS_OPTIONS, value: status, onChange: setStatus },
+            { id: 'plan', label: 'Plano contratado', options: PLAN_OPTIONS, value: plan, onChange: setPlan },
+          ]}
+        />
       )}
       columns={withColumns ? control : undefined}
     />
   );
-  const empty = { title: 'Nenhum assinante encontrado', description: 'Revise a busca ou o filtro de status.' };
+  const empty = { title: 'Nenhum assinante encontrado', description: 'Revise a busca ou os filtros aplicados.' };
 
   return (
     <AppLayout active="assinantes" screen="assinantes">
@@ -217,12 +224,12 @@ function AssinantesScreen() {
                 badge: subscriberStatusBadge(s.status),
                 fields: fieldsFor([
                   { label: 'CNPJ', value: formatCnpj(s.cnpj) },
+                  { label: 'Plano contratado', value: s.plan },
                   { label: 'Cliente desde', value: formatSince(s.since) },
                   { label: 'Unidades', value: s.units },
                   { label: 'Usuários ativos', value: s.activeUsers },
                   { label: 'Gasto em manutenção', value: formatMoney(s.maintenanceCents) },
                   { label: 'Equipamentos', value: formatNumber(s.equipments) },
-                  { label: 'Plano / contratação', value: s.plan },
                 ]),
                 actions: actions(s),
               }))}

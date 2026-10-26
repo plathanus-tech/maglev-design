@@ -116,8 +116,10 @@ export const frequencyText = (p: { frequency: 'diaria' | 'semanal' | 'mensal' | 
  * Dialog "QR Code do equipamento" (`mode='qr'`: QR + link com "Copiar") e prévia da etiqueta para impressão (`mode='label'`:
  * QR + nome + código + logo MAGLEV, com "Imprimir" que chama window.print com estilo @media print mínimo).
  */
+/** O que a etiqueta precisa do equipamento (o Admin também imprime, a partir do cadastro de QR Codes por assinante). */
+export type LabelEquipment = Pick<Equipment, 'id' | 'name' | 'code' | 'qrToken'>;
 /** Etiqueta do equipamento (mesma da impressão individual): logo, QR Code, nome, código e instrução de leitura. */
-export function EquipmentLabel({ equipment, className = '' }: { equipment: Equipment; className?: string }) {
+export function EquipmentLabel({ equipment, className = '' }: { equipment: LabelEquipment; className?: string }) {
   return (
     <div className={`eq-label ${className}`.trim()}>
       <img className="eq-label-logo" src={logoLight} alt="MAGLEV" />
@@ -132,7 +134,7 @@ export function EquipmentLabel({ equipment, className = '' }: { equipment: Equip
 
 const PREVIEW_LABELS = 4;
 /** Impressão em lote (RF305, sugestão): uma etiqueta por equipamento selecionado. A prévia mostra as primeiras; a impressão leva todas. */
-export function BatchLabelDialog({ equipments, onClose }: { equipments: Equipment[]; onClose: () => void }) {
+export function BatchLabelDialog({ equipments, onClose }: { equipments: LabelEquipment[]; onClose: () => void }) {
   const n = equipments.length;
   return (
     <>
@@ -161,7 +163,7 @@ export function BatchLabelDialog({ equipments, onClose }: { equipments: Equipmen
   );
 }
 
-export function QrDialogs({ equipment, mode, onMode }: { equipment: Equipment | null; mode: 'qr' | 'label' | null; onMode: (m: 'qr' | 'label' | null) => void }) {
+export function QrDialogs({ equipment, mode, onMode }: { equipment: LabelEquipment | null; mode: 'qr' | 'label' | null; onMode: (m: 'qr' | 'label' | null) => void }) {
   const copy = useCopy();
   if (!equipment || !mode) return null;
   const link = qrLink(equipment);

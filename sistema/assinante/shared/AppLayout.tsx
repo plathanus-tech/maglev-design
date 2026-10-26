@@ -19,6 +19,7 @@ import { GlobalSearch, HelpButton } from './GlobalSearch';
 
 import '../../admin/shared/nav-sync';
 import './assinante.css';
+import { SuspensionNotice } from './SuspensionNotice';
 
 /** O cabeçalho de página e a montagem do app são os mesmos do Admin (mesmas decisões de design). */
 export { PageHeader, mountApp };
@@ -128,7 +129,7 @@ function NotificationBell() {
  * desktop; no mobile (< 768px), AppHeader com menu hambúrguer e a Sidebar como gaveta.
  * `active` = item do menu; `screen` = permissão da tela atual (sem permissão de visualizar: aviso de acesso negado).
  */
-export function AppLayout({ active, screen, children, layout = 'default' }: { active: string; screen: ScreenKey; children: ReactNode; /** `focused` = Padrão B (wizard): sem sidebar, conteúdo centralizado em largura confortável. Os formulários convencionais (Padrão A) usam o `default`. */ layout?: 'default' | 'focused' }) {
+function AppLayoutInner({ active, screen, children, layout = 'default' }: { active: string; screen: ScreenKey; children: ReactNode; /** `focused` = Padrão B (wizard): sem sidebar, conteúdo centralizado em largura confortável. Os formulários convencionais (Padrão A) usam o `default`. */ layout?: 'default' | 'focused' }) {
   const isMobile = useIsMobile();
   const { user, can } = useSubSession();
   const [open, setOpen] = useState(() => { try { return localStorage.getItem(SIDEBAR_KEY) !== '0'; } catch { return true; } });
@@ -261,5 +262,15 @@ function NoAccess() {
         headingLevel={2}
       />
     </Card>
+  );
+}
+
+/** Casca da Área do assinante (ver AppLayoutInner) + aviso de inativação prevista para administradores e gestores. */
+export function AppLayout(props: Parameters<typeof AppLayoutInner>[0]) {
+  return (
+    <>
+      <AppLayoutInner {...props} />
+      <SuspensionNotice />
+    </>
   );
 }

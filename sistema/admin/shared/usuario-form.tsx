@@ -6,9 +6,9 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { useHashState } from './useHashState';
 import { logActivity, nextId, updateDb, useSession } from './store';
-import { AdminUser, RecordStatus } from './data';
+import { AdminUser, AdminUserStatus, RecordStatus } from './data';
 import { CORPORATE_DOMAIN, formatPhone, isCorporateEmail, isValidEmail, isValidPhone, onlyDigits, requiredMessage } from './format';
-import { Col, Grid, ReadField, goTo, param, recordStatusBadge, setFlash } from './ui';
+import { Col, Grid, ReadField, adminUserStatusBadge, goTo, param, recordStatusBadge, setFlash } from './ui';
 
 /** Estados: idle · required · domain (e-mail fora de @maglev.com.br - CTA003) · duplicate (e-mail já cadastrado - CTA002) */
 const STATES = ['idle', 'required', 'domain', 'duplicate'] as const;
@@ -22,7 +22,8 @@ function UsuarioFormScreen() {
   const [email, setEmail] = useState(editing?.email ?? '');
   const [phone, setPhone] = useState(editing ? formatPhone(editing.phone) : '');
   const [profileId, setProfileId] = useState(editing?.profileId ?? '');
-  const [status, setStatus] = useState<RecordStatus>(editing?.status ?? 'ativo');
+  const pendingInvite = editing?.status === 'convite';
+  const [status, setStatus] = useState<RecordStatus>(editing && editing.status !== 'convite' ? editing.status : 'ativo');
   const [notifyEmail, setNotifyEmail] = useState(editing?.notifyEmail ?? true);
   const [notifyWhatsapp, setNotifyWhatsapp] = useState(editing?.notifyWhatsapp ?? false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -84,11 +85,13 @@ function UsuarioFormScreen() {
     if (invalid) return;
     setSaving(true);
     let id = editing?.id;
-    const data = { name: name.trim(), phone: onlyDigits(phone), profileId, status, ...(self ? { notifyEmail, notifyWhatsapp } : {}) };
+    // Novo usuário nasce com convite pendente; quem tem convite pendente só muda de estado pelo primeiro acesso (ou inativando)
+    const data = { name: name.trim(), phone: onlyDigits(phone), profileId, status: (editing ? (pendingInvite ? 'convite' : status) : 'convite') as AdminUserStatus, ...(self ? { notifyEmail, notifyWhatsapp } : {}) };
     updateDb((d) => {
       if (editing) return { ...d, adminUsers: d.adminUsers.map((u) => (u.id === editing.id ? { ...u, ...data } : u)) };
       id = nextId('USR', d.adminUsers.map((u) => u.id));
-      const created: AdminUser = { id, email: email.trim().toLowerCase(), createdAt: new Date().toISOString().slice(0, 10), ...data };
+      const today = new Date().toISOString().slice(0, 10);
+      const created: AdminUser = { id, email: email.trim().toLowerCase(), createdAt: today, invitedAt: today, ...data };
       return { ...d, adminUsers: [...d.adminUsers, created] };
     });
     if (!editing) logActivity(me.id, 'Usuários', 'cadastro', `Cadastrou o usuário ${data.name}`);
@@ -99,7 +102,7 @@ function UsuarioFormScreen() {
     }
     setFlash(editing
       ? { type: 'success', title: 'Usuário atualizado', message: 'As alterações foram salvas.' }
-      : { type: 'success', title: 'Usuário cadastrado', message: 'Enviamos o e-mail de primeiro acesso para a definição da senha.' });
+      : { type: 'success', title: 'Usuário cadastrado', message: 'Enviamos o convite de primeiro acesso para o e-mail informado. O acesso é ativado quando a pessoa definir a senha.' });
     window.setTimeout(() => goTo(`usuario.html?id=${id}`), 400);
   };
 
@@ -112,7 +115,7 @@ function UsuarioFormScreen() {
           <PageHeader
             title={title}
             badge={editing && self ? <Badge status="neutral">Você</Badge> : undefined}
-            subtitle={editing ? undefined : 'O usuário receberá um e-mail para definir a senha e acessar o painel'}
+            subtitle={editing ? undefined : 'O usuário receberá um convite por e-mail para definir a senha e acessar o painel'}
             breadcrumb={[
               { label: 'Usuários', href: 'usuarios.html' },
               { label: editing ? 'Editar' : 'Novo usuário' },
@@ -155,6 +158,13 @@ function UsuarioFormScreen() {
                           <ReadField label="Status" value={recordStatusBadge('ativo')} />
                           <p className="field-note">Você não pode inativar a própria conta</p>
                         </Stack>
+                      ) : pendingInvite ? (
+                        <DevNote note="Convite pendente: o usuário só passa a Ativo quando concluir o primeiro acesso. Para reenviar o convite, use a listagem ou a visualização do usuário.">
+                          <Stack gap="xs">
+                            <ReadField label="Estado de acesso" value={adminUserStatusBadge('convite')} />
+                            <p className="field-note">Fica ativo quando a pessoa concluir o primeiro acesso</p>
+                          </Stack>
+                        </DevNote>
                       ) : (
                         <RadioButton name="status" label="Status" orientation="horizontal" options={[{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }]} value={status} onChange={(v) => setStatus(v as RecordStatus)} />
                       )}

@@ -13,7 +13,7 @@ import {
   BASE_SITUATIONS, BaseSituation, ConfigItem, Db, IMPACTS, LevelItem, PRIORITY_MATRIX, RecordStatus, STATUS_MODULES, StatusItem,
   StatusModule, VISUALS, Visual, baseLabel, moduleLabel, visualBadge, visualLabel,
 } from './data';
-import { normalize, requiredMessage } from './format';
+import { formatNumber, normalize, requiredMessage } from './format';
 import { CategoryIcon, IconPicker } from './IconPicker';
 import { Col, Grid, RowAction, RowActions, TableToolbar, Text, recordStatusBadge, statusBadgeOf, visualBadgeOf } from './ui';
 
@@ -34,13 +34,13 @@ const matches = (q: string, ...fields: string[]) => !q.trim() || fields.some((f)
 
 type SimpleKey = 'categories' | 'specialties' | 'requestTypes' | 'maintenanceTypes';
 const PAGES = [
-  { slug: 'categorias', label: 'Categorias de equipamentos', subtitle: 'Usadas no cadastro de equipamentos, de prestadores e nos filtros' },
-  { slug: 'especialidades', label: 'Especialidades', subtitle: 'Defina as especialidades técnicas disponíveis no cadastro de prestadores' },
-  { slug: 'tipos-solicitacao', label: 'Tipos de solicitação', subtitle: 'Defina os tipos de problema disponíveis na abertura de solicitações' },
-  { slug: 'tipos-manutencao', label: 'Tipos de manutenção', subtitle: 'Usados na triagem e nas ordens de serviço' },
-  { slug: 'prioridades', label: 'Prioridades', subtitle: 'Níveis fixos de prioridade para solicitações e ordens de serviço, da maior para a menor' },
-  { slug: 'criticidades', label: 'Criticidades', subtitle: 'Classificação dos equipamentos conforme o impacto de uma parada na operação' },
-  { slug: 'status', label: 'Status', subtitle: 'Status configuráveis por módulo, cada um com seu tipo visual' },
+  { slug: 'categorias', label: 'Categorias de equipamentos', subtitle: 'Usadas no cadastro de equipamentos, de prestadores e nos filtros de todos os assinantes' },
+  { slug: 'especialidades', label: 'Especialidades', subtitle: 'Especialidades técnicas disponíveis no cadastro de prestadores de todos os assinantes' },
+  { slug: 'tipos-solicitacao', label: 'Tipos de solicitação', subtitle: 'Tipos de problema disponíveis na abertura de solicitações de todos os assinantes' },
+  { slug: 'tipos-manutencao', label: 'Tipos de manutenção', subtitle: 'Usados na triagem e nas ordens de serviço de todos os assinantes' },
+  { slug: 'prioridades', label: 'Prioridades', subtitle: 'Níveis fixos de prioridade para solicitações e ordens de serviço de todos os assinantes, da maior para a menor' },
+  { slug: 'criticidades', label: 'Criticidades', subtitle: 'Classificação dos equipamentos de todos os assinantes conforme o impacto de uma parada na operação' },
+  { slug: 'status', label: 'Status', subtitle: 'Status configuráveis por módulo, cada um com seu tipo visual, para todos os assinantes' },
 ] as const;
 
 const SIMPLE: Record<SimpleKey, { singular: string; newLabel: string; hint: string; note: string; linkLabel: string }> = {
@@ -164,6 +164,7 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
         <SimpleForm
           key={pending.item?.id ?? 'new'}
           singular={meta.singular}
+          linkLabel={meta.linkLabel}
           withIcon={dbKey === 'categories'}
           item={pending.item}
           initialTried={pending.tried}
@@ -181,7 +182,7 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
       )}
       {toggling && (
         <StatusConfirmDialog
-          name={toggling.name}
+          name={toggling.name} links={toggling.links} linkLabel={meta.linkLabel}
           deactivate={toggling.status === 'ativo'}
           detail={toggling.status === 'ativo' ? `Deixa de ser oferecid${art} em novos cadastros, mas continua nos registros antigos.` : `Volta a ser oferecid${art} nas telas de cadastro.`}
           onClose={() => setToggling(null)}
@@ -208,10 +209,11 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
   );
 }
 
-function SimpleForm({ singular, withIcon, item, others, initialTried, draft, onClose, onSave }: {
-  singular: string; withIcon?: boolean; item: ConfigItem | null; others: ConfigItem[]; initialTried?: boolean; draft?: Partial<ConfigItem>;
+function SimpleForm({ singular, linkLabel, withIcon, item, others, initialTried, draft, onClose, onSave }: {
+  singular: string; linkLabel: string; withIcon?: boolean; item: ConfigItem | null; others: ConfigItem[]; initialTried?: boolean; draft?: Partial<ConfigItem>;
   onClose: () => void; onSave: (d: Pick<ConfigItem, 'name' | 'description' | 'status' | 'icon'>) => void;
 }) {
+  const scope = useScopeLine(item?.links, linkLabel, singular);
   const [name, setName] = useState(draft?.name ?? item?.name ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
   const [status, setStatus] = useState<RecordStatus>(item?.status ?? 'ativo');
@@ -231,7 +233,7 @@ function SimpleForm({ singular, withIcon, item, others, initialTried, draft, onC
     const fem = singular === 'categoria' ? 'a' : 'o';
     return (
       <StatusConfirmDialog
-        name={item.name} deactivate={status === 'inativo'}
+        name={item.name} links={item.links} linkLabel={linkLabel} deactivate={status === 'inativo'}
         detail={status === 'inativo' ? `Deixa de ser oferecid${fem} em novos cadastros, mas continua nos registros antigos.` : `Volta a ser oferecid${fem} nas telas de cadastro.`}
         onClose={() => setConfirming(false)}
         onConfirm={commit}
@@ -241,11 +243,11 @@ function SimpleForm({ singular, withIcon, item, others, initialTried, draft, onC
   return (
     <Dialog
       open onClose={onClose}
-      title={item ? `Editar ${singular}` : `Nov${singular === 'categoria' ? 'a' : 'o'} ${singular}`}
+      title={item ? `Editar ${singular}` : `Nov${singular === 'categoria' ? 'a' : 'o'} ${singular}`} subtitle={scope}
       actions={<><Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button><Button size="sm" onClick={save}>Salvar</Button></>}
     >
       <Stack gap="md">
-        <DevNote note="Nome obrigatório e único dentro do cadastro (RF401-CTA003); comparação sem diferenciar maiúsculas e acentos.">
+        <DevNote note="Nome obrigatório e único dentro do cadastro (RF401-CTA003); comparação sem diferenciar maiúsculas e acentos. O subtítulo do modal diz que o cadastro vale para todos os assinantes (escopo único hoje) e, na edição, quanto já está em uso; renomear reflete nos registros antigos porque eles apontam para o item.">
           <Input label="Nome" required value={name} onChange={(e) => setName(e.target.value)} error={nameError} />
         </DevNote>
         {withIcon && (
@@ -261,9 +263,10 @@ function SimpleForm({ singular, withIcon, item, others, initialTried, draft, onC
 }
 
 /** Confirmação de ativar/inativar (mesmo padrão de Usuários): título com o nome, texto do efeito e ação em largura total. */
-function StatusConfirmDialog({ name, deactivate, detail, onClose, onConfirm }: {
-  name: string; deactivate: boolean; detail: string; onClose: () => void; onConfirm: () => void;
+function StatusConfirmDialog({ name, deactivate, detail, links = 0, linkLabel = 'registros', onClose, onConfirm }: {
+  name: string; deactivate: boolean; detail: string; links?: number; linkLabel?: string; onClose: () => void; onConfirm: () => void;
 }) {
+  const { usage } = useReach(links, linkLabel);
   return (
     <Dialog
       open size="sm" onClose={onClose}
@@ -275,22 +278,55 @@ function StatusConfirmDialog({ name, deactivate, detail, onClose, onConfirm }: {
         </>
       )}
     >
-      <Text>{detail}</Text>
+      <Stack gap="sm">
+        <Text>{detail}</Text>
+        <Text>{`Vale para todos os assinantes. ${usage}`}</Text>
+      </Stack>
     </Dialog>
   );
 }
 
 /** Singular dos rótulos de vínculo (usado quando há exatamente 1 vínculo). */
-const SINGULAR: Record<string, string> = { prestadores: 'prestador', equipamentos: 'equipamento', 'solicitações': 'solicitação', registros: 'registro' };
+const SINGULAR: Record<string, string> = { prestadores: 'prestador', equipamentos: 'equipamento', 'solicitações': 'solicitação', registros: 'registro', chamados: 'chamado' };
+
+/**
+ * Alcance de uma alteração: todos os cadastros de Configurações são globais (valem para todos os assinantes), então basta dizer quanto
+ * já está em uso e em quantos assinantes, sem listar redes. DADOS DE DEMONSTRAÇÃO: os assinantes alcançados são estimados a partir dos vínculos.
+ */
+function useReach(links: number, linkLabel: string) {
+  const { db } = useSession();
+  const live = db.subscribers.filter((x) => x.status !== 'inativo').length;
+  const subs = links <= 0 ? 0 : Math.min(live, Math.max(1, Math.ceil(links / 18)));
+  const usage = links <= 0
+    ? 'Ainda não está em uso por nenhum assinante'
+    : `Em uso em ${formatNumber(links)} ${links === 1 ? SINGULAR[linkLabel] ?? linkLabel : linkLabel} de ${subs} ${subs === 1 ? 'assinante' : 'assinantes'}`;
+  const noun = links === 1 ? SINGULAR[linkLabel] ?? linkLabel : linkLabel;
+  return { subs, usage, noun };
+}
+
+/**
+ * Subtítulo dos modais de cadastro e edição: o cadastro é global (vale para todos os assinantes) e, na edição, quanto já está em uso.
+ * Hoje todos os cadastros de Configurações são globais; “Personalizável pela rede” e “Exclusivo da rede” ainda não existem. O alcance é dado em
+ * quantidade (registros e assinantes), sem lista de redes, que cresceria com a base.
+ */
+function useScopeLine(links: number | undefined, linkLabel: string, singular = '') {
+  const { subs, noun } = useReach(links ?? 0, linkLabel);
+  const fem = /^(categoria|especialidade|prioridade|criticidade)/.test(singular);
+  if (links === undefined) return `Crie ${fem ? 'uma' : 'um'} ${singular} para que todos os assinantes possam utilizá-l${fem ? 'a' : 'o'}`;
+  const base = `Todos os assinantes podem utilizar ${fem ? 'esta' : 'este'} ${singular}.`;
+  if (links === 0) return `${base} Atualmente, ${fem ? 'ela' : 'ele'} não está vinculad${fem ? 'a' : 'o'} a nenhum registro`;
+  return `${base} Atualmente, ${fem ? 'ela está vinculada' : 'ele está vinculado'} a ${formatNumber(links)} ${noun} de ${subs} ${subs === 1 ? 'assinante' : 'assinantes'}`;
+}
 
 function DeleteDialog({ name, links, linkLabel, canInactivate, onClose, onDelete, onInactivate }: {
   name: string; links: number; linkLabel: string; canInactivate: boolean; onClose: () => void; onDelete: () => void; onInactivate: () => void;
 }) {
+  const { subs } = useReach(links, linkLabel);
   if (links > 0) {
     return (
       <Dialog
         open size="sm" onClose={onClose} title={`Não é possível excluir “${name}”`}
-        subtitle={`Está vinculado a ${links} ${links === 1 ? SINGULAR[linkLabel] ?? linkLabel : linkLabel}. Você pode inativá-lo para impedir novos usos sem afetar os registros existentes`}
+        subtitle={`Está vinculado a ${links} ${links === 1 ? SINGULAR[linkLabel] ?? linkLabel : linkLabel} de ${subs} ${subs === 1 ? 'assinante' : 'assinantes'}. Você pode inativá-lo para impedir novos usos sem afetar os registros existentes`}
         actions={<><Button size="sm" variant="secondary" onClick={onClose}>Fechar</Button>{canInactivate && <Button size="sm" onClick={onInactivate}>Inativar</Button>}</>}
       />
     );
@@ -408,6 +444,7 @@ function LevelList({ dbKey, mode, active, header }: { dbKey: 'priorities' | 'cri
 function LevelForm({ item, isPrio, others, onClose, onSave }: {
   item: LevelItem; isPrio: boolean; others: LevelItem[]; onClose: () => void; onSave: (d: Pick<LevelItem, 'name' | 'description' | 'visual'>) => void;
 }) {
+  const scope = useScopeLine(item.links, isPrio ? 'chamados' : 'equipamentos', isPrio ? 'prioridade' : 'criticidade');
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description);
   const [visual, setVisual] = useState<Visual>(item.visual);
@@ -417,7 +454,7 @@ function LevelForm({ item, isPrio, others, onClose, onSave }: {
   const save = () => { setTried(true); if (name.trim() && !dup) onSave({ name: name.trim(), description: description.trim(), visual }); };
   return (
     <Dialog
-      open onClose={onClose} title={isPrio ? 'Editar prioridade' : 'Editar criticidade'}
+      open onClose={onClose} title={isPrio ? 'Editar prioridade' : 'Editar criticidade'} subtitle={scope}
       actions={<><Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button><Button size="sm" onClick={save}>Salvar</Button></>}
     >
       <Stack gap="md">
@@ -569,7 +606,7 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
       )}
       {toggling && (
         <StatusConfirmDialog
-          name={toggling.name}
+          name={toggling.name} links={toggling.links} linkLabel="registros"
           deactivate={toggling.status === 'ativo'}
           detail={toggling.status === 'ativo' ? `Deixa de ser oferecido em ${moduleLabel(toggling.module)}, mas continua nos registros antigos.` : `Volta a ser oferecido em ${moduleLabel(toggling.module)}.`}
           onClose={() => setToggling(null)}
@@ -631,6 +668,7 @@ function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }:
   const [d, setD] = useState<StatusDraft>(() => (item
     ? { module: item.module, name: item.name, visual: item.visual, base: item.base, position: positionKey(siblingsOf(all, item.module, item.id), siblingsOf(all, item.module).findIndex((s) => s.id === item.id)), status: item.status }
     : { module: defaultModule, name: '', visual: '', base: '', position: 'end', status: 'ativo' }));
+  const scope = useScopeLine(item?.links, 'registros', 'status');
   const [tried, setTried] = useState(!!initialTried);
   const set = <K extends keyof StatusDraft>(k: K, v: StatusDraft[K]) => setD((x) => ({ ...x, [k]: v }));
   const positions = positionOptions(siblingsOf(all, d.module, item?.id));
@@ -660,7 +698,7 @@ function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }:
   if (confirming && item) {
     return (
       <StatusConfirmDialog
-        name={item.name} deactivate={d.status === 'inativo'}
+        name={item.name} links={item.links} linkLabel="registros" deactivate={d.status === 'inativo'}
         detail={d.status === 'inativo' ? 'Deixa de ser oferecido em novos cadastros, mas continua nos registros antigos.' : 'Volta a ser oferecido nas telas de cadastro.'}
         onClose={() => setConfirming(false)}
         onConfirm={commit}
@@ -669,9 +707,10 @@ function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }:
   }
   return (
     <Dialog
-      open size="lg" onClose={onClose} title={item ? 'Editar status' : 'Novo status'}
+      open size="lg" onClose={onClose} title={item ? 'Editar status' : 'Novo status'} subtitle={scope}
       actions={<><Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button><Button size="sm" onClick={save}>Salvar</Button></>}
     >
+      <Stack gap="md">
       <Grid>
         <Col span={6}><Input label="Nome" required value={d.name} onChange={(e) => set('name', e.target.value)} error={errors.name} /></Col>
         <Col span={6}>
@@ -717,6 +756,7 @@ function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }:
           </Col>
         )}
       </Grid>
+      </Stack>
     </Dialog>
   );
 }

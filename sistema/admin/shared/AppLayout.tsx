@@ -12,6 +12,7 @@ import logoDark from '../../../public/maglev-logo-dark.svg';
 import { ScreenKey } from './data';
 import { useSession } from './store';
 import { useIsMobile } from './useMediaQuery';
+import { AlertBell } from './AlertBell';
 import { ThemeButton, UserMenu } from './UserMenu';
 
 import '../../../src/tokens/tokens.css';
@@ -98,6 +99,7 @@ export function AppLayout({ active, screen, children }: { active: string; screen
   const logout = () => { window.location.href = 'login.html'; };
   const account = (compact: boolean) => (
     <>
+      <AlertBell />
       <ThemeButton />
       <UserMenu name={user.name} email={user.email} compact={compact} onLogout={logout} />
     </>

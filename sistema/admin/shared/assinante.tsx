@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { IconBuilding, IconCalendarEvent, IconCircleCheck, IconCircleOff, IconFridge, IconPencil, IconReportMoney } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBuilding, IconCalendarEvent, IconCircleCheck, IconCircleOff, IconFridge, IconPencil, IconReportMoney } from '@tabler/icons-react';
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, Table, TableColumn, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { EnvironmentDialog } from './EnvironmentDialog';
+import { OverdueDialog } from './OverdueDialog';
+import { RowMenu, RowMenuItem } from '../../assinante/shared/RowMenu';
+import { SubscriberEquipmentsTab } from './assinante-equipamentos';
 import { useHashState } from './useHashState';
 import { useSession } from './store';
 import { MobileCardList } from './MobileCardList';
@@ -11,12 +14,12 @@ import { useIsMobile } from './useMediaQuery';
 import {
   Contact, SUBSCRIBER_USER_STATUS, SubscriberUser, contactAreaLabel, subscriberName, subscriberUsers,
 } from './data';
-import { formatCep, formatCnpj, formatDateTime, formatNumber, formatPhone, noBreak, sinceParts } from './format';
+import { daysText, daysUntil, formatCep, formatCnpj, formatDate, formatDateTime, formatNumber, formatPhone, noBreak, sinceParts } from './format';
 import { KpiMoney } from './kpi-value';
 import { Col, Grid, ReadField, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
 
-/** Estados: idle · deactivate / activate (RF204 aberto a partir do detalhe) */
-const STATES = ['idle', 'deactivate', 'activate'] as const;
+/** Estados: idle · deactivate / activate (RF204 aberto a partir do detalhe) · equipamentos (abre a aba Equipamentos) */
+const STATES = ['idle', 'deactivate', 'activate', 'equipamentos', 'overdue'] as const;
 type Mode = (typeof STATES)[number];
 const USERS_PAGE = 10;
 
@@ -30,9 +33,10 @@ function AssinanteScreen() {
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const s = db.subscribers.find((x) => x.id === param('id')) ?? null;
   const [toggling, setToggling] = useState(false);
+  const [overdueOpen, setOverdueOpen] = useState(false);
   const [usersPage, setUsersPage] = useState(1);
 
-  useEffect(() => { if (mode === 'deactivate' || mode === 'activate') setToggling(true); }, [mode]);
+  useEffect(() => { if (mode === 'deactivate' || mode === 'activate') setToggling(true); if (mode === 'overdue') setOverdueOpen(true); }, [mode]);
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!s) {
@@ -49,6 +53,18 @@ function AssinanteScreen() {
   const inactive = s.status === 'inativo';
   const lastOff = s.envHistory.find((h) => h.action === 'inativou');
   const a = s.address;
+  const moreActions: RowMenuItem[] = [];
+  if (can('assinantes', 'editar') && !inactive) {
+    moreActions.push(s.status === 'inadimplente'
+      ? { label: 'Marcar como ativo', icon: <IconCircleCheck size={16} />, onClick: () => setOverdueOpen(true) }
+      : { label: 'Marcar como inadimplente', icon: <IconAlertTriangle size={16} />, onClick: () => setOverdueOpen(true) });
+  }
+  if (can('assinantes', 'ativar')) {
+    moreActions.push(inactive
+      ? { label: 'Ativar ambiente', icon: <IconCircleCheck size={16} />, onClick: () => setToggling(true) }
+      : { label: 'Inativar ambiente', icon: <IconCircleOff size={16} />, onClick: () => setToggling(true), danger: true });
+  }
+  const left = s.status === 'inadimplente' && s.suspendAt ? daysUntil(s.suspendAt) : null;
 
   const contactCols: TableColumn<ContactRow>[] = [
     { key: 'area', label: 'Área', render: (v) => contactAreaLabel(v as Contact['area']) },
@@ -73,21 +89,29 @@ function AssinanteScreen() {
           breadcrumb={[{ label: 'Assinantes', href: 'assinantes.html' }, { label: name }]}
           actions={(
             <>
-              {can('assinantes', 'ativar') && (
-                <DevNote note="RF203-FLU003 → RF204: a partir do detalhe, ativar/inativar o ambiente (com confirmação). Visível só com a permissão “Ativar/Inativar” em Assinantes.">
-                  {inactive
-                    ? <Button variant="secondary" iconLeft={<IconCircleCheck size={20} />} onClick={() => setToggling(true)}>Ativar ambiente</Button>
-                    : <Button variant="secondary" iconLeft={<IconCircleOff size={20} />} onClick={() => setToggling(true)}>Inativar ambiente</Button>}
-                </DevNote>
-              )}
               {can('assinantes', 'editar') && (
                 <DevNote note="RF203-RGN002: padrão de tela - visualização com campos em leitura + “Editar”, que leva ao RF202.">
                   <Button iconLeft={<IconPencil size={20} />} onClick={() => goTo(`assinante-form.html?id=${s.id}`)}>Editar</Button>
                 </DevNote>
               )}
+              {moreActions.length > 0 && (
+                <DevNote note="Menu ⋮ do cabeçalho (padrão do sistema, como no equipamento do assinante): reúne as ações de situação do assinante. Marcar como inadimplente / ativo é o status manual (RF201-RGN002) e abre o prazo de regularização (7 dias, 💡) avisando os gestores; Inativar / Ativar ambiente é o RF204 (com confirmação e motivo). Cada item só aparece com a permissão do perfil (Editar ou Ativar/Inativar em Assinantes); sem nenhum item, o menu não aparece.">
+                  <RowMenu variant="secondary" size="md" target={name} label="Mais ações do assinante" items={moreActions} />
+                </DevNote>
+              )}
             </>
           )}
         />
+
+        {left !== null && s.suspendAt && (
+          <Feedback
+            type="warning"
+            title="Assinante inadimplente"
+            message={left >= 0
+              ? `Os gestores foram avisados em ${formatDate(s.overdueSince ?? s.suspendAt)}. Se não regularizarem até ${formatDate(s.suspendAt)} (${left === 0 ? 'termina hoje' : `faltam ${daysText(left)}`}), o ambiente poderá ser inativado`
+              : `O prazo de regularização terminou em ${formatDate(s.suspendAt)}. O ambiente já pode ser inativado`}
+          />
+        )}
 
         {inactive && (
           <Feedback
@@ -110,9 +134,10 @@ function AssinanteScreen() {
           </Col>
         </Grid>
 
-        <DevNote note="Visualização em duas abas: Dados (empresa, endereço, contratação e contatos) e Usuários vinculados. Os indicadores acima valem para todas as abas.">
+        <DevNote note="Visualização em três abas: Dados (empresa, endereço, contratação e contatos), Usuários vinculados e Equipamentos (QR Codes). Os indicadores acima valem para todas as abas.">
           <Tab
             aria-label="Informações do assinante"
+            defaultIndex={mode === 'equipamentos' ? 2 : 0}
             tabs={[
               {
                 label: 'Dados',
@@ -210,11 +235,13 @@ function AssinanteScreen() {
                   )}                </DevNote>
                 ),
               },
+              { label: 'Equipamentos', content: <SubscriberEquipmentsTab subscriber={s} /> },
             ]}
           />
         </DevNote>
       </Stack>
       <EnvironmentDialog subscriber={toggling ? s : null} onClose={() => setToggling(false)} />
+      <OverdueDialog subscriber={overdueOpen ? s : null} onClose={() => setOverdueOpen(false)} />
     </AppLayout>
   );
 }
