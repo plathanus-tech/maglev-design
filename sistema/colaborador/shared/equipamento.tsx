@@ -7,13 +7,14 @@ import { useHashState } from '../../admin/shared/useHashState';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
 import { photoSrc } from '../../assinante/shared/photos';
 import { useSubDb } from '../../assinante/shared/store';
+import { useDb as useAdminDb } from '../../admin/shared/store';
 import { goTo, param } from '../../assinante/shared/ui';
 import { OpenRequestCard } from './open-request-card';
 import { EquipmentSearch } from './busca-equipamento';
 import { equipmentFromLink, linkToRequest, openRequestsOf, simpleStatus, useBlockedReason, useRefs } from './lib';
 
-/** Estados: idle · inactive (equipamento inativo) · envinactive (ambiente do assinante desativado) · notfound (QR inválido) */
-const STATES = ['idle', 'inactive', 'envinactive', 'notfound', 'searchfound', 'searchnotfound'] as const;
+/** Estados: idle · inactive (equipamento inativo) · envinactive (ambiente do assinante desativado) · notfound (QR inválido) · replaced (QR substituído ou inativado) */
+const STATES = ['idle', 'inactive', 'envinactive', 'notfound', 'replaced', 'searchfound', 'searchnotfound'] as const;
 type Mode = (typeof STATES)[number];
 
 /**
@@ -26,15 +27,32 @@ function EquipamentoColaboradorScreen() {
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [protocol, setProtocol] = useState('');
   const [protocolError, setProtocolError] = useState<string>();
-  const eq = mode === 'notfound' ? undefined : equipmentFromLink(db) ?? (mode === 'idle' || mode === 'searchfound' || mode === 'searchnotfound' ? undefined : db.equipments[0]);
+  const adminDb = useAdminDb();
+  // QR antigo: o código lido já foi inativado e substituído por outro (histórico de códigos do Admin)
+  const oldToken = param('q');
+  const replaced = mode === 'replaced' || (!!oldToken && !equipmentFromLink(db) && adminDb.qrEvents.some((e) => e.oldToken === oldToken));
+  const eq = mode === 'notfound' || replaced ? undefined : equipmentFromLink(db) ?? (mode === 'idle' || mode === 'searchfound' || mode === 'searchnotfound' ? undefined : db.equipments[0]);
   const blocked = useBlockedReason(db, eq, mode === 'inactive' || mode === 'envinactive' ? mode : undefined);
 
   const shell = (content: React.ReactNode) => <ExternalLayout area="Solicitação de manutenção">{content}</ExternalLayout>;
 
   // Sem QR Code nem equipamento na URL (acesso pelo endereço da plataforma): busca por código
-  const bySearch = !param('q') && !param('e') && mode !== 'notfound';
+  const bySearch = !param('q') && !param('e') && mode !== 'notfound' && !replaced;
   if (!eq && bySearch) {
     return shell(<EquipmentSearch demo={mode === 'searchfound' ? 'found' : mode === 'searchnotfound' ? 'notfound' : undefined} />);
+  }
+  if (!eq && replaced) {
+    return shell(
+      <DevNote note="QR Code lido já foi inativado (por exemplo, etiqueta danificada ou perdida) e substituído por um novo código: o código antigo deixa de abrir solicitações, mas o sistema sabe que ele existiu (histórico de códigos do Admin). A pessoa é orientada a procurar a etiqueta nova no equipamento e pode localizá-lo pelo código impresso. Sem dados do equipamento na tela.">
+        <div className="ext-empty is-center is-error">
+          <EmptyState
+            compact icon={<IconAlertCircle size={32} />} title="Este QR Code foi substituído" headingLevel={1}
+            description="A etiqueta que você leu não vale mais. Procure a etiqueta nova no equipamento ou busque pelo código dele."
+            action={<Button onClick={() => goTo('equipamento.html')}>Buscar pelo código do equipamento</Button>}
+          />
+        </div>
+      </DevNote>,
+    );
   }
   if (!eq) {
     return shell(

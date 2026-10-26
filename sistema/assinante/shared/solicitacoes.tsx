@@ -12,6 +12,7 @@ import { DEMO_NOW, Request } from './data';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { requestsVisible, unitIdOfEquipment, unitName, userName, useSubSession } from './store';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, takeFlash, useRefs } from './ui';
+import { OpenByCode } from './open-by-code';
 import { ConcludeDialog, STS, canConclude, hoursSince, isOpenBase } from './solicitacoes-shared';
 
 /** Estados: idle · noresults (busca sem resultado) · conclude (RF401-FLU006: abre "Concluir sem OS" da primeira solicitação elegível) */
@@ -189,9 +190,12 @@ function SolicitacoesScreen() {
           title="Solicitações"
           subtitle="Acompanhe e trate as solicitações de manutenção das suas unidades"
           actions={can('solicitacoes', 'cadastrar') && (
-            <DevNote note="RF401-FLU005: abre RF404 (Nova solicitação). Visível só para perfis com permissão “Cadastrar” em Solicitações. O botão não deve ser exibido para usuários sem a permissão “Cadastrar” em Solicitações.">
-              <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('solicitacao-form.html')}>Nova solicitação</Button>
-            </DevNote>
+            <>
+              <DevNote note="RF401-FLU005: abre RF404 (Nova solicitação). Visível só para perfis com permissão “Cadastrar” em Solicitações. O botão não deve ser exibido para usuários sem a permissão “Cadastrar” em Solicitações.">
+                <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('solicitacao-form.html')}>Nova solicitação</Button>
+              </DevNote>
+              <OpenByCode />
+            </>
           )}
         />
 

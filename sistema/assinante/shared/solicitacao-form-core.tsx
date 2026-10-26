@@ -1,14 +1,15 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { IconBulb, IconCircleCheck } from '@tabler/icons-react';
-import { Button, Card, Checkbox, Dialog, Dropdown, EmptyState, Feedback, ImageUpload, Input, RadioButton, Stack, Table, TableColumn, Textarea } from '@maglev/ds';
+import { IconPlus } from '@tabler/icons-react';
+import { Button, Card, Checkbox, Dialog, Dropdown, EmptyState, Feedback, ImageUpload, Input, RadioButton, Stack, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
 import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
 import { formatDateTime, formatPhone, isValidPhone, noBreak, onlyDigits, requiredMessage } from '../../admin/shared/format';
 import { IMPACT_LABEL, Impact, Request, TipResult, TroubleshootingRun, nowLocal } from './data';
-import { logEntry, nextSeq, notify, updateSubDb, useSubDb } from './store';
-import { CellPair, Col, Grid, param, useRefs } from './ui';
+import { logEntry, nextSeq, notify, updateSubDb, useSubDb, useSubSession } from './store';
+import { CellPair, Col, Grid, param, takeFlash, useRefs } from './ui';
 import { IS_THUMB, STS, isOpenBase } from './solicitacoes-shared';
 import { OpenRequestCard } from '../../colaborador/shared/open-request-card';
 
@@ -25,6 +26,14 @@ const DESC_MAX = 1000;
 
 type ExistingRow = Record<string, unknown> & { id: string; r: Request };
 const shortText = (t: string) => (t.length > 48 ? `${t.slice(0, 48)}…` : t);
+
+const DRAFT_KEY = 'maglev.v2.sub.solicitacaoDraft';
+const IS_THUMB_URL = new URLSearchParams(location.search).has('thumb');
+interface Draft { unitId: string; problemId: string; impact: string; description: string; related: string; prevNote: string }
+/** Lê (e apaga) o que o usuário já tinha preenchido antes de ir cadastrar um equipamento. */
+function takeDraft(): Draft | null {
+  try { const raw = sessionStorage.getItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_KEY); return raw ? (JSON.parse(raw) as Draft) : null; } catch { return null; }
+}
 
 /** Foto da solicitação: ImageUpload do DS (o mesmo do Novo equipamento) com envio simulado; sem foto é o slot vazio que adiciona a próxima. */
 function PhotoSlot({ label, optional, photo, onChange }: { label: string; optional?: boolean; photo?: { name: string; url: string }; onChange: (p: { name: string; url: string } | null) => void }) {
@@ -71,19 +80,24 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
   const db = useSubDb();
   const user = actor;
   const [mode] = useHashState<Mode>(STATES, 'idle');
+  const toast = useToast();
+  const { can } = useSubSession();
+  // Volta do cadastro de equipamento (?restore=1): devolve o que já tinha sido preenchido antes de sair
+  const [draft] = useState(() => (param('restore') ? takeDraft() : null));
+  useEffect(() => { if (IS_THUMB_URL) return; const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeUnits = db.units.filter((u) => u.status === 'ativo' && unitIds.includes(u.id));
   const usable = (eid?: string | null) => db.equipments.find((e) => e.id === eid && e.statusId !== 'STE-05' && activeUnits.some((u) => u.id === e.unitId));
   const fromUrl = usable(fixedEquipmentId ?? param('equipment'));
 
-  const [unitId, setUnitId] = useState(fromUrl?.unitId ?? '');
+  const [unitId, setUnitId] = useState(fromUrl?.unitId ?? draft?.unitId ?? '');
   const [equipmentId, setEquipmentId] = useState(fromUrl?.id ?? '');
-  const [problemId, setProblemId] = useState('');
-  const [impact, setImpact] = useState<Impact | ''>('');
-  const [description, setDescription] = useState('');
+  const [problemId, setProblemId] = useState(draft?.problemId ?? '');
+  const [impact, setImpact] = useState<Impact | ''>((draft?.impact as Impact | '') ?? '');
+  const [description, setDescription] = useState(draft?.description ?? '');
   const [photos, setPhotos] = useState<Array<{ name: string; url: string }>>([]);
-  const [related, setRelated] = useState('');
-  const [prevNote, setPrevNote] = useState('');
+  const [related, setRelated] = useState(draft?.related ?? '');
+  const [prevNote, setPrevNote] = useState(draft?.prevNote ?? '');
   const [contactName, setContactName] = useState(user.name);
   const [contactPhone, setContactPhone] = useState(formatPhone(user.phone));
   const [terms, setTerms] = useState(false);
@@ -168,6 +182,24 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     first?.focus({ preventScroll: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
+
+  /**
+   * Equipamento não está na lista: abre o cadastro (equipamento-form) e, ao salvar, volta para esta tela com o equipamento já escolhido (?equipment=).
+   * O que já foi preenchido fica guardado na sessão e volta junto (as fotos anexadas não; o upload é simulado).
+   */
+  const registerEquipment = () => {
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ unitId, problemId, impact, description, related, prevNote })); } catch { /* sem storage */ }
+    window.location.href = `equipamento-form.html?return=solicitacao-form.html${unitId ? `&unit=${unitId}` : ''}`;
+  };
+  const allowRegister = !external && can('equipamentos', 'cadastrar');
+  /** Dentro da lista, quando a busca não acha nada */
+  const registerAction = allowRegister
+    ? <Button variant="ghost" size="sm" iconLeft={<IconPlus size={16} />} onClick={registerEquipment}>Cadastrar equipamento</Button>
+    : undefined;
+  /** Discreto, abaixo do campo, enquanto nenhum equipamento está escolhido */
+  const registerLink = allowRegister
+    ? <Button variant="ghost" size="sm" onClick={registerEquipment}>Não encontrou o equipamento? Cadastre um novo</Button>
+    : undefined;
 
   const pickUnit = (v: string) => { setUnitId(v); if (equipment && equipment.unitId !== v) { setEquipmentId(''); setProblemId(''); } };
   const pickEquipment = (v: string) => {
@@ -358,7 +390,10 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
                   </DevNote>
                 </Col>
                 <Col span={12}>
-                  <Dropdown label="Equipamento" required placeholder="Buscar por nome ou código/patrimônio" searchable searchPlaceholder="Buscar por nome ou código/patrimônio" searchLabel="Buscar equipamento por nome ou código/patrimônio" emptyText="Nenhum equipamento encontrado" options={equipmentOptions} value={equipmentId} onChange={pickEquipment} error={show('equipment')} />
+                  <DevNote note="Equipamento não encontrado: o atalho fica discreto abaixo do campo (“Não encontrou o equipamento? Cadastre um novo”, some depois de escolher um equipamento) e também aparece dentro da lista quando a busca não acha nada (“Cadastrar equipamento”) (só para quem pode cadastrar equipamentos). Leva ao cadastro de equipamento (mesma tela de Equipamentos > Novo, sem duplicar) com a unidade já escolhida; ao salvar, volta para Nova solicitação com o equipamento novo selecionado, e o que já estava preenchido volta junto (menos as fotos). Cancelar no cadastro também volta para cá.">
+                  <Dropdown label="Equipamento" emptyAction={registerAction} required placeholder="Buscar por nome ou código/patrimônio" searchable searchPlaceholder="Buscar por nome ou código/patrimônio" searchLabel="Buscar equipamento por nome ou código/patrimônio" emptyText="Nenhum equipamento encontrado" options={equipmentOptions} value={equipmentId} onChange={pickEquipment} error={show('equipment')} />
+                  </DevNote>
+                  {registerLink && !equipmentId && <div>{registerLink}</div>}
                 </Col>
               </Grid>
             </div>

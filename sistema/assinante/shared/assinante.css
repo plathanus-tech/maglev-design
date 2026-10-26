@@ -164,3 +164,8 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 .copy-code svg { color: var(--color-text-tertiary); flex: none; }
 .copy-code:hover svg { color: var(--color-text-primary); }
 .copy-code:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+
+/* Leitura de QR Code pela câmera (Abrir solicitação pelo código) */
+.qr-video { width: 100%; border-radius: var(--radius-control); background: var(--color-bg-subtle); }
+/* Botão de ícone ao lado de Nova solicitação (mobile): quadrado, com a altura dos controles, mesmo dentro do cabeçalho em linha */
+.page-actions-full .qr-icon-btn.qr-icon-btn { width: var(--control-height-md); min-width: var(--control-height-md); }

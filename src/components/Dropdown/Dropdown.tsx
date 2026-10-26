@@ -207,7 +207,7 @@ export function Dropdown({
                       />
                     </div>
                     <ul id={listId} role="listbox" aria-label={label ?? ariaLabel} className={styles.list}>{items}</ul>
-                    {visible.length === 0 && <p className={styles.empty} role="status">{emptyIcon && <span className={styles.emptyIcon} aria-hidden="true">{emptyIcon}</span>}{emptyText}</p>}
+                    {visible.length === 0 && <p className={styles.empty} role="status">{emptyIcon && <span className={styles.emptyIcon} aria-hidden="true">{emptyIcon}</span>}{emptyText}{emptyAction && <span className={styles.emptyAction} onClick={() => setOpen(false)}>{emptyAction}</span>}</p>}
                   </div>
                 );
               })()}

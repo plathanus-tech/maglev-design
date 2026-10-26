@@ -58,6 +58,7 @@ export const journeys: Journey[] = [
         variants: [
           v('sol-nova-required', 'Campos obrigatórios', 'solicitacao-form.html#state=required'),
           v('sol-nova-equipment', 'Equipamento pré-selecionado (?equipment=)', 'solicitacao-form.html?equipment=EQP-0001'),
+          v('sol-nova-cadastrar-equip', 'Cadastrar equipamento (volta para a solicitação)', 'equipamento-form.html?return=solicitacao-form.html'),
           v('sol-nova-duplicate', 'Aviso de duplicidade', 'solicitacao-form.html#state=duplicate'),
         ],
       },

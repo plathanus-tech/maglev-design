@@ -144,6 +144,12 @@ function TipsEditor({ problem, tips, tried, setTips }: {
   );
 }
 
+/** Próximo código de patrimônio automático: PAT-<n+1>, a partir do maior PAT-<n> já cadastrado. */
+const nextAssetCode = (list: Array<{ code: string }>) => {
+  const max = list.reduce((m, e) => Math.max(m, Number(/^PAT-(\d+)$/.exec(e.code)?.[1]) || 0), 999);
+  return `PAT-${max + 1}`;
+};
+
 function EquipamentoFormScreen() {
   const toast = useToast();
   const refs = useRefs();
@@ -177,6 +183,8 @@ function EquipamentoFormScreen() {
   const [submitTick, setSubmitTick] = useState(0);
   const [copyFrom, setCopyFrom] = useState('');
   const intent = useRef<'save' | 'next'>('save');
+  // Aberto pela Nova solicitação (?return=solicitacao-form.html): ao salvar, volta para lá com o equipamento escolhido
+  const returnTo = !editing && param('return') === 'solicitacao-form.html' ? 'solicitacao-form.html' : null;
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
   // Variantes do navegador (só no cadastro): preenchem um exemplo e mostram o estado
@@ -223,6 +231,8 @@ function EquipamentoFormScreen() {
     wStart: d.warranty === 'sim' && !d.wStart ? requiredMessage('Início da garantia') : undefined,
     wEnd: d.warranty === 'sim' ? (!d.wEnd ? requiredMessage('Fim da garantia') : d.wStart && d.wEnd < d.wStart ? 'O fim da garantia não pode ser anterior ao início' : undefined) : undefined,
     tips: emptyTips.length ? requiredMessage('Dica') : undefined,
+    // O código é o que está na etiqueta e localiza o equipamento: um por equipamento
+    code: d.code.trim() && db.equipments.some((x) => x.id !== editing?.id && x.code.trim().toLowerCase() === d.code.trim().toLowerCase()) ? 'Já existe um equipamento com este código' : undefined,
   };
   const show = (k: keyof typeof problems) => (tried ? problems[k] : undefined);
   const invalid = Object.values(problems).some(Boolean);
@@ -284,21 +294,26 @@ function EquipamentoFormScreen() {
     };
     let id = editing?.id ?? '';
     updateSubDb((db0) => {
-      if (editing) return { ...db0, equipments: db0.equipments.map((x) => (x.id === editing.id ? { ...x, ...data } : x)) };
+      // Sem código/patrimônio informado, o sistema gera um (PAT-0000, na sequência) para o equipamento sempre ter um código de busca e de etiqueta
+      const code = data.code || nextAssetCode(db0.equipments);
+      if (editing) return { ...db0, equipments: db0.equipments.map((x) => (x.id === editing.id ? { ...x, ...data, code } : x)) };
       id = nextShortId('EQP', db0.equipments.map((x) => x.id));
       // Todo equipamento nasce com QR Code único e não sequencial (RF305-RGN001/RGN004) e data de cadastro (RF301-FLU004)
-      const created: Equipment = { id, ...data, createdAt: nowLocal(), qrToken: `q${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-4)}` };
+      const created: Equipment = { id, ...data, code, createdAt: nowLocal(), qrToken: `q${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-4)}` };
       return { ...db0, equipments: [...db0.equipments, created] };
     });
     if (editing) setFlash({ type: 'success', title: 'Equipamento atualizado', message: 'As alterações foram salvas.' });
+    else if (returnTo) setFlash({ type: 'success', title: 'Equipamento cadastrado', message: 'O QR Code foi gerado. Ele já está selecionado na solicitação.' });
     else setFlash({ type: 'success', title: 'Equipamento cadastrado', message: intent.current === 'next' ? 'O QR Code foi gerado. Preencha o próximo, que já vem com a mesma unidade e o mesmo ambiente.' : 'O QR Code do equipamento foi gerado e já pode ser impresso.' });
+    if (returnTo) { window.setTimeout(() => goTo(`${returnTo}?restore=1&equipment=${id}`), 400); return; }
     window.setTimeout(() => goTo(!editing && intent.current === 'next'
       ? `equipamento-form.html?unit=${d.unitId}${d.environmentId ? `&env=${d.environmentId}` : ''}`
       : `equipamento.html?id=${id}`), 400);
   };
 
   const title = editing ? `Editar ${editing.name}` : 'Novo equipamento';
-  const layout = (children: React.ReactNode) => <AppLayout active="equipamentos" screen="equipamentos">{children}</AppLayout>;
+  // Variante da Nova solicitação (?return=): o menu fica em Solicitações e o breadcrumb mostra de onde a pessoa veio
+  const layout = (children: React.ReactNode) => <AppLayout active={returnTo ? 'solicitacoes' : 'equipamentos'} screen="equipamentos">{children}</AppLayout>;
 
   if (param('id') && !editing) return layout(<Feedback type="error" title="Equipamento não encontrado" message="Volte para a listagem e tente novamente" />);
   if (!allowed || !scopeOk) {
@@ -312,8 +327,10 @@ function EquipamentoFormScreen() {
       <Stack gap="xl">
         <PageHeader
           title={title}
-          subtitle={editing ? undefined : 'O QR Code do equipamento é gerado automaticamente ao salvar'}
-          breadcrumb={[{ label: 'Equipamentos', href: 'equipamentos.html' }, { label: editing ? 'Editar' : 'Novo equipamento' }]}
+          subtitle={editing ? undefined : returnTo ? 'Ao salvar, você volta para a Nova solicitação com este equipamento já selecionado' : 'O QR Code do equipamento é gerado automaticamente ao salvar'}
+          breadcrumb={returnTo
+            ? [{ label: 'Solicitações', href: 'solicitacoes.html' }, { label: 'Nova solicitação', href: `${returnTo}?restore=1` }, { label: 'Novo equipamento' }]
+            : [{ label: 'Equipamentos', href: 'equipamentos.html' }, { label: editing ? 'Editar' : 'Novo equipamento' }]}
         />
         {banner && (
           <div className="floating-feedback">
@@ -332,7 +349,7 @@ function EquipamentoFormScreen() {
                 <Col span={6}><Input label="Fabricante" optional autoComplete="off" value={d.maker} onChange={(e) => set('maker', e.target.value)} /></Col>
                 <Col span={6}><Input label="Modelo" optional autoComplete="off" value={d.model} onChange={(e) => set('model', e.target.value)} /></Col>
                 <Col span={6}><Input label="Número de série" optional autoComplete="off" value={d.serial} onChange={(e) => set('serial', e.target.value)} /></Col>
-                <Col span={6}><Input label="Código interno / patrimônio" optional autoComplete="off" value={d.code} onChange={(e) => set('code', e.target.value)} helperText="Usado para localizar o equipamento sem QR Code" /></Col>
+                <Col span={6}><DevNote note="O código do equipamento é o que vai impresso na etiqueta (abaixo do QR Code) e o que a pessoa digita para localizar o equipamento e abrir a solicitação. Único por equipamento: não aceita código repetido. Em branco, o sistema gera um automaticamente (PAT-0000, em sequência)."><Input label="Código do equipamento" optional autoComplete="off" value={d.code} onChange={(e) => set('code', e.target.value)} error={show('code')} helperText="Impresso na etiqueta e usado para localizar o equipamento. Em branco, o sistema gera um automaticamente" /></DevNote></Col>
               </Grid>
             </div>
           </Card>
@@ -443,12 +460,12 @@ function EquipamentoFormScreen() {
 
         <Stack direction="horizontal" justify="start" gap="sm" wrap>
           <Button type="submit" disabled={saving} onClick={() => { intent.current = 'save'; }}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Salvar'}</Button>
-          {!editing && (
+          {!editing && !returnTo && (
             <DevNote note="RF301-FLU003 / CTA003: salva e abre um novo formulário mantendo unidade e ambiente, para agilizar o mapeamento de uma cozinha.">
               <Button type="submit" variant="secondary" disabled={saving} onClick={() => { intent.current = 'next'; }}>Salvar e cadastrar próximo</Button>
             </DevNote>
           )}
-          <Button variant="secondary" disabled={saving} onClick={() => goTo(editing ? `equipamento.html?id=${editing.id}` : 'equipamentos.html')}>Cancelar</Button>
+          <Button variant="secondary" disabled={saving} onClick={() => goTo(editing ? `equipamento.html?id=${editing.id}` : returnTo ? `${returnTo}?restore=1` : 'equipamentos.html')}>Cancelar</Button>
         </Stack>
       </Stack>
     </form>,

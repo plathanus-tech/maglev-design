@@ -42,6 +42,7 @@ export const journeys: Journey[] = [
           { ...v('colab-eq-search-ok', 'Código encontrado (PAT-1000)', `equipamento.html#state=searchfound`), sub: true },
           { ...v('colab-eq-search-no', 'Equipamento não encontrado', `equipamento.html#state=searchnotfound`), sub: true },
           v('colab-eq-notfound', 'QR Code não reconhecido', `equipamento.html?q=invalido#state=notfound`),
+          v('colab-eq-replaced', 'QR Code substituído ou inativado', `equipamento.html?q=antigo#state=replaced`),
         ],
       },
       {
