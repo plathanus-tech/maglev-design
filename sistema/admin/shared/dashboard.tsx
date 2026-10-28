@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  IconAlertOctagon, IconAlertTriangle, IconBuilding, IconCalendarRepeat, IconFridge, IconMessageReport, IconSearch, IconTool, IconUserCheck, IconUserExclamation,
+  IconAlertOctagon, IconAlertTriangle, IconBuilding, IconCalendarRepeat, IconChecks, IconClipboardList, IconFridge, IconMessageReport, IconSearch, IconTool, IconUserCheck, IconUserExclamation,
 } from '@tabler/icons-react';
 import { Button, Card, Dialog, Dropdown, Input, KpiCard, KpiTrend, Stack, Table, TableColumn } from '@maglev/ds';
 import { FilterControl } from './FilterControl';
+import { DashboardPeriod } from './DashboardPeriod';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { MobileCardList } from './MobileCardList';
@@ -14,19 +15,16 @@ import { formatDateTime, formatNumber, normalize, openedAgo } from './format';
 import { KpiCount } from './kpi-value';
 import { useColumnPrefs } from './ColumnsControl';
 import { useHashState } from './useHashState';
-import { Col, Grid, ReadField, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
+import { PERIOD_OPTIONS, PeriodKey, Range, movement, newPlansIn, previousOf, rangeOf, referenceText, rangeText, shiftDays, snapshotTrend, trendBetween } from './dashboard-period';
+import { todayIso } from './clock';
+import { Col, Grid, ReadField, param, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
 
 /** Estados: idle · empty (nenhum chamado em aberto - todos resolvidos) */
 const STATES = ['idle', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
-type Period = 'today' | '7d';
-const PERIODS = [
-  { value: 'today', label: 'Hoje' },
-  { value: '7d', label: 'Últimos 7 dias' },
-];
-const REFERENCE: Record<Period, string> = { '7d': 'vs. 7 dias anteriores', today: 'vs. ontem' };
+type Period = PeriodKey;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - comparativo com o período anterior, só para avaliar o visual do KPI.
@@ -41,9 +39,9 @@ const TREND_KEY: Record<string, string> = {
   'Preventivas cadastradas': 'preventivas',
 };
 /** Planos de preventiva novos no período (dado de demonstração). */
-const NEW_PLANS: Record<Period, number> = { '7d': 12, today: 2 };
-const NEW_PLANS_TEXT: Record<Period, string> = { '7d': 'cadastradas nos últimos 7 dias', today: 'cadastradas hoje' };
-const TREND_DEMO: Record<Period, Partial<Record<string, TrendMock>>> = {
+const NEW_PLANS: Partial<Record<Period, number>> = { '7d': 12, today: 2 };
+const NEW_PLANS_TEXT: Partial<Record<Period, string>> = { '7d': 'cadastradas nos últimos 7 dias', today: 'cadastradas hoje' };
+const TREND_DEMO: Partial<Record<Period, Partial<Record<string, TrendMock>>>> = {
   '7d': {
     ativos: { direction: 'up', percent: 4.1, sentiment: 'positive' },
     inadimplentes: { direction: 'up', percent: 20, sentiment: 'negative' },
@@ -97,14 +95,26 @@ function DashboardScreen() {
   const isMobile = useIsMobile();
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<Period>('7d');
+  // Período personalizado: já abre preenchido com os últimos 7 dias, para nunca ficar sem intervalo
+  const [custom, setCustom] = useState<Range>(() => rangeOf('7d', { from: '', to: '' }));
+  const today = todayIso();
+  // Personalizado vale só com as duas datas e fim ≥ início (o painel de filtros limita ao máximo de hoje)
+  const customValid = !!custom.from && !!custom.to && custom.to >= custom.from;
+  // Enquanto o intervalo personalizado está incompleto ou incorreto, os números seguem o último período válido (7 dias)
+  const range = period === 'custom' && !customValid ? rangeOf('7d', custom) : rangeOf(period, custom);
+  const previous = previousOf(range, period === 'custom' && !customValid ? '7d' : period);
+  const reference = referenceText(period === 'custom' && !customValid ? '7d' : period, range, previous);
   const [query, setQuery] = useState('');
+  // ?tipo=solicitacao|os (cards Solicitações abertas / Ordens de serviço em andamento): abre a lista de chamados já filtrada
+  const [type, setType] = useState(() => (['solicitacao', 'os'].includes(param('tipo') ?? '') ? (param('tipo') as string) : 'todos'));
   const [situation, setSituation] = useState('todos');
   const [responsible, setResponsible] = useState('todos');
   const [criticality, setCriticality] = useState('todos');
   const [priority, setPriority] = useState('todos');
   const [selected, setSelected] = useState<Ticket | null>(null);
   const tickets = useMemo(() => openTickets(db, mode), [db, mode]);
-  useEffect(() => setPage(1), [query, situation, responsible, criticality, priority]);
+  useEffect(() => setPage(1), [query, type, situation, responsible, criticality, priority]);
+  useEffect(() => { if (type !== 'todos' && param('tipo')) window.setTimeout(() => document.getElementById('chamados-em-aberto')?.scrollIntoView({ block: 'start' }), 100); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const live = db.subscribers.filter((s) => s.status !== 'inativo');
   const kpis = {
@@ -133,22 +143,24 @@ function DashboardScreen() {
   // Filtros da lista (situação, responsável, criticidade) + busca por protocolo, assinante, unidade ou equipamento; os destaques e KPIs seguem contando tudo
   const visible = useMemo(() => tickets.filter((t) => {
     const q = normalize(query);
-    return (situation === 'todos' || t.statusId === situation)
+    return (type === 'todos' || t.type === type)
+      && (situation === 'todos' || t.statusId === situation)
       && (responsible === 'todos' || (responsible === NO_RESPONSIBLE ? !t.responsible : t.responsible === responsible))
       && (criticality === 'todos' || t.criticalityId === criticality)
       && (priority === 'todos' || t.priorityId === priority)
       && (!q || normalize(`${t.id} ${subscriberName(db.subscribers.find((s) => s.id === t.subscriberId)!)} ${t.unit} ${t.equipment}`).includes(q));
-  }), [tickets, db, query, situation, responsible, criticality, priority]);
+  }), [tickets, db, query, type, situation, responsible, criticality, priority]);
   // Clicar no destaque filtra a lista abaixo para esses chamados (clicar de novo limpa); os demais filtros e a busca são zerados para a lista bater com o número do card
   const focusAttention = (kind: 'criticality' | 'priority') => {
     const on = kind === 'criticality' ? criticality === 'CRI-A' && priority === 'todos' : priority === 'PRI-1' && criticality === 'todos';
-    setQuery(''); setSituation('todos'); setResponsible('todos');
+    setQuery(''); setType('todos'); setSituation('todos'); setResponsible('todos');
     setCriticality(kind === 'criticality' && !on ? 'CRI-A' : 'todos');
     setPriority(kind === 'priority' && !on ? 'PRI-1' : 'todos');
     if (!on) window.setTimeout(() => document.getElementById('chamados-em-aberto')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
   const rows: Row[] = visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(toRow);
 
+  const typeOptions = [{ value: 'todos', label: 'Todos os tipos' }, { value: 'solicitacao', label: 'Solicitações' }, { value: 'os', label: 'Ordens de serviço' }];
   const situationOptions = [
     { value: 'todos', label: 'Todas as situações' },
     ...db.statuses.filter((s) => tickets.some((t) => t.statusId === s.id)).map((s) => ({ value: s.id, label: s.name })),
@@ -180,8 +192,9 @@ function DashboardScreen() {
       search={<Input type="search" aria-label="Buscar chamado por protocolo, assinante, unidade ou equipamento" placeholder="Buscar por protocolo, assinante ou unidade" iconLeft={<IconSearch size={20} />} value={query} onChange={(e) => setQuery(e.target.value)} />}
       filters={(
         <FilterControl
-          note="Filtros da lista de chamados: Situação (status atual do chamado), Responsável (quem atende; inclui “Sem responsável”) , Criticidade e Prioridade. Os destaques e os KPIs acima continuam contando todos os chamados em aberto."
+          note="Filtros da lista de chamados: Tipo (Solicitações ou Ordens de serviço; os cards Solicitações abertas e Ordens de serviço em andamento abrem a lista já filtrada por tipo), Situação (status atual do chamado), Responsável (quem atende; inclui “Sem responsável”) , Criticidade e Prioridade. Os destaques e os KPIs acima continuam contando todos os chamados em aberto."
           filters={[
+            { id: 'type', label: 'Tipo', options: typeOptions, value: type, onChange: setType },
             { id: 'situation', label: 'Situação', options: situationOptions, value: situation, onChange: setSituation },
             { id: 'responsible', label: 'Responsável', options: responsibleOptions, value: responsible, onChange: setResponsible },
             { id: 'criticality', label: 'Criticidade', options: criticalityOptions, value: criticality, onChange: setCriticality },
@@ -195,13 +208,23 @@ function DashboardScreen() {
 
 
   const kpi = (note: string, label: string, value: number, icon: JSX.Element, description?: string, href?: string) => {
-    const t = TREND_DEMO[period][TREND_KEY[label]];
-    const trend = t && { ...t, reference: REFERENCE[period] };
+    const key = TREND_KEY[label];
+    const t = TREND_DEMO[period] ? TREND_DEMO[period]![key] : key === 'preventivas' ? undefined : snapshotTrend(key, range);
+    const trend = t && { ...t, reference: reference };
     const full = `${note} O valor é a situação atual e não muda com o período.`
-      + (trend ? ` O comparativo (dado de demonstração) muda com o período: ${REFERENCE[period]}.` : ' Sem comparativo: não há histórico adequado para esta métrica.');
+      + (trend ? ` O comparativo (dado de demonstração) muda com o período: ${reference} (período anterior de mesma duração; nos atalhos de mês, o mês civil anterior).` : ' Sem comparativo: não há histórico adequado para esta métrica.');
     return (
       <Col span={3} key={label} fill>
         <DevNote note={full}><KpiCard label={label} value={<KpiCount value={value} />} icon={icon} trend={trend} description={description} href={href} /></DevNote>
+      </Col>
+    );
+  };
+  const mov = (trendKey: string, label: string, kind: 'solicitacoes' | 'osAbertas' | 'osConcluidas', icon: JSX.Element, note: string) => {
+    const now = movement(kind, range);
+    const trend = { ...trendBetween(trendKey, now, movement(kind, previous)), reference: reference };
+    return (
+      <Col span={3} key={label} fill>
+        <DevNote note={`${note} Varia com o período (dado de demonstração); o comparativo é com o período anterior de mesma duração.`}><KpiCard label={label} value={<KpiCount value={now} />} icon={icon} trend={trend} /></DevNote>
       </Col>
     );
   };
@@ -214,13 +237,11 @@ function DashboardScreen() {
           title="Dashboard"
           subtitle="Acompanhe a operação dos assinantes e antecipe problemas antes de o suporte ser acionado"
           actions={(
-            <DevNote note="Filtro global de período (💡 sugerido pela cliente - a confirmar se global). Seleção inicial: Últimos 7 dias. Os valores dos KPIs são a situação atual e não mudam; o que muda é o comparativo de cada KPI: vs. ontem (Hoje) ou vs. 7 dias anteriores. Não filtra a lista de chamados, que mostra tudo o que está aberto independentemente da data (RF101-RGN002). Consultas por período detalhadas ficam para relatórios.">
-              <Dropdown label="Período" options={PERIODS} value={period} onChange={(v) => setPeriod(v as Period)} />
-            </DevNote>
+              <DashboardPeriod period={period} onPeriod={setPeriod} custom={custom} onCustom={setCustom} max={todayIso()} note="Filtro global de período (💡 sugerido pela cliente - a confirmar se global). Atalhos: Hoje, Últimos 7 dias (inicial), Últimos 30 dias, Mês atual, Mês anterior e Período personalizado (data inicial e final, até hoje; a final não pode ser anterior à inicial). Critérios: os indicadores de Carteira e de Operação são a situação atual e não mudam com o período; o período define o comparativo de cada indicador (com o período anterior de mesma duração, imediatamente antes; nos atalhos de mês, com o mês civil anterior) e os indicadores de Movimento no período (solicitações abertas, OS abertas e OS concluídas dentro do intervalo, pela data de abertura/conclusão). O texto sob o seletor mostra o intervalo consultado e o de comparação. Não filtra a lista de chamados, que mostra tudo o que está aberto independentemente da data (RF101-RGN002). Valores históricos e comparativos são dados de demonstração; em desenvolvimento vêm do histórico real. Consultas detalhadas ficam para relatórios. Na tela: Dropdown com os atalhos; Período personalizado abre um painel com De/Até (até hoje) e Aplicar/Limpar, como os filtros de período das demais telas; fechar sem aplicar mantém o período anterior." />
           )}
         />
 
-        <DevNote note="RF101-RGN003: sem filtro de período por card; o seletor global “Hoje / Últimos 7 dias” só altera o comparativo dos KPIs. Indicadores consideram só assinantes com ambiente ativo (RGN001). Novos indicadores (estágio de implantação, acessos via QR Code, dashboard personalizável) são Fora do Escopo (FE013, FE016, FE014).">
+        <DevNote note="RF101-RGN003: sem filtro de período por card; o seletor global só altera o comparativo dos KPIs e o Movimento no período. Indicadores consideram só assinantes com ambiente ativo (RGN001). Novos indicadores (estágio de implantação, acessos via QR Code, dashboard personalizável) são Fora do Escopo (FE013, FE016, FE014).">
           <Stack gap="lg">
             <Stack gap="sm" as="section">
               <SectionLabel>Carteira de assinantes</SectionLabel>
@@ -234,9 +255,17 @@ function DashboardScreen() {
             <Stack gap="sm" as="section">
               <SectionLabel>Operação</SectionLabel>
               <Grid>
-                {kpi('Solicitações não encerradas, de todos os assinantes.', 'Solicitações abertas', kpis.requests, <IconMessageReport size={20} />)}
-                {kpi('Ordens de serviço não concluídas nem canceladas.', 'Ordens de serviço em andamento', kpis.orders, <IconTool size={20} />)}
-                {kpi('Planos de manutenção preventiva existentes, de todos os assinantes. A linha “+N cadastradas” é a quantidade de planos criados no período (dado de demonstração).', 'Preventivas cadastradas', kpis.plans, <IconCalendarRepeat size={20} />, `+${NEW_PLANS[period]} ${NEW_PLANS_TEXT[period]}`)}
+                {kpi('Solicitações não encerradas, de todos os assinantes.', 'Solicitações abertas', kpis.requests, <IconMessageReport size={20} />, undefined, 'dashboard.html?tipo=solicitacao#chamados-em-aberto')}
+                {kpi('Ordens de serviço não concluídas nem canceladas.', 'Ordens de serviço em andamento', kpis.orders, <IconTool size={20} />, undefined, 'dashboard.html?tipo=os#chamados-em-aberto')}
+                {kpi('Planos de manutenção preventiva existentes, de todos os assinantes. A linha “+N cadastradas” é a quantidade de planos criados no período (dado de demonstração).', 'Preventivas cadastradas', kpis.plans, <IconCalendarRepeat size={20} />, `+${NEW_PLANS[period] ?? newPlansIn(range)} ${NEW_PLANS_TEXT[period] ?? 'cadastradas no período'}`)}
+              </Grid>
+            </Stack>
+            <Stack gap="sm" as="section">
+              <SectionLabel>{`Movimento no período · ${rangeText(range)}`}</SectionLabel>
+              <Grid>
+                {mov('solicitacoesPeriodo', 'Solicitações abertas no período', 'solicitacoes', <IconMessageReport size={20} />, 'Solicitações abertas dentro do intervalo, pela data de abertura (inclui as já encerradas).')}
+                {mov('osAbertasPeriodo', 'OS abertas no período', 'osAbertas', <IconClipboardList size={20} />, 'Ordens de serviço criadas dentro do intervalo, pela data de abertura.')}
+                {mov('osConcluidasPeriodo', 'OS concluídas no período', 'osConcluidas', <IconChecks size={20} />, 'Ordens de serviço concluídas dentro do intervalo, pela data de conclusão.')}
               </Grid>
             </Stack>
           </Stack>

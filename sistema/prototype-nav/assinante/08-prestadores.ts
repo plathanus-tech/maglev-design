@@ -30,6 +30,8 @@ export const journeys: Journey[] = [
           v('prestador-novo-required', 'Campos obrigatórios', 'prestador-form.html#state=required'),
           v('prestador-novo-duplicate', 'CNPJ já cadastrado', 'prestador-form.html#state=duplicate'),
           v('prestador-novo-invalid', 'CNPJ inválido', 'prestador-form.html#state=invalid'),
+          v('prestador-novo-phone', 'Telefone inválido', 'prestador-form.html#state=phoneinvalid'),
+          v('prestador-novo-plano', 'Cadastrar a partir do Novo plano (volta para o plano)', 'prestador-form.html?return=plano-form.html'),
         ],
       },
       {

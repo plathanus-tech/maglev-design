@@ -11,6 +11,7 @@ import {
 } from './format';
 import { lookupCep } from './cep';
 import { Col, Grid, ReadField, goTo, param, setFlash } from './ui';
+import { todayIso } from './clock';
 
 /** Estados: idle · required (salvar vazio) · cnpjinvalid · cnpjduplicate (CTA001) */
 const STATES = ['idle', 'required', 'cnpjinvalid', 'cnpjduplicate'] as const;
@@ -139,7 +140,7 @@ function AssinanteFormScreen() {
       if (editing) return { ...db0, subscribers: db0.subscribers.map((s) => (s.id === editing.id ? { ...s, ...clean } : s)) };
       id = nextId('ASS', db0.subscribers.map((s) => s.id));
       const created: Subscriber = {
-        ...clean, id, since: new Date().toISOString().slice(0, 10), units: 0, equipments: 0, maintenanceCents: 0, requests30d: 0, envHistory: [],
+        ...clean, id, since: todayIso(), units: 0, equipments: 0, maintenanceCents: 0, requests30d: 0, envHistory: [],
       };
       return { ...db0, subscribers: [...db0.subscribers, created] };
     });

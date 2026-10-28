@@ -1,5 +1,5 @@
 import { KeyboardEvent, ReactNode, useRef, useState } from 'react';
-import { IconDotsVertical } from '@tabler/icons-react';
+import { IconChevronDown, IconDotsVertical } from '@tabler/icons-react';
 import { Button, Popover, Tooltip } from '@maglev/ds';
 import './rowmenu.css';
 
@@ -16,12 +16,14 @@ export interface RowMenuItem {
  * Sem itens, não renderiza. Fecha ao escolher, com Esc ou clique fora (o Popover devolve o foco ao botão);
  * setas, Home e End navegam entre os itens.
  */
-export function RowMenu({ target, items, defaultOpen = false, label, variant = 'ghost', size = 'sm' }: {
+export function RowMenu({ target, items, defaultOpen = false, label, variant = 'ghost', size = 'sm', trigger }: {
   target: string; items: RowMenuItem[]; defaultOpen?: boolean;
   /** Botão de página (ex.: cabeçalho do detalhe): `secondary` + `md`, ao lado da ação principal. */
   variant?: 'ghost' | 'secondary'; size?: 'sm' | 'md';
   /** Nome acessível fixo do botão (ex.: "Ações do equipamento"); sem ele usa "Mais ações de {target}". */
   label?: string;
+  /** Botão com texto (ex.: "Criar", ação global de criação) no lugar do ⋮: abre o mesmo menu. */
+  trigger?: { text: string; icon: ReactNode; /** Só o ícone (ex.: "+" no mobile); o texto vira o nome acessível. */ iconOnly?: boolean };
 }) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(defaultOpen);
@@ -39,6 +41,14 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
   return (
     <>
       <div ref={anchor}>
+        {trigger ? (
+          <Button
+            iconOnly={trigger.iconOnly} iconLeft={trigger.icon} iconRight={trigger.iconOnly ? undefined : <IconChevronDown size={16} />} aria-label={trigger.iconOnly ? (label ?? trigger.text) : label} aria-haspopup="menu" aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {trigger.iconOnly ? undefined : trigger.text}
+          </Button>
+        ) : (
         <Tooltip content="Mais ações" placement="left">
           <Button
             variant={variant} size={size} iconOnly iconLeft={<IconDotsVertical size={size === 'md' ? 20 : 16} />} className="row-menu-btn"
@@ -46,6 +56,7 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
             onClick={() => setOpen((o) => !o)}
           />
         </Tooltip>
+        )}
       </div>
       <Popover fit open={open} onClose={() => setOpen(false)} anchorRef={anchor} label={label ?? `Ações de ${target}`}>
         <div className="row-menu" role="menu" aria-label={label ?? `Ações de ${target}`} onKeyDown={onKeyDown}>

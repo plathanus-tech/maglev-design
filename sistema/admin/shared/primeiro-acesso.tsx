@@ -3,6 +3,7 @@ import { PrimeiroAcessoCore } from './PrimeiroAcessoCore';
 import { setPrototypePassword } from './recovery';
 import { logActivity, setSessionUser, updateDb, useDb } from './store';
 import { param } from './ui';
+import { todayIso } from './clock';
 
 /**
  * Primeiro acesso do Admin via convite (cadastro de usuário RF302 → e-mail de convite → esta tela → Dashboard).
@@ -33,7 +34,7 @@ function PrimeiroAcessoScreen() {
       loginHref="login.html"
       onActivate={(name, password) => {
         // Ativa o usuário (convite pendente → ativo), registra a data de entrada, guarda a senha do protótipo e entra com o perfil dele.
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayIso();
         updateDb((d) => ({ ...d, adminUsers: d.adminUsers.map((u) => (u.id === reference.id ? { ...u, name, status: 'ativo', joinedAt: today, invitedAt: undefined } : u)) }));
         logActivity(reference.id, 'Usuários', 'ativacao', 'Concluiu o primeiro acesso e ativou a conta');
         setPrototypePassword(password);

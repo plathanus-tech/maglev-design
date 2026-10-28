@@ -134,18 +134,19 @@ export interface AdminUser { id: string; name: string; email: string; phone: str
   mustReset?: boolean }
 
 export type ScreenKey = 'dashboard' | 'assinantes' | 'usuarios' | 'perfis' | 'configuracoes';
-export type ActionKey = 'visualizar' | 'cadastrar' | 'editar' | 'excluir' | 'ativar';
+export type ActionKey = 'visualizar' | 'cadastrar' | 'editar' | 'excluir' | 'ativar' | 'exportar';
 export const ACTIONS: Array<{ key: ActionKey; label: string }> = [
   { key: 'visualizar', label: 'Visualizar' },
   { key: 'cadastrar', label: 'Cadastrar' },
   { key: 'editar', label: 'Editar' },
   { key: 'excluir', label: 'Excluir' },
   { key: 'ativar', label: 'Ativar/Inativar' },
+  { key: 'exportar', label: 'Exportar' },
 ];
 /** Telas × ações que existem em cada tela (ex.: assinante não é excluído, só inativado). */
 export const SCREENS: Array<{ key: ScreenKey; label: string; actions: ActionKey[] }> = [
   { key: 'dashboard', label: 'Dashboard', actions: ['visualizar'] },
-  { key: 'assinantes', label: 'Assinantes', actions: ['visualizar', 'cadastrar', 'editar', 'ativar'] },
+  { key: 'assinantes', label: 'Assinantes', actions: ['visualizar', 'cadastrar', 'editar', 'ativar', 'exportar'] },
   { key: 'usuarios', label: 'Usuários', actions: ['visualizar', 'cadastrar', 'editar', 'ativar'] },
   { key: 'perfis', label: 'Perfis de acesso', actions: ['visualizar', 'cadastrar', 'editar', 'excluir', 'ativar'] },
   { key: 'configuracoes', label: 'Configurações', actions: ['visualizar', 'cadastrar', 'editar', 'excluir', 'ativar'] },
@@ -348,7 +349,7 @@ const PROFILES: Profile[] = [
   },
   {
     id: 'PER-FIN', name: 'Financeiro', description: 'Acompanha a carteira e a inadimplência; pode ativar e inativar ambientes.', status: 'ativo',
-    permissions: { dashboard: ['visualizar'], assinantes: ['visualizar', 'editar', 'ativar'], usuarios: [], perfis: [], configuracoes: [] },
+    permissions: { dashboard: ['visualizar'], assinantes: ['visualizar', 'editar', 'ativar', 'exportar'], usuarios: [], perfis: [], configuracoes: [] },
   },
   {
     id: 'PER-OPE', name: 'Operador (legado)', description: 'Perfil antigo, substituído por Suporte.', status: 'inativo',
@@ -562,7 +563,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 14;
+export const DB_VERSION = 15;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.

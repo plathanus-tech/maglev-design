@@ -4,6 +4,7 @@ import { Button, Feedback, Input, KpiCard, Stack, Table, TableColumn, useToast }
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
+import { ExportButton } from '../../admin/shared/ExportButton';
 import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useHashState } from '../../admin/shared/useHashState';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
@@ -172,6 +173,11 @@ function SolicitacoesScreen() {
           />
         )}
         columns={control}
+        actions={can('solicitacoes', 'exportar') && (
+          <DevNote note="Exportar (Excel): baixa um .xlsx com as solicitações do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
+            <ExportButton columns={shownColumns} rows={() => filtered.map((v): Row => ({ id: v.r.id, v }))} file="solicitacoes" sheet="Solicitações" noun={['solicitação', 'solicitações']} feminine label="Exportar solicitações para Excel" overrides={{ subject: (r) => `${probName(r.v.r)} · ${r.v.r.description}` }} />
+          </DevNote>
+        )}
       />
       {assign === 'me' && (
         <Feedback type="info" title="Atribuídas a mim" message="Mostrando só as solicitações sob sua responsabilidade (vindo do Início). Remova o filtro para ver todas." dismissible dismissLabel="Remover filtro Atribuídas a mim" onDismiss={() => setAssign('todos')} />

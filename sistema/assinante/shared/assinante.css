@@ -169,3 +169,10 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 .qr-video { width: 100%; border-radius: var(--radius-control); background: var(--color-bg-subtle); }
 /* Botão de ícone ao lado de Nova solicitação (mobile): quadrado, com a altura dos controles, mesmo dentro do cabeçalho em linha */
 .page-actions-full .qr-icon-btn.qr-icon-btn { width: var(--control-height-md); min-width: var(--control-height-md); }
+.qr-icon-btn { flex-shrink: 0; }
+
+/* Aviso só com mensagem (sem título): no desktop o ícone e o texto ficam centralizados na vertical (o DS alinha o ícone ao título, que aqui não existe) */
+@media (min-width: 768px) {
+  .fb-single > * { align-items: center; }
+  .fb-single [class*="_icon_"] { margin-top: 0; }
+}

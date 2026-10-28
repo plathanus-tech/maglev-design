@@ -1,5 +1,7 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { IconArrowLeft, IconCalendar, IconCheck, IconCircleCheck, IconCircleX, IconClipboardList, IconPhone, IconPhoto, IconPlus, IconTool } from '@tabler/icons-react';
+import { todayIso } from '../../admin/shared/clock';
+import { DateField, INVALID_DATE_MESSAGE } from '../../assinante/shared/date-field';
 import { Badge, Button, Card, DatePicker, Dialog, Dropdown, EmptyState, Feedback, Input, Stack, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, formatDateTime, formatMoney, formatPhone, maskMoney, requiredMessage } from '../../admin/shared/format';
@@ -101,6 +103,15 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
   const waitingValidation = order.statusId === STO.VALIDACAO || mode === 'validation';
   const rejected = order.budget?.decision === 'reprovado';
   const canExecute = accepted && !budgetPending && !waitingValidation;
+  // Concluir exige: chegada registrada em uma visita agendada, solução aplicada (obrigatória na execução) e ao menos uma foto anexada
+  const arrived = order.visits.some((v) => !!v.arrivedAt);
+  const hasSolution = !!order.solution?.trim();
+  const hasPhoto = order.files.some((f) => f.kind !== 'orcamento' && (!!f.moment || /\.(jpe?g|png|webp|heic|gif)$/i.test(f.name)));
+  const concludeMissing = [
+    ...(arrived ? [] : ['registrar a chegada em uma visita agendada']),
+    ...(hasSolution ? [] : ['salvar a solução aplicada']),
+    ...(hasPhoto ? [] : ['anexar ao menos uma foto']),
+  ];
   const [dlg, setDlg] = useState<null | 'visit' | 'cost' | 'file' | 'conclude'>(null);
   const close = () => setDlg(null);
   const link = (page: string) => linkTo(page, { id: providerId }, technicianId ? { id: technicianId } : undefined, { os: order.id });
@@ -315,7 +326,12 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
             <Card className="card-open" title="Concluir atendimento" subtitle="Ao finalizar o serviço, envie para validação do solicitante">
 <div className="card-body-tight">              <Stack gap="md">
                 {!canExecute && <Feedback type="info" message="Conclua a etapa de orçamento antes de indicar a conclusão" />}
-                <div className="ext-actions"><Button disabled={!canExecute} iconLeft={<IconCheck size={20} />} onClick={() => setDlg('conclude')}>Indicar conclusão</Button></div>
+                {canExecute && concludeMissing.length > 0 && (
+                  <DevNote note="O botão só é liberado com os itens obrigatórios: chegada registrada em uma visita agendada, solução aplicada e ao menos uma foto. O aviso lista o que falta.">
+                    <Feedback type="info" title="Para indicar a conclusão, falta" message={`${concludeMissing.join('; ').replace(/^./, (c) => c.toUpperCase())}`} />
+                  </DevNote>
+                )}
+                <div className="ext-actions"><Button disabled={!canExecute || concludeMissing.length > 0} iconLeft={<IconCheck size={20} />} onClick={() => setDlg('conclude')}>Indicar conclusão</Button></div>
               </Stack></div>
             </Card>
           )}
@@ -388,6 +404,13 @@ function DiagnosisCard({ order, actorName, disabled, defaultBudgetOpen }: { orde
     notify(approvers, { kind: 'os', title: 'Orçamento aguardando aprovação', text: `${order.id}: orçamento de ${formatMoney(cents)}`, href: `os.html?id=${order.id}` });
     toast.show({ type: 'success', title: 'Enviado para aprovação', message: 'Diagnóstico e orçamento seguem para o responsável do cliente.' });
   };
+  // Reprovação recebida com a tela aberta: libera a trava de envio e recomeça o formulário como nova proposta (sem os dados da proposta anterior)
+  const rejectedAt = b?.decision === 'reprovado' ? b.registeredAt : null;
+  useEffect(() => {
+    if (!rejectedAt) return;
+    sent.current = false;
+    setVal(''); setDesc(''); setFiles([]); setTried(false);
+  }, [rejectedAt]);
   const cancelBudget = () => { setOpen(false); setVal(''); setDesc(''); setFiles([]); setTried(false); };
   return (
     <DevNote note="Prestador RF102-FLU005 / RGN005 (29/09): o diagnóstico é obrigatório e pode ser salvo sozinho; o orçamento (valor + descrição + documento) é condicional. Com orçamento, diagnóstico e orçamento são enviados juntos para aprovação do assinante, que vê o diagnóstico junto do orçamento. Orçamento pendente bloqueia a execução (CTA002); reprovado permite enviar um novo, sem sobrescrever o anterior no histórico. 💡 A regra de quais custos exigem aprovação (todos ou acima de um limite) está pendente de validação.">
@@ -529,20 +552,21 @@ const Footer = ({ onClose, onConfirm, label }: { onClose: () => void; onConfirm:
 function VisitDialog({ order, actorName, defaultTech, techs, onClose }: DlgProps & { defaultTech: string; techs: string[] }) {
   const toast = useToast();
   const [date, setDate] = useState('');
+  const [badDate, setBadDate] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [tech, setTech] = useState(defaultTech);
   const [note, setNote] = useState('');
   const [tried, setTried] = useState(false);
   const e = {
-    date: tried && !date ? requiredMessage('Data') : undefined, from: tried && !from ? requiredMessage('Início') : undefined,
+    date: badDate ? INVALID_DATE_MESSAGE : tried && !date ? requiredMessage('Data') : undefined, from: tried && !from ? requiredMessage('Início') : undefined,
     to: tried && !to ? requiredMessage('Fim') : tried && from && to <= from ? 'O fim deve ser depois do início' : undefined,
     tech: tried && !tech.trim() ? requiredMessage('Técnico') : undefined,
   };
   const sent = useRef(false);
   const go = () => {
     setTried(true);
-    if (sent.current || !date || !from || !to || to <= from || !tech.trim()) return;
+    if (sent.current || !date || badDate || !from || !to || to <= from || !tech.trim()) return;
     sent.current = true;
     const n = order.visits.length + 1;
     patchOrder(order.id, actorName, (o) => ({ ...o, visits: [...o.visits, { id: `V${n}`, date, from, to, technician: tech.trim(), note: note.trim() || undefined }], schedule: { date, from, to } }),
@@ -553,7 +577,7 @@ function VisitDialog({ order, actorName, defaultTech, techs, onClose }: DlgProps
   return (
     <Dialog open onClose={onClose} title={order.visits.length ? 'Agendar revisita' : 'Agendar visita'} subtitle="Data e janela de horário combinadas com a unidade" actions={<Footer onClose={onClose} onConfirm={go} label="Agendar" />}>
       <Stack gap="md">
-        <DatePicker label="Data" required value={date} onChange={setDate} error={e.date} />
+        <DateField label="Data" required min={todayIso()} minMessage="A data não pode ser anterior a hoje" value={date} onChange={setDate} invalid={badDate} onInvalid={setBadDate} error={e.date} />
         <Stack direction="horizontal" gap="md">
           <Input label="Início" type="time" required value={from} onChange={(ev) => setFrom(ev.target.value)} error={e.from} />
           <Input label="Fim" type="time" required value={to} onChange={(ev) => setTo(ev.target.value)} error={e.to} />

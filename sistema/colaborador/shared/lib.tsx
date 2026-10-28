@@ -94,6 +94,13 @@ export function scheduledOf(db: SubDb, base: (id?: string) => string | undefined
   return hit?.date ? { date: hit.date, time: hit.time } : null;
 }
 
+/** Última visita já realizada (com chegada registrada) da OS, para mostrar o atendimento que aconteceu em vez de "ainda não agendado". */
+export function lastVisitOf(db: SubDb, r: Request): { date: string; time: string } | null {
+  const o = orderOfRequest(db, r);
+  const done = o?.visits.filter((v) => !!v.arrivedAt).sort((a, c) => `${c.date}${c.from}`.localeCompare(`${a.date}${a.from}`))[0];
+  return done?.date ? { date: done.date, time: done.from } : null;
+}
+
 /** "16/10/2026 às 14:00" */
 export const scheduleText = (s: { date: string; time: string }) => `${formatDate(s.date)}${s.time ? ` às ${s.time}` : ''}`;
 
@@ -109,7 +116,7 @@ export interface PublicEvent { at: string; text: string; tone: Tone; detail?: st
 /**
  * Histórico para o solicitante (RF004-FLU002): só eventos públicos que realmente aconteceram, em linguagem simples, vindos do
  * histórico da própria solicitação (o mesmo que a tela administrativa mostra). Lista de permissão: nome de quem fez, observações
- * internas, motivos, prestador, responsável, custos e eventos operacionais da OS (visitas, execução) não saem daqui.
+ * internas, motivos, prestador, responsável, custos e eventos operacionais da OS (execução, custos) não saem daqui; só o fato de a visita ter ocorrido ("Visita realizada" / "Atendimento realizado").
  * Cor do indicador = cor semântica do status/evento: recebida neutro · triagem informativo · aguardando informação atenção ·
  * convertida em OS informativo · concluída sem OS sucesso · recusada erro.
  */
@@ -131,6 +138,9 @@ export function publicHistoryOf(db: SubDb, r: Request): PublicEvent[] {
   const o = orderOfRequest(db, r);
   if (o) {
     out.push({ at: o.createdAt, text: 'Convertida em OS', tone: 'info' });
+    // Visitas realizadas (com chegada registrada): só o fato e a data, sem técnico, prestador nem observações internas
+    const arrivedVisits = o.visits.filter((v) => !!v.arrivedAt).sort((x, y) => (x.arrivedAt ?? '').localeCompare(y.arrivedAt ?? ''));
+    arrivedVisits.forEach((v, i) => out.push({ at: v.arrivedAt!, text: o.validation && i === arrivedVisits.length - 1 ? 'Atendimento realizado' : 'Visita realizada', tone: 'info' }));
     // Confirmação do próprio solicitante (RF004-FLU004/FLU005)
     if (o.validation) out.push({ at: o.validation.requestedAt, text: 'Aguardando a sua confirmação', tone: 'warning' });
     if (o.validation?.result && o.validation.at) {

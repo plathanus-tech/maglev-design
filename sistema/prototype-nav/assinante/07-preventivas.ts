@@ -45,11 +45,15 @@ export const journeys: Journey[] = [
             variants: [
               v('plano-novo-required', 'Campos obrigatórios', 'plano-form.html#state=required'),
               v('plano-novo-duplicate', 'Nome do plano já existente', 'plano-form.html#state=duplicate'),
+              v('plano-novo-copy', 'Duplicar plano (cópia de um plano existente)', 'plano-form.html?from=PLA-001'),
             ],
           },
           { id: 'plano-novo-2', label: 'Passo 2 - Programação (com prévia)', path: `${s}/plano-form.html#state=step2` },
           { id: 'plano-novo-3', label: 'Passo 3 - Executor', path: `${s}/plano-form.html#state=step3` },
-          { id: 'plano-novo-4', label: 'Passo 4 - Checklist', path: `${s}/plano-form.html#state=step4` },
+          {
+            id: 'plano-novo-4', label: 'Passo 4 - Checklist', path: `${s}/plano-form.html#state=step4`,
+            variants: [v('plano-novo-4-empty', 'Sem checklist (Continuar sem checklist)', 'plano-form.html#state=step4empty')],
+          },
           { id: 'plano-novo-5', label: 'Passo 5 - Evidências e anomalia', path: `${s}/plano-form.html#state=step5` },
           { id: 'plano-novo-6', label: 'Passo 6 - Revisão e salvar', path: `${s}/plano-form.html#state=step6` },
         ],

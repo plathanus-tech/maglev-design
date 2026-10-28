@@ -12,17 +12,19 @@ import './preventivas.css';
  */
 
 /** Busca na linha de cima e os filtros (Dropdown) na linha de baixo - mesma toolbar do Admin, com mais de um filtro. */
-export function ListFilters({ searchLabel, placeholder, query, onQuery, filters = [], filterControl, columns }: {
+export function ListFilters({ searchLabel, placeholder, query, onQuery, filters = [], filterControl, columns, actions }: {
   searchLabel: string; placeholder: string; query: string; onQuery: (v: string) => void; filters?: ReactNode[];
   /** Filtros agrupados (`FilterControl`, 2+ filtros) e botão "Exibição" (`control` de `useColumnPrefs`): ficam à direita da busca. */
   filterControl?: ReactNode; columns?: ReactNode;
+  /** Ações da lista (ex.: Exportar), ao lado de Exibição. */
+  actions?: ReactNode;
 }) {
   const search = (
     <Input type="search" aria-label={searchLabel} placeholder={placeholder} iconLeft={<IconSearch size={20} />} value={query} onChange={(e) => onQuery(e.target.value)} />
   );
   return (
     <Stack gap="2xs">
-      <TableToolbar search={search} filters={filterControl} columns={columns} />
+      <TableToolbar search={search} filters={filterControl} columns={columns} actions={actions} />
       {filters.length > 0 && (
         <div className="toolbar-row toolbar-row--search-only toolbar-filters">
           {filters.map((f, i) => <div key={i} className="toolbar-status">{f}</div>)}

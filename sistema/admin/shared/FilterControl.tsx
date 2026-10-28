@@ -20,11 +20,11 @@ export interface FilterDef {
   /** Valor que significa “sem filtro” (não conta como ativo e é o que “Limpar” restaura). Padrão: `todos`. */
   defaultValue?: string;
   /** Intervalo de datas (De/Até) que aparece quando o filtro tem o valor `when` (ex.: Período personalizado). Datas ISO `YYYY-MM-DD`. */
-  range?: { when: string; from: string; to: string; onChange: (from: string, to: string) => void };
+  range?: { when: string; from: string; to: string; onChange: (from: string, to: string) => void; /** Data máxima aceita (ISO), ex.: hoje, para consultas de histórico. */ max?: string };
 }
 const ALL = 'todos';
 
-export function FilterControl({ filters, note }: { filters: FilterDef[]; note?: string }) {
+export function FilterControl({ filters, note, buttonLabel = 'Filtros', title = 'Filtros' }: { filters: FilterDef[]; note?: string; /** Título do painel (popover/modal). */ title?: string; /** Texto do botão (ex.: "Período" quando o painel só tem o filtro de período). */ buttonLabel?: string }) {
   const isMobile = useIsMobile();
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -36,6 +36,8 @@ export function FilterControl({ filters, note }: { filters: FilterDef[]; note?: 
     setDraft(Object.fromEntries(filters.flatMap((f) => [[f.id, f.value], ...(f.range ? [[`${f.id}:from`, f.range.from], [`${f.id}:to`, f.range.to]] : [])])));
     setOpen(true);
   };
+  // O calendário do DatePicker abre em outra camada: clicar nele (ou Esc nele) não deve fechar o painel de filtros
+  const closePopover = () => { if (document.querySelector('[role="dialog"][aria-modal="true"]')) return; setOpen(false); };
   const apply = () => {
     filters.forEach((f) => {
       const v = draft[f.id] ?? f.value;
@@ -57,8 +59,8 @@ export function FilterControl({ filters, note }: { filters: FilterDef[]; note?: 
             <Dropdown size="sm" label={f.label} options={f.options} value={cur} onChange={(v) => setDraft((d) => ({ ...d, [f.id]: v }))} />
             {f.range && cur === f.range.when && (
               <Stack direction="horizontal" gap="sm">
-                <DatePicker size="sm" label="De" value={from} max={to || undefined} onChange={(v) => setDraft((d) => ({ ...d, [`${f.id}:from`]: v }))} showShortcuts={false} />
-                <DatePicker size="sm" label="Até" value={to} min={from || undefined} onChange={(v) => setDraft((d) => ({ ...d, [`${f.id}:to`]: v }))} showShortcuts={false} />
+                <DatePicker size="sm" label="De" value={from} max={to || f.range.max} onChange={(v) => setDraft((d) => ({ ...d, [`${f.id}:from`]: v }))} showShortcuts={false} />
+                <DatePicker size="sm" label="Até" value={to} min={from || undefined} max={f.range.max} onChange={(v) => setDraft((d) => ({ ...d, [`${f.id}:to`]: v }))} showShortcuts={false} />
               </Stack>
             )}
           </Stack>
@@ -86,16 +88,16 @@ export function FilterControl({ filters, note }: { filters: FilterDef[]; note?: 
             aria-expanded={open}
             onClick={() => (open ? setOpen(false) : openPanel())}
           >
-            Filtros{active > 0 && <> <Badge status="neutral">{active}</Badge></>}
+            {buttonLabel}{active > 0 && <> <Badge status="neutral">{active}</Badge></>}
           </Button>
         </div>
       </DevNote>
       {isMobile ? (
-        <Dialog open={open} onClose={() => setOpen(false)} size="sm" title="Filtros" actions={<div className="dialog-actions-row">{buttons}</div>}>
+        <Dialog open={open} onClose={() => setOpen(false)} size="sm" title={title} actions={<div className="dialog-actions-row">{buttons}</div>}>
           {fields}
         </Dialog>
       ) : (
-        <Popover open={open} onClose={() => setOpen(false)} anchorRef={anchor} label="Filtros">
+        <Popover open={open} onClose={closePopover} anchorRef={anchor} label={title}>
           <Stack gap="md">
             {fields}
             <Stack direction="horizontal" justify="end" gap="sm">{buttons}</Stack>

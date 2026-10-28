@@ -9,6 +9,7 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
+import { ExportButton } from '../../admin/shared/ExportButton';
 import { MobileCardItem, MobileCardList } from '../../admin/shared/MobileCardList';
 import { useHashState } from '../../admin/shared/useHashState';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
@@ -309,6 +310,11 @@ function EquipamentosScreen() {
         />
       )}
       columns={withColumns ? control : undefined}
+      actions={withColumns && can('equipamentos', 'exportar') && (
+        <DevNote note="Exportar (Excel): baixa um .xlsx com os equipamentos do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
+          <ExportButton columns={shownColumns} rows={rows} file="equipamentos" sheet="Equipamentos" noun={['equipamento', 'equipamentos']} label="Exportar equipamentos para Excel" overrides={{ open: (r) => r.open, cost: (r) => Number(r.cost) / 100 }} />
+        </DevNote>
+      )}
     />
     {extra}
     </>
@@ -493,9 +499,9 @@ function EquipamentosScreen() {
         <DevNote note="RF302/RF303: os mesmos cards de resumo nas duas abas. Total de equipamentos não conta equipamentos inativos; Parados = status do tipo visual Crítico e Com alerta/falha = tipo Atenção (RF407). Gasto com manutenção = custos realizados das OS movimentadas nos últimos 30 dias (💡 data de referência a confirmar) e só aparece para Administrador e Gestor (RF304-RGN003). Sem exportar (FE010).">
           <div className="eq-kpis">
             <KpiCard tone="neutral" label="Total de equipamentos" value={formatNumber(kpis.total)} icon={<IconMicrowave size={20} />} />
-            <KpiCard tone="error" label="Parados" value={formatNumber(kpis.stopped)} icon={<IconPlayerStop size={20} />} />
-            <KpiCard tone="warning" label="Com alerta ou falha" value={formatNumber(kpis.alert)} icon={<IconAlertTriangle size={20} />} />
-            <KpiCard tone="info" label="OS abertas vinculadas" value={formatNumber(kpis.openOrders)} icon={<IconClipboardList size={20} />} />
+            <KpiCard tone="error" label="Parados" value={formatNumber(kpis.stopped)} icon={<IconPlayerStop size={20} />} href="equipamentos.html?filter=stopped" />
+            <KpiCard tone="warning" label="Com alerta ou falha" value={formatNumber(kpis.alert)} icon={<IconAlertTriangle size={20} />} href="equipamentos.html?filter=alert" />
+            <KpiCard tone="info" label="OS abertas vinculadas" value={formatNumber(kpis.openOrders)} icon={<IconClipboardList size={20} />} href={can('os') ? 'ordens-servico.html?filter=active' : undefined} />
             {canSeeCosts && <KpiCard tone="neutral" label="Gasto em manutenção · 30 dias" value={<KpiMoney cents={kpis.spent} className="kpi-money-sm" />} icon={<IconReportMoney size={20} />} />}
           </div>
         </DevNote>

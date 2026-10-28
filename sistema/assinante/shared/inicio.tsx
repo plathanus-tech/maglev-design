@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import {
   IconAlertOctagon, IconAlertTriangle, IconBuildingStore, IconCalendarEvent, IconCalendarRepeat, IconChevronDown, IconChevronRight,
   IconChevronUp, IconCircleCheck, IconClipboardList, IconEye, IconCoin, IconFridge, IconInfoCircle, IconMessageReport, IconMicrowaveOff,
-  IconStopwatch, IconTool, IconTruck, IconUser, IconUserCheck, IconUserOff, IconMessageOff, IconClipboardOff,
+  IconMicrowave, IconPlus, IconStopwatch, IconTool, IconTruck, IconUser, IconUserCheck, IconUserOff, IconMessageOff, IconClipboardOff,
 } from '@tabler/icons-react';
 import { Badge, Button, Card, EmptyState, KpiCard, Stack, Table, TableColumn } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile, useMediaQuery } from '../../admin/shared/useMediaQuery';
@@ -150,7 +151,7 @@ function DonutChart({ slices }: { slices: Slices }) {
 }
 
 function InicioScreen() {
-  const { db, user, unitIds, canSeeCosts, company } = useSubSession();
+  const { db, user, unitIds, canSeeCosts, company, can } = useSubSession();
   const refs = useRefs();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const isMobile = useIsMobile();
@@ -290,6 +291,19 @@ function InicioScreen() {
   const mineEmpty = novasReq + novasOs + aprovOs + atrasoOs === 0;
   const solEmpty = pendAprov + pendInfo + awaitingApproval === 0;
   const osEmpty = osAcao + osValid + osAtivas === 0;
+  // Atalho global de criação: só as ações que o perfil pode cadastrar
+  // Solicitante não usa o atalho: já tem o próprio fluxo de solicitação (Nova solicitação na lista e no menu)
+  const createItems: RowMenuItem[] = user.profile === 'solicitante' ? [] : [
+    ...(can('solicitacoes', 'cadastrar') ? [{ label: 'Nova solicitação', icon: <IconMessageReport size={16} />, onClick: () => goTo('solicitacao-form.html') }] : []),
+    ...(can('equipamentos', 'cadastrar') ? [{ label: 'Novo equipamento', icon: <IconMicrowave size={16} />, onClick: () => goTo('equipamento-form.html') }] : []),
+    ...(can('planos', 'cadastrar') ? [{ label: 'Novo plano de manutenção', icon: <IconCalendarRepeat size={16} />, onClick: () => goTo('plano-form.html') }] : []),
+    ...(can('prestadores', 'cadastrar') ? [{ label: 'Novo prestador', icon: <IconTruck size={16} />, onClick: () => goTo('prestador-form.html') }] : []),
+  ];
+  const createMenu = createItems.length > 0 && (
+    <DevNote note="Atalho global de criação (Início): menu “Criar” com Nova solicitação, Novo equipamento, Novo plano de manutenção e Novo prestador, cada um só para quem tem a permissão “Cadastrar” do módulo (sem nenhuma, o botão não aparece). Perfil Solicitante não vê o atalho: já tem o fluxo próprio de solicitação. Abre o mesmo cadastro de cada módulo. No mobile vira só o “+”, alinhado ao título.">
+      <RowMenu target="cadastros" label="Criar" items={createItems} trigger={{ text: 'Criar', icon: <IconPlus size={20} />, iconOnly: isMobile }} />
+    </DevNote>
+  );
   const reqSectionId = 'inicio-req';
   const osSectionId = 'inicio-os';
 
@@ -297,7 +311,7 @@ function InicioScreen() {
     <AppLayout active="inicio" screen="inicio">
       <Stack gap="xl">
         <DevNote note="RF101-FLU001/FLU002: tela inicial após o login; blocos conforme o perfil e as unidades (RGN002/CTA003). Saudação com a data de hoje e Bom dia/Boa tarde/Boa noite (relógio real). RGN016: o rótulo do menu é “Início”. Fora do escopo: SLA (FE001/RGN008), estágio de implantação (RGN010) e tutorial guiado (FE015/RGN011). Sem filtro de período.">
-          <PageHeader title={`${greeting()}, ${firstName(user.name)}`} subtitle={dateText} />
+          <PageHeader title={`${greeting()}, ${firstName(user.name)}`} subtitle={dateText} {...{ [isMobile ? 'iconActions' : 'actions']: createMenu }} />
         </DevNote>
 
         <DevNote note="Início (RF101): agenda do dia ao lado de “Requer ação”, no primeiro bloco. Os 3 cards de ação (“ação”) ganham uma linha superior fina e o ícone do canto em tint suave, usando só tokens semânticos do DS pelo significado do indicador principal — Atribuídas a mim = Atenção (--color-status-warning-*: demandas sob responsabilidade do usuário), Solicitações pendentes = Info (--color-status-info-*: itens aguardando decisão, informação ou aprovação), OS pendentes = Atenção (--color-status-warning-*: o principal é “Ação necessária”). Dois cards podem repetir o token; Sucesso e Erro ficam reservados a estados positivos e críticos. A Agenda (“programação”) permanece neutra, com o ícone no padrão da marca. Fundo, textos e números seguem neutros. Os 3 cards são resumos simples, alinhados no topo e com altura própria (a agenda tem a sua). Números, links e tons de criticidade vêm da tela atual. O 1º indicador de cada card é o mais acionável, não o maior número: Atribuídas = Em atraso › Necessitam de aprovação › Novas (zerados vão para o fim; se tudo é 0, Novas); Solicitações = Aprovadas (o gestor precisa criar a OS) › Aguardando informação (depende do solicitante); OS = Ação necessária › Aguardando validação › OS ativas (total só como contexto). Ícone de atenção só em itens com valor. A agenda lista só o que está PROGRAMADO para hoje (visitas técnicas, manutenções e preventivas agendadas em OS ainda não concluídas); programado ≠ registrado: eventos já registrados no sistema (log) e solicitações abertas não entram. Em larguras menores a agenda desce para baixo dos cards.">

@@ -4,6 +4,7 @@ import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
 import { ReadField } from '../../admin/shared/ui';
 import { param } from '../../assinante/shared/ui';
+import { seed } from '../../assinante/shared/data';
 import logoLight from '../../../public/maglev-logo.svg';
 import {
   CONVITE_VARS, NOVA_OS_VARS, OS_NOTIFICATION_VARS, RECUPERACAO_CODE_VAR, RECUPERACAO_VARS, TemplateId,
@@ -13,17 +14,26 @@ import {
 
 interface Meta { id: TemplateId; label: string; subject: string; to: string; note: string; html: (vars: boolean) => string }
 
-const abs = (path: string) => new URL(path, window.location.origin).href;
+// Raiz do protótipo = duas pastas acima desta página (emails/screens/): mantém o prefixo do ambiente (ex.: /maglev-design/sistema/) em vez de usar a raiz do domínio
+const appRoot = () => new URL('../../', window.location.href);
+const abs = (path: string) => new URL(path.replace(/^\//, ''), appRoot()).href;
 const logoUrl = () => new URL(logoLight, window.location.href).href;
 
 /** Dados fictícios (rede de restaurantes). Links reais da pré-visualização apontam para as telas do protótipo; "Variáveis" mostra os marcadores. */
-const nova = { providerName: 'Roberto', osNumber: 'OS-000054', equipment: 'Freezer vertical 01', unit: 'Cantina Dona Rosa Centro', summary: 'A porta do freezer não veda direito e forma gelo na borda', priority: 'Média' as const, dueDate: '07/10/2026' };
+// A OS do e-mail é uma OS real dos dados de demonstração atribuída ao prestador (o link abre o atendimento dela, sem login: quem tem o link é o prestador)
+const demoDb = seed();
+const novaOrder = demoDb.orders.find((o) => o.executor.kind === 'prestador' && o.executor.providerId === 'PRE-001' && !o.executor.technician && ['STO-01', 'STO-02', 'STO-03', 'STO-04', 'STO-05', 'STO-06'].includes(o.statusId)) ?? demoDb.orders.find((o) => o.executor.kind === 'prestador')!;
+const novaProvider = novaOrder.executor.kind === 'prestador' ? novaOrder.executor.providerId : 'PRE-001';
+const novaEquipment = demoDb.equipments.find((e) => e.id === novaOrder.equipmentId);
+const nova = { providerName: 'Roberto', osNumber: novaOrder.id, equipment: novaEquipment?.name ?? 'Equipamento', unit: demoDb.units.find((u) => u.id === novaEquipment?.unitId)?.name ?? 'Cantina Dona Rosa Centro', summary: novaOrder.subject, priority: 'Média' as const, dueDate: novaOrder.dueAt.split('-').reverse().join('/') };
 const convite = { name: 'Patrícia', company: 'Cantina Dona Rosa', email: 'patricia.lima@cantinadonarosa.com.br', profile: 'Gestor de manutenção', validityDays: 7 };
 const recuperacao = { name: 'Larissa', code: '482915', validityMinutes: 5 };
-const orcamento = { recipientName: 'Larissa', osNumber: 'OS-000009', equipment: 'Lava-louças 01', unit: 'Cantina Dona Rosa Centro', provider: 'Lava Forte Assistência Técnica', amount: 'R$ 1.380,00' };
-const atualizacao = { recipientName: 'Fernanda', osNumber: 'OS-000011', equipment: 'Coifa 01', unit: 'Cantina Dona Rosa Centro', status: 'Em andamento', statusTone: 'info' as const, detail: 'Retirada do motor agendada para 05/10/2026, das 10:00 às 12:00.' };
+// Equipamento e unidade vêm do mesmo registro da OS usado nas telas (massa de demonstração consistente)
+const ofOs = (id: string) => { const eq = demoDb.equipments.find((e) => e.id === demoDb.orders.find((o) => o.id === id)?.equipmentId); return { equipment: eq?.name ?? '', unit: demoDb.units.find((u) => u.id === eq?.unitId)?.name ?? '' }; };
+const orcamento = { recipientName: 'Larissa', osNumber: 'OS-000009', ...ofOs('OS-000009'), provider: 'Lava Forte Assistência Técnica', amount: 'R$ 1.380,00' };
+const atualizacao = { recipientName: 'Fernanda', osNumber: 'OS-000011', ...ofOs('OS-000011'), status: 'Em andamento', statusTone: 'info' as const, detail: 'Retirada do motor agendada para 05/10/2026, das 10:00 às 12:00.' };
 
-const vencida = { recipientName: 'Larissa', osNumber: 'OS-000048', plan: 'Preventiva mensal das câmaras frias', equipment: 'Câmara fria 01', unit: 'Cantina Dona Rosa Centro', dueDate: '03/10/2026', overdueDays: 2, responsible: 'Larissa Teixeira' };
+const vencida = { recipientName: 'Larissa', osNumber: 'OS-000048', ...ofOs('OS-000048'), plan: 'Preventiva mensal das câmaras frias', dueDate: '03/10/2026', overdueDays: 2, responsible: 'Larissa Teixeira' };
 
 const inativacao = { recipientName: 'Larissa', company: 'Cantina Dona Rosa', deadline: '02/11/2026', daysLeft: 7 };
 
@@ -31,7 +41,7 @@ const TEMPLATES: Meta[] = [
   {
     id: 'nova-os', label: 'Nova OS atribuída', subject: novaOsSubject(nova), to: 'Prestador de serviço',
     note: 'Complemento à Especificação. O botão leva à RF102 da OS pelo acesso por link do prestador (sem login, sem dado sensível); o link secundário leva à lista Minhas OS (RF101).',
-    html: (vars) => renderNovaOsEmail(nova, vars ? NOVA_OS_VARS : { osUrl: abs('/prestador/screens/os.html?p=PRE-001&os=OS-000054'), minhasOsUrl: abs('/prestador/screens/minhas-os.html?p=PRE-001'), logoUrl: logoUrl() }),
+    html: (vars) => renderNovaOsEmail(nova, vars ? NOVA_OS_VARS : { osUrl: abs(`/prestador/screens/os.html?p=${novaProvider}&os=${novaOrder.id}`), minhasOsUrl: abs(`/prestador/screens/minhas-os.html?p=${novaProvider}`), logoUrl: logoUrl() }),
   },
   {
     id: 'convite', label: 'Convite de acesso', subject: conviteSubject(), to: 'Usuário convidado',

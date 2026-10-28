@@ -139,6 +139,8 @@ function OsFormScreen() {
       visits: [], costs: [], files: [], troubleshooting: request!.troubleshooting, ...common,
       activities: [
         logEntry(user.name, `Criou a OS a partir da solicitação ${request!.id}`),
+        // Prioridade da triagem diferente da sugerida pela matriz: o histórico da OS leva a sugerida, a aplicada e o motivo registrados na solicitação
+        ...(request!.priorityChange ? [logEntry(user.name, `Prioridade alterada na triagem da solicitação ${request!.id}: sugerida ${refs.priority(request!.priorityChange.suggestedId)?.name ?? request!.priorityChange.suggestedId}, aplicada ${refs.priority(request!.priorityId)?.name ?? request!.priorityId}. Motivo: ${request!.priorityChange.reason}`)] : []),
         logEntry(user.name, `Atribuiu a OS a ${userName(db, plan.responsibleId)} (responsável) e a ${executorText(db, executor)} (executor)`),
         ...prestadorLog(executor).map((t) => logEntry('Sistema', t)),
       ],

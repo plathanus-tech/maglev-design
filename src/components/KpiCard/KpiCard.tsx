@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { IconArrowDown, IconArrowUp, IconMinus } from '@tabler/icons-react';
+import { IconArrowDown, IconArrowUp, IconChevronRight, IconMinus } from '@tabler/icons-react';
 import { Card } from '../Card/Card';
 import { cx } from '../../utils/cx';
 import styles from './KpiCard.module.css';
@@ -95,6 +95,7 @@ export function KpiCard({
         ) : (
         <div className={styles.main}>
           <span className={cx(styles.value, tone && styles[`valueTone-${tone}`])}>{typeof value === 'number' ? value.toLocaleString(locale) : value}</span>
+          {href && <span className={styles.linkArrow} aria-hidden="true"><IconChevronRight size={16} /></span>}
           {trend && Arrow && (
             // Percentual e referência lado a lado; se faltar espaço, quebram juntos abaixo do valor.
             <span className={styles.compare}>

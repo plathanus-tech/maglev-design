@@ -7,15 +7,16 @@
  * Tipos e carga inicial seguem a Especificação Funcional (v0.4) - frente "Área do Assinante".
  */
 import { RecordStatus, Subscriber, seed as adminSeed, subscriberUsers } from '../../admin/shared/data';
+import { clockNow } from '../../admin/shared/clock';
 
-export const DB_VERSION = 27;
+export const DB_VERSION = 30;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
 export const RECURRENCE_DAYS = 90;
 
 /** "Hoje" do protótipo: toda a carga inicial é relativa a esta data/hora (datas locais, sem fuso). */
-export const DEMO_NOW = new Date('2026-10-05T09:30:00');
+export const DEMO_NOW = clockNow();
 const pad = (n: number, l = 2) => String(n).padStart(l, '0');
 const local = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
 /** ISO local (sem Z) de "há N dias" às hh:mm - N negativo = futuro. */
@@ -29,7 +30,7 @@ export const daysAgo = (n: number, h = 9, m = 0) => {
 export const hoursAgo = (n: number) => local(new Date(DEMO_NOW.getTime() - n * 3_600_000));
 /** Só a data (AAAA-MM-DD) de "há N dias" - N negativo = futuro. */
 export const dayOnly = (n: number) => daysAgo(n).slice(0, 10);
-export const nowLocal = () => local(new Date());
+export const nowLocal = () => local(clockNow());
 
 // ═══ Perfis e permissões (VISÃO GERAL §6; RF204-RGN001/RGN004 💡 matriz a confirmar) ═════════
 export type ProfileKey = 'administrador' | 'gestor' | 'solicitante' | 'executor';
@@ -43,9 +44,9 @@ export const PROFILE_OPTIONS = (Object.keys(PROFILE_LABEL) as ProfileKey[]).map(
 
 export type ScreenKey = 'inicio' | 'equipamentos' | 'solicitacoes' | 'os' | 'planos' | 'prestadores' | 'empresa' | 'unidades' | 'ambientes' | 'equipe';
 /** `aprovar` = aprovar/reprovar orçamento (RF503-RGN008); `triar` = triagem da solicitação (RF402). */
-export type ActionKey = 'visualizar' | 'cadastrar' | 'editar' | 'excluir' | 'ativar' | 'aprovar' | 'triar';
+export type ActionKey = 'visualizar' | 'cadastrar' | 'editar' | 'excluir' | 'ativar' | 'aprovar' | 'triar' | 'exportar';
 
-const ALL: ActionKey[] = ['visualizar', 'cadastrar', 'editar', 'excluir', 'ativar', 'aprovar', 'triar'];
+const ALL: ActionKey[] = ['visualizar', 'cadastrar', 'editar', 'excluir', 'ativar', 'aprovar', 'triar', 'exportar'];
 export const PERMISSIONS: Record<ProfileKey, Partial<Record<ScreenKey, ActionKey[]>>> = {
   administrador: {
     inicio: ['visualizar'], equipamentos: ALL, solicitacoes: ALL, os: ALL, planos: ALL, prestadores: ALL,
@@ -141,6 +142,8 @@ export interface Request {
   statusChangedAt: string;
   /** Preenchidos na triagem (RF402). */
   maintTypeId?: string; priorityId?: string; responsibleId?: string; group?: string;
+  /** Quando o gestor aplica uma prioridade diferente da sugerida pela matriz: a sugerida e o motivo (também registrados no histórico). */
+  priorityChange?: { suggestedId: string; reason: string };
   osId?: string;
   previousRepair: { related: boolean; note?: string };
   troubleshooting: TroubleshootingRun;
@@ -536,6 +539,11 @@ export function seed(): SubDb {
     ],
   });
   rLava.osId = osLava.id;
+  // DADOS DE DEMONSTRAÇÃO: prioridade da triagem diferente da sugerida pela matriz, com motivo (aparece no histórico da solicitação e nas atividades da OS)
+  const lavaChange = 'sugerida Média, aplicada Alta. Motivo: Vazamento em área de circulação da cozinha, com risco de queda';
+  rLava.priorityChange = { suggestedId: 'PRI-3', reason: 'Vazamento em área de circulação da cozinha, com risco de queda' };
+  rLava.log.push(log(gestor.name, `Alterou a prioridade: ${lavaChange}`, daysAgo(5, 14), 'lp1'));
+  osLava.activities.splice(1, 0, log(gestor.name, `Prioridade alterada na triagem da solicitação ${rLava.id}: ${lavaChange}`, daysAgo(5, 14), 'a1p'));
   setStatus(lava, 'STE-04');
 
   const rForno = requests[requests.length - 2]; // aprovada do forno (STS-04) ainda sem OS
@@ -650,6 +658,11 @@ export function seed(): SubDb {
       evidences: ['Foto da placa'], onAnomaly: 'abrir-solicitacao', status: 'pausado', createdAt: daysAgo(300),
     },
   ];
+  // Regra: um plano só tem equipamentos de uma mesma unidade (a do primeiro equipamento)
+  plans.forEach((p) => {
+    const unit = equipments.find((e) => e.id === p.equipmentIds[0])?.unitId;
+    p.equipmentIds = p.equipmentIds.filter((id) => equipments.find((e) => e.id === id)?.unitId === unit);
+  });
   const nextDue = (p: Plan, k: number) => { const d = new Date(DEMO_NOW); d.setHours(0, 0, 0, 0);
     if (p.frequency === 'semanal') { d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 7 * (k - p.every) ); return local(d).slice(0, 10); }
     d.setDate(p.refDay); d.setMonth(d.getMonth() + k * p.every); return local(d).slice(0, 10); };

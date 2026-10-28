@@ -10,6 +10,7 @@ import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useHashState } from '../../admin/shared/useHashState';
 import { FilterControl } from '../../admin/shared/FilterControl';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
+import { ExportButton } from '../../admin/shared/ExportButton';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { formatDate, formatNumber, normalize } from '../../admin/shared/format';
 import { daysAgo, dayOnly } from './data';
@@ -187,14 +188,15 @@ function OrdensScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, quick, sub, query, status, type, priority, unit, executor, period, from, to, equipment, sort, db]);
 
-  const pageRows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((o) => {
+  const toRow = (o: WorkOrder): Row => {
     const ex = executorInfo(db, o.executor);
     return {
       id: o.id, statusId: o.statusId, subject: o.subject, maintTypeId: o.maintTypeId, priorityId: o.priorityId,
       unit: unitName(db, unitOf(o)), equipment: eqName(o), createdAt: o.createdAt, dueAt: o.dueAt, late: overdueDays(o, refs.base(o.statusId)),
       executorName: ex.name, executorKind: ex.technician ? `Prestador · ${ex.technician}` : ex.kind, responsible: userName(db, o.responsibleId), actions: o.id, order: o,
     };
-  });
+  };
+  const pageRows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(toRow);
 
   const applySummary = (statusId: string | null) => {
     setQuick('todos'); setSub(null); setQuery(''); setType('todos'); setPriority('todos'); setUnit('todos'); setExecutor('todos'); setEquipment(null);
@@ -272,6 +274,11 @@ function OrdensScreen() {
           />
         )}
         columns={control}
+        actions={can('os', 'exportar') && (
+          <DevNote note="Exportar (Excel): baixa um .xlsx com as ordens de serviço do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
+            <ExportButton columns={shownColumns} rows={() => filtered.map(toRow)} file="ordens-de-servico" sheet="Ordens de serviço" noun={['ordem de serviço', 'ordens de serviço']} feminine label="Exportar ordens de serviço para Excel" />
+          </DevNote>
+        )}
       />
       {quick !== 'todos' && (
         <Feedback

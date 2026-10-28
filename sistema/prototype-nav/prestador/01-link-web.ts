@@ -25,7 +25,8 @@ const budgetApproved = find((o) => o.budget?.decision === 'aprovado' && ['STO-02
 const budgetWait = find((o) => o.statusId === 'STO-04');
 const validation = find((o) => o.statusId === 'STO-07');
 const closed = find((o) => o.statusId === 'STO-08' && o.kind === 'corretiva');
-const preventive = find((o) => o.kind === 'preventiva' && o.statusId !== 'STO-08');
+const preventive = find((o) => o.kind === 'preventiva' && !['STO-08', 'STO-09'].includes(o.statusId));
+const preventiveCancelled = find((o) => o.kind === 'preventiva' && o.statusId === 'STO-09');
 const preventiveNew = find((o) => o.kind === 'preventiva' && o.statusId === 'STO-01') ?? preventive;
 const preventiveDone = find((o) => o.kind === 'preventiva' && o.statusId === 'STO-08');
 
@@ -58,12 +59,12 @@ export const journeys: Journey[] = [
         ],
       },
       {
-        id: 'prest-preventiva', label: 'RF102/RF603 - Executar preventiva', path: `${s}/${link(preventive, 'execucao-preventiva.html')}`,
+        id: 'prest-preventiva', label: 'RF102/RF603 - Executar preventiva', path: `${s}/${link(preventiveNew, 'execucao-preventiva.html')}`,
         variants: [
-          v('prest-pv-blank', 'Formulário em branco (OS ainda não iniciada)', link(preventiveNew, 'execucao-preventiva.html')),
           v('prest-pv-os', 'OS preventiva (resumo e acesso à execução)', link(preventive)),
           v('prest-pv-incomplete', 'Tentativa de concluir com pendências', link(preventive, 'execucao-preventiva.html', '#state=incomplete')),
           v('prest-pv-anomaly', 'Com anomalia (abre solicitação corretiva)', link(preventive, 'execucao-preventiva.html', '#state=anomaly')),
+          v('prest-pv-cancelled', 'OS cancelada (execução não realizada)', link(preventiveCancelled ?? preventive, 'execucao-preventiva.html')),
           v('prest-pv-done', 'Execução concluída (leitura)', link(preventiveDone ?? preventive, 'execucao-preventiva.html', '#state=done')),
         ],
       },

@@ -73,7 +73,7 @@ export const CellPair = ({ primary, secondary }: { primary: ReactNode; secondary
  * filtros/colunas ficam à direita. Mobile: busca na linha de cima; filtros e campos lado a lado.
  * Um filtro só: `status` (Dropdown solto). Dois ou mais: `filters` (botão "Filtros" com popover/modal, ver FilterControl).
  */
-export const TableToolbar = ({ search, status, filters, columns }: { search?: ReactNode; status?: ReactNode; filters?: ReactNode; columns?: ReactNode }) => {
+export const TableToolbar = ({ search, status, filters, columns, actions }: { search?: ReactNode; status?: ReactNode; filters?: ReactNode; columns?: ReactNode; actions?: ReactNode }) => {
   /* campo visível de 36px dentro de uma área clicável de 44px; clicar na faixa de 4px acima/abaixo aciona o campo */
   const hit = (e: MouseEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return;
@@ -81,11 +81,12 @@ export const TableToolbar = ({ search, status, filters, columns }: { search?: Re
     if (el instanceof HTMLInputElement) el.focus(); else el?.click();
   };
   return (
-    <div className={status || filters || columns ? "toolbar-row" : "toolbar-row toolbar-row--search-only"}>
+    <div className={status || filters || columns || actions ? "toolbar-row" : "toolbar-row toolbar-row--search-only"}>
       {search && <div className="toolbar-search" onClick={hit}>{search}</div>}
       {status && <div className="toolbar-status" onClick={hit}>{status}</div>}
       {filters && <div className="toolbar-columns" onClick={hit}>{filters}</div>}
       {columns && <div className="toolbar-columns" onClick={hit}>{columns}</div>}
+      {actions && <div className="toolbar-columns" onClick={hit}>{actions}</div>}
     </div>
   );
 };

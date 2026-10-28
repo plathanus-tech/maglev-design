@@ -60,6 +60,8 @@ export interface ExecucaoCoreProps {
   /** Nome do equipamento (link para o ativo na Área do assinante; texto simples no link externo). */
   equipmentLabel: (equipmentId: string, name: string) => ReactNode;
   onCancel: (ctx: { order: WorkOrder; plan: Plan }) => void;
+  /** Prestador: o botão Concluir só é liberado com os itens obrigatórios feitos e a chegada registrada em uma visita agendada. */
+  requireArrival?: boolean;
   /** Ações da tela em leitura (execução concluída ou sem permissão). */
   readOnlyActions: (ctx: { order: WorkOrder }) => ReactNode;
   viewOnlyText?: string;
@@ -69,7 +71,7 @@ export interface ExecucaoCoreProps {
  * Execução da preventiva (RF603), compartilhada entre o executor da Área do assinante e o prestador que acessa pelo link
  * (Prestador RF102): mesma tela, mesmo checklist/leituras/evidências/anomalia/confirmação; muda a casca, o cabeçalho e quem assina.
  */
-export function ExecucaoCore({ shell, actor, deny, header, equipmentLabel, onCancel, readOnlyActions, viewOnlyText = 'Seu perfil só visualiza esta execução' }: ExecucaoCoreProps) {
+export function ExecucaoCore({ shell, actor, deny, header, equipmentLabel, onCancel, readOnlyActions, requireArrival, viewOnlyText = 'Seu perfil só visualiza esta execução' }: ExecucaoCoreProps) {
   const toast = useToast();
   const isMobile = useIsMobile();
   const refs = useRefs();
@@ -147,8 +149,10 @@ export function ExecucaoCore({ shell, actor, deny, header, equipmentLabel, onCan
     });
     // A solicitação corretiva precisa do impacto (a triagem usa na prioridade); o restante vem da própria execução
     if (anomaly.trim() && plan.onAnomaly === 'abrir-solicitacao') out.push({ key: 'impact', label: 'Impacto da anomalia', done: !!anomalyImpact, target: 'ex-impact' });
+    // Prestador: a chegada em uma visita agendada (registrada na tela da OS) também é requisito, e conta no progresso
+    if (requireArrival) out.unshift({ key: 'arrival', label: 'Chegada registrada em uma visita (na tela da OS)', done: order?.visits.some((x) => !!x.arrivedAt) || mode === 'anomaly', target: 'ex-arrival' });
     return out;
-  }, [plan, checks, readings, attached, signName, accepted, hasReadings, report, anomaly, anomalyImpact]);
+  }, [plan, checks, readings, attached, signName, accepted, hasReadings, report, anomaly, anomalyImpact, requireArrival, order, mode]);
   const pending = reqs.filter((x) => !x.done);
 
   if (!order || !plan || order.kind !== 'preventiva' || !equipment) {
@@ -159,6 +163,8 @@ export function ExecucaoCore({ shell, actor, deny, header, equipmentLabel, onCan
   if (denied) return shell(<Feedback type="error" title={denied.title} message={denied.message} />);
 
   const executor = executorOf(db, order.executor);
+  // Prestador: concluir só com todos os requisitos feitos (inclui a chegada registrada); o progresso mostra o que falta
+  const concludeBlocked = !!requireArrival && pending.length > 0;
   const hasAnomaly = !!v.anomaly.trim();
   const willOpenRequest = hasAnomaly && plan.onAnomaly === 'abrir-solicitacao';
   const savedFiles = (e: string, m?: 'antes' | 'depois'): Picked[] => (saved?.evidenceFiles ?? []).filter((x) => x.evidence === e && x.moment === m).map((x) => ({ name: x.name }));
@@ -440,8 +446,8 @@ export function ExecucaoCore({ shell, actor, deny, header, equipmentLabel, onCan
             <Stack direction={isMobile ? 'vertical' : 'horizontal'} gap="sm">{readOnlyActions({ order })}</Stack>
           ) : (
             <Stack direction={isMobile ? 'vertical' : 'horizontal'} gap="sm">
-              <DevNote note="RF603-FLU006 / RGN003: grava a execução na OS, muda o status para Concluída (💡 preventiva conclui direto, sem validação do solicitante), marca a execução do plano como Concluída (histórico do equipamento e cumprimento) e registra no log.">
-                <Button type="submit" className={block} iconLeft={<IconCheck size={20} />}>Concluir execução</Button>
+              <DevNote note="Prestador: o botão Concluir execução só é liberado com todos os requisitos feitos (checklist, leituras, fotos, relatório, confirmação) e a chegada registrada em uma visita agendada; o progresso da execução mostra o que falta, sem aviso extra. RF603-FLU006 / RGN003: grava a execução na OS, muda o status para Concluída (💡 preventiva conclui direto, sem validação do solicitante), marca a execução do plano como Concluída (histórico do equipamento e cumprimento) e registra no log.">
+                <Button type="submit" className={block} disabled={concludeBlocked} iconLeft={<IconCheck size={20} />}>Concluir execução</Button>
               </DevNote>
               <Button variant="ghost" className={block} onClick={goBack}>Cancelar</Button>
             </Stack>

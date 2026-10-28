@@ -5,6 +5,7 @@ import { Accordion, Button, Card, DatePicker, Dropdown, Feedback, ImageUpload, I
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
+import { DateField, INVALID_DATE_MESSAGE } from './date-field';
 import { formatMoney, onlyDigits, requiredMessage } from '../../admin/shared/format';
 import { Equipment, TroubleshootingEntry, dayOnly, hoursAgo, nowLocal } from './data';
 import { nextShortId, updateSubDb, useSubSession } from './store';
@@ -14,7 +15,7 @@ import { photoSrc } from './photos';
 import './equipamento.css';
 
 /** Estados: idle · required (salvar vazio) · warranty (garantia = Sim sem datas) · troubleshooting (seção 5 preenchida) */
-const STATES = ['idle', 'required', 'warranty', 'troubleshooting'] as const;
+const STATES = ['idle', 'required', 'warranty', 'invaliddate', 'warrantyperiod', 'troubleshooting'] as const;
 type Mode = (typeof STATES)[number];
 
 const NOTES_MAX = 500;
@@ -179,6 +180,7 @@ function EquipamentoFormScreen() {
   const [d, setD] = useState<Draft>(initial);
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [badDate, setBadDate] = useState({ wStart: false, wEnd: false });
   const [banner, setBanner] = useState<'required' | 'multiple' | null>(null);
   const [submitTick, setSubmitTick] = useState(0);
   const [copyFrom, setCopyFrom] = useState('');
@@ -192,6 +194,20 @@ function EquipamentoFormScreen() {
     if (editing || mode === 'idle') return;
     const base = { name: 'Fritadeira 03', categoryId: refs.admin.categories.find((c) => c.name === 'Cocção')?.id ?? '', unitId: unitIds[0] ?? '', criticalityId: 'CRI-B', maker: 'Venâncio', model: 'FEA-20' };
     if (mode === 'warranty') setD((x) => ({ ...x, ...base, warranty: 'sim' }));
+    if (mode === 'warrantyperiod') setD((x) => ({ ...x, ...base, warranty: 'sim', wStart: '2026-10-20', wEnd: '2026-10-10' }));
+    if (mode === 'invaliddate') {
+      setD((x) => ({ ...x, ...base, warranty: 'sim', wStart: '2026-10-01' }));
+      // Digita uma data inexistente no Fim da garantia (como a pessoa faria) e sai do campo
+      window.setTimeout(() => {
+        const label = Array.from(document.querySelectorAll('label')).find((l) => l.textContent?.includes('Fim da garantia'));
+        const input = label?.htmlFor ? document.getElementById(label.htmlFor) as HTMLInputElement | null : null;
+        if (!input) return;
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '31/02/2027');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus(); input.blur();
+        input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      }, 150);
+    }
     if (mode === 'troubleshooting') {
       setD((x) => ({
         ...x, ...base, code: 'PAT-1840',
@@ -226,15 +242,20 @@ function EquipamentoFormScreen() {
     name: !d.name.trim() ? requiredMessage('Nome do equipamento') : undefined,
     categoryId: !d.categoryId ? requiredMessage('Categoria') : undefined,
     unitId: !d.unitId ? requiredMessage('Unidade') : undefined,
+    // Ambiente obrigatório: o equipamento sempre aparece na árvore (unidade > ambiente) e o prestador sabe onde encontrá-lo
+    environmentId: !d.environmentId ? requiredMessage('Ambiente') : undefined,
     statusId: !d.statusId ? requiredMessage('Status') : undefined,
     criticalityId: !d.criticalityId ? requiredMessage('Criticidade') : undefined,
-    wStart: d.warranty === 'sim' && !d.wStart ? requiredMessage('Início da garantia') : undefined,
-    wEnd: d.warranty === 'sim' ? (!d.wEnd ? requiredMessage('Fim da garantia') : d.wStart && d.wEnd < d.wStart ? 'O fim da garantia não pode ser anterior ao início' : undefined) : undefined,
+    // Vazio ≠ data inexistente (Data inválida) ≠ período incorreto (fim antes do início, valores mantidos para corrigir)
+    wStart: d.warranty === 'sim' ? (badDate.wStart ? INVALID_DATE_MESSAGE : !d.wStart ? requiredMessage('Início da garantia') : undefined) : undefined,
+    wEnd: d.warranty === 'sim' ? (badDate.wEnd ? INVALID_DATE_MESSAGE : !d.wEnd ? requiredMessage('Fim da garantia') : d.wStart && d.wEnd < d.wStart ? 'O fim da garantia deve ser igual ou posterior ao início' : undefined) : undefined,
     tips: emptyTips.length ? requiredMessage('Dica') : undefined,
     // O código é o que está na etiqueta e localiza o equipamento: um por equipamento
     code: d.code.trim() && db.equipments.some((x) => x.id !== editing?.id && x.code.trim().toLowerCase() === d.code.trim().toLowerCase()) ? 'Já existe um equipamento com este código' : undefined,
   };
-  const show = (k: keyof typeof problems) => (tried ? problems[k] : undefined);
+  // O período incorreto aparece assim que as duas datas estão preenchidas, sem esperar o salvar
+  const periodWrong = d.warranty === 'sim' && !!d.wStart && !!d.wEnd && d.wEnd < d.wStart;
+  const show = (k: keyof typeof problems) => (tried || (k === 'wEnd' && periodWrong) ? problems[k] : undefined);
   const invalid = Object.values(problems).some(Boolean);
 
   useEffect(() => {
@@ -313,7 +334,7 @@ function EquipamentoFormScreen() {
 
   const title = editing ? `Editar ${editing.name}` : 'Novo equipamento';
   // Variante da Nova solicitação (?return=): o menu fica em Solicitações e o breadcrumb mostra de onde a pessoa veio
-  const layout = (children: React.ReactNode) => <AppLayout active={returnTo ? 'solicitacoes' : 'equipamentos'} screen="equipamentos">{children}</AppLayout>;
+  const layout = (children: React.ReactNode) => <AppLayout active={returnTo ? 'solicitacoes' : 'equipamentos'} screen="equipamentos" layout={returnTo ? 'focused' : 'default'}>{children}</AppLayout>;
 
   if (param('id') && !editing) return layout(<Feedback type="error" title="Equipamento não encontrado" message="Volte para a listagem e tente novamente" />);
   if (!allowed || !scopeOk) {
@@ -362,8 +383,8 @@ function EquipamentoFormScreen() {
                 <Dropdown label="Unidade" required options={units} value={d.unitId} onChange={(v) => setD((x) => ({ ...x, unitId: v, environmentId: db.environments.some((e) => e.id === x.environmentId && e.unitId === v) ? x.environmentId : '' }))} error={show('unitId')} />
               </Col>
               <Col span={6}>
-                <DevNote note="Ambiente filtrado pela unidade escolhida (RF301); recomendado, mas opcional.">
-                  <Dropdown label="Ambiente" optional options={envs} value={d.environmentId} onChange={(v) => set('environmentId', v)} disabled={!d.unitId} placeholder={d.unitId ? 'Selecione' : 'Escolha a unidade primeiro'} />
+                <DevNote note="Ambiente filtrado pela unidade escolhida (RF301) e obrigatório: todo equipamento fica dentro de um ambiente, para aparecer na visão Hierárquica (unidade > ambiente > equipamento) e para o executor/prestador saber onde encontrá-lo. Unidade sem ambiente ativo não permite cadastrar equipamento: cadastre o ambiente em Unidades.">
+                  <Dropdown label="Ambiente" required options={envs} value={d.environmentId} onChange={(v) => set('environmentId', v)} disabled={!d.unitId} placeholder={d.unitId ? 'Selecione' : 'Escolha a unidade primeiro'} error={show('environmentId')} helperText={d.unitId && envs.length === 0 ? 'Esta unidade não tem ambientes ativos. Cadastre um ambiente em Unidades' : undefined} />
                 </DevNote>
               </Col>
             </Grid>
@@ -396,8 +417,8 @@ function EquipamentoFormScreen() {
               </Col>
               {d.warranty === 'sim' && (
                 <>
-                  <Col span={6}><DatePicker label="Início da garantia" required value={d.wStart} onChange={(v) => set('wStart', v)} error={show('wStart')} /></Col>
-                  <Col span={6}><DatePicker label="Fim da garantia" required value={d.wEnd} onChange={(v) => set('wEnd', v)} min={d.wStart || undefined} error={show('wEnd')} /></Col>
+                  <Col span={6}><DateField label="Início da garantia" required value={d.wStart} onChange={(v) => set('wStart', v)} invalid={badDate.wStart} onInvalid={(b) => setBadDate((x) => (x.wStart === b ? x : { ...x, wStart: b }))} error={show('wStart')} /></Col>
+                  <Col span={6}><DateField label="Fim da garantia" required value={d.wEnd} onChange={(v) => set('wEnd', v)} invalid={badDate.wEnd} onInvalid={(b) => setBadDate((x) => (x.wEnd === b ? x : { ...x, wEnd: b }))} error={show('wEnd')} /></Col>
                 </>
               )}
             </Grid>

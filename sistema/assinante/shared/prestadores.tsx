@@ -10,6 +10,7 @@ import { Provider, SPECIALTIES, WorkOrder } from './data';
 import { ResponsiveTable } from './ListKit';
 import { FilterControl } from '../../admin/shared/FilterControl';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
+import { ExportButton } from '../../admin/shared/ExportButton';
 import { lastOrder, mainContact, orderCompletedAt, providerName, providerOrders, withinDays } from './prestadores';
 import { ProviderStatusDialog } from './ProviderStatusDialog';
 import { useSubSession } from './store';
@@ -111,6 +112,11 @@ function PrestadoresScreen() {
         />
       )}
       columns={control}
+      actions={can('prestadores', 'exportar') && (
+        <DevNote note="Exportar (Excel): baixa um .xlsx com os prestadores do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
+          <ExportButton columns={shownColumns} rows={filtered} file="prestadores" sheet="Prestadores" noun={['prestador', 'prestadores']} label="Exportar prestadores para Excel" overrides={{ region: (r) => r.provider.regions.join('; ') }} />
+        </DevNote>
+      )}
     />
   );
 

@@ -6,6 +6,7 @@ import {
 import { useDevNotesEnabled } from '../admin/shared/dev-notes/devNotesFlag';
 import { useTheme } from '../admin/shared/theme';
 import { resetDb } from '../admin/shared/store';
+import { demoDateText } from '../admin/shared/clock';
 import { HoverPreview, Thumb, type Device } from './Thumb';
 import { type FlowNode, type Journey, type ScreenNode } from './config';
 import { actors, type Actor, type ActorId } from './actors';
@@ -252,6 +253,7 @@ export function PrototypeNav() {
         <div className="pn-topbar">
           <span className="pn-current">{current ? `${current.trail} / ${current.label}` : '-'}</span>
           <span className="pn-topbar-actions">
+            <span className="pn-open-raw" title="Todas as telas usam esta data-base nos prazos, atrasos e registros novos (a hora é a do computador)">Relógio simulado: {demoDateText()}</span>
             <button type="button" className="pn-open-raw" onClick={() => { resetDb(); resetSubDb(); frameRef.current?.contentWindow?.location.reload(); }}
               title="Desfaz cadastros e edições feitos no protótipo">
               <IconRefresh size={12} aria-hidden="true" /> Restaurar dados de demonstração

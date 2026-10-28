@@ -1,7 +1,7 @@
 import { CSSProperties, FormEvent, KeyboardEvent, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { IconCamera, IconQrcode } from '@tabler/icons-react';
-import { Button, Dialog, Feedback, Input, Stack } from '@maglev/ds';
+import { Button, Dialog, Feedback, Input, Stack, Tooltip } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { normalize, requiredMessage } from '../../admin/shared/format';
@@ -119,11 +119,11 @@ export function OpenByCode() {
 
   return (
     <>
-      <DevNote note="Atalho para abrir a solicitação de um equipamento pelo código da etiqueta, sem a busca. Mobile: botão só com o ícone de QR Code ao lado de “Nova solicitação” (“Ler QR Code”), que usa a câmera (onde o navegador permitir) e também aceita digitar o código; desktop: só informar o código. Enquanto digita, mostra sugestões (código ou nome, até 6, só equipamentos ativos das unidades do usuário), como na busca do solicitante; escolher uma abre a solicitação. Reconhece o código do equipamento (o que está impresso na etiqueta, único por equipamento) ou o link do QR. Equipamento inativo ou código desconhecido mostram o motivo. Só para quem pode cadastrar solicitações.">
-        {isMobile
-          // Mobile: só o ícone, ao lado de “Nova solicitação” (a classe row-menu-btn reaproveita o layout em linha e a área de toque dos botões de ícone do cabeçalho)
-          ? <Button variant="secondary" size="md" iconOnly className="row-menu-btn qr-icon-btn" iconLeft={<IconQrcode size={20} />} aria-label="Ler QR Code" onClick={() => setOpen(true)} />
-          : <Button variant="secondary" iconLeft={<IconQrcode size={20} />} onClick={() => setOpen(true)}>Informar código</Button>}
+      <DevNote note="Atalho para abrir a solicitação de um equipamento pelo código da etiqueta, sem a busca. Botão só com o ícone de QR Code ao lado de “Nova solicitação”, com tooltip: no mobile “Ler QR Code” (usa a câmera onde o navegador permitir e também aceita digitar o código) e no desktop “Informar código” (digitar o código). Enquanto digita, mostra sugestões (código ou nome, até 6, só equipamentos ativos das unidades do usuário), como na busca do solicitante; escolher uma abre a solicitação. Reconhece o código do equipamento (o que está impresso na etiqueta, único por equipamento) ou o link do QR. Equipamento inativo ou código desconhecido mostram o motivo. Só para quem pode cadastrar solicitações.">
+        {/* Só o ícone nos dois tamanhos de tela, com o texto da ação no tooltip e como nome acessível (a classe row-menu-btn reaproveita o layout em linha e a área de toque dos botões de ícone do cabeçalho) */}
+        <Tooltip content={isMobile ? 'Ler QR Code' : 'Informar código'} placement="bottom">
+          <Button variant="secondary" size="md" iconOnly className="row-menu-btn qr-icon-btn" iconLeft={<IconQrcode size={20} />} aria-label={isMobile ? 'Ler QR Code' : 'Informar código'} onClick={() => setOpen(true)} />
+        </Tooltip>
       </DevNote>
       {open && (
         <Dialog

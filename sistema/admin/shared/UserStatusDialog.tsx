@@ -3,6 +3,7 @@ import { DevNote } from './dev-notes/DevNote';
 import { AdminUser } from './data';
 import { logActivity, updateDb, useSession } from './store';
 import { Text } from './ui';
+import { todayIso } from './clock';
 
 /**
  * RF301 - Ativar/inativar usuário do Admin, com confirmação (RGN001).
@@ -18,7 +19,7 @@ export function UserStatusDialog({ user, onClose }: { user: AdminUser | null; on
   const neverJoined = !user.joinedAt;
 
   const confirm = () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
     updateDb((db) => ({
       ...db,
       adminUsers: db.adminUsers.map((u) => (u.id !== user.id ? u : deactivate ? { ...u, status: 'inativo' } : neverJoined ? { ...u, status: 'convite', invitedAt: today } : { ...u, status: 'ativo' })),

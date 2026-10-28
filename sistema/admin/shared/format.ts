@@ -1,3 +1,4 @@
+import { clockNow } from './clock';
 /** Formatação, máscaras e validações usadas nas telas (pt-BR, RNF017). */
 
 export const onlyDigits = (v: string) => v.replace(/\D/g, '');
@@ -84,6 +85,12 @@ export const formatMoneyCompact = (cents: number) => {
   return `${cents < 0 ? '-' : ''}R$ ${n} ${suffix}`;
 };
 
+/**
+ * Mensagem do telefone inválido (DDD inexistente ou sequência impossível, ex.: (00) 00000-0000). A regra de validação é de desenvolvimento;
+ * o protótipo só mostra a mensagem junto ao campo nas variantes “Telefone inválido”.
+ */
+export const PHONE_INVALID_MESSAGE = 'Informe um número de celular válido, com DDD existente';
+export const PHONE_INVALID_EXAMPLE = '(00) 00000-0000';
 export const formatNumber = (n: number) => n.toLocaleString('pt-BR');
 
 /** Quantidade de KPI: completa enquanto legível (1.802, 12.450); só a partir de 1 milhão abrevia (1,2 mi), com a mesma regra do dinheiro. */
@@ -101,7 +108,7 @@ export const formatDateTime = (iso: string) => {
 };
 
 /** Data de cadastro e tempo como cliente: { date: "15/03/2025", tenure: "18 meses" }. */
-export function sinceParts(iso: string, now = new Date()) {
+export function sinceParts(iso: string, now = clockNow()) {
   const d = new Date(`${iso}T00:00:00`);
   let months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
   if (now.getDate() < d.getDate()) months -= 1;
@@ -115,10 +122,10 @@ export const formatSince = (iso: string) => { const p = sinceParts(iso); return 
 
 /** Dias de hoje até a data (ISO `YYYY-MM-DD`); negativo = já passou. */
 export const daysUntil = (iso: string) => {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const today = clockNow(); today.setHours(0, 0, 0, 0);
   return Math.round((new Date(`${iso.slice(0, 10)}T00:00:00`).getTime() - today.getTime()) / 86_400_000);
 };
-export const addDaysIso = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+export const addDaysIso = (days: number) => { const d = clockNow(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 export const daysText = (n: number) => (n === 1 ? '1 dia' : `${n} dias`);
 
 export const openedAgo = (hours: number) => {
@@ -134,7 +141,7 @@ export const normalize = (v: string) => v.trim().toLowerCase().normalize('NFD').
 export const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 /** Tempo de cliente em meses, para colunas de tabela (ex.: "18 meses" - RF201). */
-export function tenureMonths(iso: string, now = new Date()) {
+export function tenureMonths(iso: string, now = clockNow()) {
   const d = new Date(`${iso}T00:00:00`);
   let months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
   if (now.getDate() < d.getDate()) months -= 1;

@@ -3,6 +3,7 @@ import { SUSPENSION_GRACE_DAYS, AccessSession, ActionKey, Activity, ActivityKind
 import { addDaysIso } from './format';
 import { AccessAlert, deviceLabel, isAtypical, ACCESS_POLICY } from './access-security';
 import { QrReason, RegEquipment, currentQr, qrReasonLabel, tokenFor } from './qr-registry';
+import { clockNow, clockIso, todayIso } from './clock';
 
 /**
  * "Banco" do protótipo: carga inicial + alterações feitas nas telas, salvos em localStorage.
@@ -35,13 +36,13 @@ export function updateDb(fn: (db: Db) => Db) { setDb(fn(getDb())); }
 
 /** Registra no histórico de ações o que o usuário logado acabou de fazer (aparece em Usuários > Histórico de ações). */
 export function logActivity(userId: string, module: ActivityModule, kind: ActivityKind, action: string) {
-  const entry: Activity = { id: `ACT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, at: new Date().toISOString(), userId, module, kind, action };
+  const entry: Activity = { id: `ACT-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, at: clockIso(), userId, module, kind, action };
   updateDb((db) => ({ ...db, activity: [...(db.activity ?? []), entry] }));
 }
 
 /** Reenvia o convite de primeiro acesso de um usuário do Admin com convite pendente (atualiza a data do envio e registra a ação). */
 export function resendAdminInvite(actorId: string, user: AdminUser) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   updateDb((db) => ({ ...db, adminUsers: db.adminUsers.map((u) => (u.id === user.id ? { ...u, invitedAt: today } : u)) }));
   logActivity(actorId, 'Usuários', 'edicao', `Reenviou o convite de acesso para ${user.name}`);
 }
@@ -54,7 +55,7 @@ export function inactivateQr(actorId: string, subscriber: Subscriber, equipment:
   const db = getDb();
   const oldToken = currentQr(equipment, db.qrEvents).token;
   const newToken = tokenFor(`${subscriber.id}-${equipment.id}-${Date.now()}`);
-  const at = new Date().toISOString();
+  const at = clockIso();
   updateDb((d) => ({ ...d, qrEvents: [...d.qrEvents, { id: `QRE-${Date.now()}`, subscriberId: subscriber.id, equipmentId: equipment.id, at, byUserId: actorId, reason, detail: detail?.trim() || undefined, oldToken, newToken }] }));
   logActivity(actorId, 'Assinantes', 'inativacao', `Inativou o código QR do equipamento ${equipment.name} (${subscriberName(subscriber)}) e gerou um novo código. Motivo: ${qrReasonLabel(reason).toLowerCase()}`);
   return newToken;
@@ -80,7 +81,7 @@ export function regularize(actorId: string, subscriber: Subscriber) {
 export function recordAccess(user: AdminUser, failedAttempts = 0): AccessAlert[] {
   const db = getDb();
   const device = deviceLabel();
-  const now = new Date();
+  const now = clockNow();
   const alerts: AccessAlert[] = [];
   if (!db.accessSessions.some((x) => x.userId === user.id && x.device === device)) alerts.push('novo-dispositivo');
   if (isAtypical(now)) alerts.push('horario-atipico');
@@ -95,7 +96,7 @@ export function endSession(actorId: string, session: AccessSession, passwordRese
   const target = getDb().adminUsers.find((u) => u.id === session.userId);
   updateDb((d) => ({
     ...d,
-    accessSessions: d.accessSessions.map((x) => (x.id === session.id ? { ...x, status: 'encerrada' as const, endedAt: new Date().toISOString(), endedBy: actorId, passwordReset, reviewed: true } : x)),
+    accessSessions: d.accessSessions.map((x) => (x.id === session.id ? { ...x, status: 'encerrada' as const, endedAt: clockIso(), endedBy: actorId, passwordReset, reviewed: true } : x)),
     adminUsers: passwordReset ? d.adminUsers.map((u) => (u.id === session.userId ? { ...u, mustReset: true } : u)) : d.adminUsers,
   }));
   logActivity(actorId, 'Usuários', 'edicao', `Encerrou a sessão de ${target?.name ?? 'um usuário'}${passwordReset ? ' e pediu nova senha' : ''}`);
@@ -165,4 +166,4 @@ export const nextId = (prefix: string, ids: string[]) => {
 };
 
 /** Registro de quem fez o quê (RNF011 / RF301-RGN004) - o feed por usuário é ZC004 e não entra. */
-export const nowIso = () => new Date().toISOString();
+export const nowIso = () => clockIso();

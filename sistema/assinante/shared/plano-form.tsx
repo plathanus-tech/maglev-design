@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { IconArrowDown, IconArrowLeft, IconArrowUp, IconChevronLeft, IconGripVertical, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
-import { Accordion, Badge, Button, Card, DatePicker, Dialog, Dropdown, Feedback, Input, RadioButton, Stack, Textarea } from '@maglev/ds';
+import { Accordion, Badge, Button, Card, DatePicker, Dialog, Dropdown, Feedback, Input, RadioButton, Stack, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, requiredMessage } from '../../admin/shared/format';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
@@ -13,7 +13,17 @@ import { EquipmentPicker } from './PlanEquipmentPicker';
 import { EVERY_UNIT, FREQUENCY_OPTIONS, TODAY, WEEKDAY_OPTIONS, describeFrequency, executorOf, occurrences, savePlan } from './preventivas';
 import { nextSeq, unitName, useSubSession } from './store';
 import { useRefs } from './ui';
-import { Col, Grid, ReadField, SectionLabel, Text, goTo, param, setFlash } from './ui';
+import { Col, Grid, ReadField, SectionLabel, Text, goTo, param, setFlash, takeFlash } from './ui';
+
+/** Rascunho do plano guardado ao sair para cadastrar um prestador (volta com ?restore=1): o formulário todo e a etapa em que estava. */
+const PLAN_DRAFT_KEY = 'maglev.v2.sub.planoDraft';
+interface PlanDraft { d: Draft; step: number; maxStep: number }
+let planDraftCache: PlanDraft | null | undefined;
+const takePlanDraft = (): PlanDraft | null => {
+  if (planDraftCache !== undefined) return planDraftCache;
+  try { const raw = sessionStorage.getItem(PLAN_DRAFT_KEY); sessionStorage.removeItem(PLAN_DRAFT_KEY); planDraftCache = raw ? (JSON.parse(raw) as PlanDraft) : null; } catch { planDraftCache = null; }
+  return planDraftCache;
+};
 
 /**
  * RF601 - Criar/editar plano em 6 passos. Stepper de formulário próprio (form-stepper.tsx, mesma linguagem do Andamento da OS) + um Card por passo. Variantes: #state=required · duplicate (nome já usado por outro plano) · step2 … step6 · ?id= (edição).
@@ -34,7 +44,7 @@ const CHK_END = '__end';
 const blankItem = (): ChecklistItem => ({ id: uid(), text: '', kind: 'obrigatorio' });
 const BLANK: Draft = {
   name: '', description: '', equipmentIds: [], startDate: '', endDate: '', frequency: 'mensal', every: '1', refDay: '', winFrom: '', winTo: '', durationH: '',
-  executorKind: '', userId: '', providerId: '', technician: '', checklist: [blankItem()], evidences: [], onAnomaly: '',
+  executorKind: '', userId: '', providerId: '', technician: '', checklist: [], evidences: [], onAnomaly: '',
 };
 const READING = 'Leitura/medição';
 const UNIT_OPTIONS = READING_UNITS.map((u) => ({ value: u, label: u }));
@@ -60,10 +70,23 @@ function PlanoFormScreen() {
   const { db, user, can, unitIds } = useSubSession();
   const refs = useRefs();
   const editing = db.plans.find((p) => p.id === param('id'));
+  // Duplicar (?from=): copia a configuração do plano e deixa em branco o que não pode se repetir (nome, equipamentos, executor e início)
+  const source = !editing ? db.plans.find((p) => p.id === param('from')) : undefined;
   const initialState = useMemo(readState, []);
-  const startStep = /^step([2-6])$/.exec(initialState)?.[1];
+  const toast = useToast();
+  // Volta do cadastro de prestador (?restore=1&provider=): devolve tudo o que já tinha sido preenchido e escolhe o prestador novo
+  const [restored] = useState(() => (!editing && param('restore') ? takePlanDraft() : null));
+  useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const startStep = /^step([2-6])(?:empty)?$/.exec(initialState)?.[1];
+  // Variante step4empty: mesmo exemplo preenchido, mas sem nenhum item de checklist (mostra o passo 4 vazio)
+  const emptyChecklist = initialState === 'step4empty';
   const [d, setD] = useState<Draft>(() => {
     if (editing) return fromPlan(editing);
+    if (restored) return { ...restored.d, ...(param('provider') ? { executorKind: 'prestador' as const, providerId: param('provider')!, technician: '' } : {}) };
+    if (source) {
+      const base = fromPlan(source);
+      return { ...base, name: '', equipmentIds: [], startDate: '', endDate: '', executorKind: BLANK.executorKind, userId: BLANK.userId, providerId: BLANK.providerId, technician: BLANK.technician, checklist: base.checklist.map((c) => ({ ...c, id: uid() })) };
+    }
     if (initialState === 'duplicate') {
       // Variante do navegador: nome igual ao de um plano existente, com um equipamento escolhido, para mostrar o erro do passo 1
       const eqId = db.equipments.find((e) => unitIds.includes(e.unitId))?.id;
@@ -71,23 +94,24 @@ function PlanoFormScreen() {
     }
     if (!startStep) return structuredClone(BLANK);
     // Variantes do navegador: exemplo preenchido para abrir direto no passo
-    const lava = db.equipments.filter((e) => e.name.startsWith('Lava-louças') && unitIds.includes(e.unitId)).slice(0, 2).map((e) => e.id);
+    const lavaAll = db.equipments.filter((e) => e.name.startsWith('Lava-louças') && unitIds.includes(e.unitId));
+    const lava = lavaAll.filter((e) => e.unitId === lavaAll[0]?.unitId).slice(0, 2).map((e) => e.id);
     return {
       name: 'Preventiva trimestral das lava-louças', description: 'Limpeza dos braços de lavagem e checagem das bombas', equipmentIds: lava,
       startDate: TODAY, endDate: '', frequency: 'mensal', every: '3', refDay: '10', winFrom: '08:00', winTo: '10:00', durationH: '2',
       executorKind: 'prestador', userId: '', providerId: 'PRE-005', technician: 'Nilson Ferraz',
-      checklist: [{ id: uid(), text: 'Limpar os braços de lavagem', kind: 'obrigatorio' }, { id: uid(), text: 'Medir a temperatura de enxágue', kind: 'leitura' }, { id: uid(), text: 'Verificar o dreno', kind: 'opcional' }],
+      checklist: emptyChecklist ? [] : [{ id: uid(), text: 'Limpar os braços de lavagem', kind: 'obrigatorio' }, { id: uid(), text: 'Medir a temperatura de enxágue', kind: 'leitura' }, { id: uid(), text: 'Verificar o dreno', kind: 'opcional' }],
       evidences: ['Foto antes/depois'], onAnomaly: 'abrir-solicitacao',
     };
   });
   const initialDraft = useRef<string>();
-  if (initialDraft.current === undefined) initialDraft.current = JSON.stringify(d);
+  if (initialDraft.current === undefined) initialDraft.current = JSON.stringify(restored ? BLANK : d);
   const dirty = JSON.stringify(d) !== initialDraft.current;
   const guard = useLeaveGuard(dirty);
   const [confirmImpact, setConfirmImpact] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const [step, setStep] = useState(editing ? 1 : Number(startStep ?? 1));
-  const [maxStep, setMaxStep] = useState(editing ? 6 : Number(startStep ?? 1));
+  const [step, setStep] = useState(editing ? 1 : restored?.step ?? Number(startStep ?? 1));
+  const [maxStep, setMaxStep] = useState(editing ? 6 : restored?.maxStep ?? Number(startStep ?? 1));
   const [tried, setTried] = useState(initialState === 'required' || initialState === 'duplicate');
   const [banner, setBanner] = useState<'required' | 'multiple' | null>(null);
   const [tick, setTick] = useState(initialState === 'required' || initialState === 'duplicate' ? 1 : 0);
@@ -96,7 +120,7 @@ function PlanoFormScreen() {
 
   useEffect(() => {
     const on = () => {
-      const m = /^step([2-6])$/.exec(readState());
+      const m = /^step([2-6])(?:empty)?$/.exec(readState());
       if (m && !editing) { setStep(Number(m[1])); setMaxStep((x) => Math.max(x, Number(m[1]))); setTried(false); }
     };
     window.addEventListener('hashchange', on);
@@ -145,16 +169,31 @@ function PlanoFormScreen() {
   const executorUsers = db.users.filter((u) => (u.profile === 'executor' && u.status === 'ativo') || u.id === d.userId);
   const providers = db.providers.filter((p) => p.status === 'ativo' && categories.every((c) => p.categoryIds.includes(c)));
   const provider = db.providers.find((p) => p.id === d.providerId);
+  /** Cadastra um prestador sem perder o plano: guarda o rascunho e volta com ?restore=1&provider=. */
+  const newProvider = () => {
+    try { sessionStorage.setItem(PLAN_DRAFT_KEY, JSON.stringify({ d, step, maxStep } satisfies PlanDraft)); } catch { /* sem storage */ }
+    goTo(`prestador-form.html?return=plano-form.html${categories.length ? `&cat=${categories.join(',')}` : ''}`);
+  };
+  const newProviderButton = can('prestadores', 'cadastrar')
+    ? <Button variant="ghost" size="sm" iconLeft={<IconPlus size={16} />} onClick={newProvider}>Novo prestador</Button>
+    : undefined;
   const providerInactive = !!provider && provider.status === 'inativo';
   const everyN = Math.floor(Number(d.every));
   const schedule = { startDate: d.startDate, endDate: d.endDate || undefined, frequency: d.frequency, every: everyN > 0 ? everyN : 1, refDay: d.frequency === 'diaria' ? 1 : Number(d.refDay) || 1 };
   const preview = useMemo(() => (d.startDate ? occurrences(schedule, TODAY, 6) : []), [d.startDate, d.endDate, d.frequency, d.every, d.refDay]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── validação por passo (CTA002: não salva sem equipamento, periodicidade, executor e checklist) ──
+  // Trava contra plano repetido: o mesmo equipamento não pode estar em dois planos ativos com a mesma periodicidade (geraria OS duplicadas na mesma data)
+  const conflictPlan = db.plans.find((p) => p.id !== editing?.id && p.status === 'ativo' && p.frequency === d.frequency && p.every === (Math.floor(Number(d.every)) || 1)
+    && (d.frequency === 'diaria' || p.refDay === (Number(d.refDay) || 1)) && p.equipmentIds.some((id) => d.equipmentIds.includes(id)));
+  const conflictEquipment = conflictPlan ? db.equipments.find((e) => conflictPlan.equipmentIds.includes(e.id) && d.equipmentIds.includes(e.id)) : undefined;
+  const conflictMessage = conflictPlan && conflictEquipment ? `${conflictEquipment.name} já está no plano “${conflictPlan.name}” com a mesma periodicidade. Ajuste a periodicidade ou retire o equipamento` : undefined;
+
+  // ── validação por passo (CTA002: não salva sem equipamento, periodicidade e executor; checklist é opcional) ──
   const errorsOf = (n: number): Record<string, string | undefined> => {
     if (n === 1) return { name: !d.name.trim() ? requiredMessage('Nome do plano')
         : db.plans.some((p) => p.id !== editing?.id && p.name.trim().toLowerCase() === d.name.trim().toLowerCase()) ? 'Já existe um plano com esse nome. Informe um nome diferente'
-        : undefined, equipments: !d.equipmentIds.length ? requiredMessage('Equipamentos') : undefined };
+        : undefined, equipments: !d.equipmentIds.length ? requiredMessage('Equipamentos')
+          : new Set(selectedEquipments.map((e) => e.unitId)).size > 1 ? 'Um plano só pode ter equipamentos de uma mesma unidade' : undefined };
     if (n === 2) {
       const day = Number(d.refDay);
       const dayErr = d.frequency === 'diaria' ? undefined
@@ -163,7 +202,7 @@ function PlanoFormScreen() {
       return {
         startDate: !d.startDate ? requiredMessage('Data de início') : undefined,
         endDate: d.endDate && d.startDate && d.endDate < d.startDate ? 'A data de término deve ser igual ou posterior ao início' : undefined,
-        every: !d.every.trim() ? requiredMessage('Repetir a cada') : !(everyN >= 1) ? 'Informe um número maior que zero' : undefined,
+        every: !d.every.trim() ? requiredMessage('Repetir a cada') : !(everyN >= 1) ? 'Informe um número maior que zero' : conflictMessage,
         refDay: dayErr,
         winFrom: d.winTo && !d.winFrom ? requiredMessage('Início da janela') : undefined,
         winTo: d.winFrom && !d.winTo ? requiredMessage('Fim da janela') : d.winFrom && d.winTo && d.winTo <= d.winFrom ? 'O fim deve ser depois do início' : undefined,
@@ -178,7 +217,8 @@ function PlanoFormScreen() {
       };
     }
     if (n === 4) {
-      const e: Record<string, string | undefined> = { checklist: !d.checklist.length ? requiredMessage('Checklist') : undefined };
+      // Checklist opcional: sem itens, a pessoa segue sem ele; só os itens que existirem precisam de descrição
+      const e: Record<string, string | undefined> = {};
       d.checklist.filter((c) => c.kind !== 'leitura').forEach((c) => {
         e[`${c.id}.text`] = !c.text.trim() ? requiredMessage('Descrição') : undefined;
       });
@@ -217,7 +257,18 @@ function PlanoFormScreen() {
 
   const goStep = (n: number) => { setStep(n); setMaxStep((m) => Math.max(m, n)); setTried(false); setBanner(null); window.scrollTo({ top: 0 }); window.setTimeout(() => topRef.current?.focus(), 0); };
   const attempt = () => { setTried(true); setBanner(null); setTick((n) => n + 1); };
-  const next = () => { if (hasErrors(step)) return attempt(); goStep(step + 1); };
+  // Passo 4 (checklist opcional): linhas em branco são descartadas ao continuar, para não bloquear quem decidiu seguir sem checklist
+  const noChecklist = plain.every((c) => !c.text.trim());
+  const next = () => {
+    if (step === 4) {
+      const kept = d.checklist.filter((c) => c.kind === 'leitura' || c.text.trim());
+      if (kept.length !== d.checklist.length) setD((x) => ({ ...x, checklist: kept }));
+      goStep(5);
+      return;
+    }
+    if (hasErrors(step)) return attempt();
+    goStep(step + 1);
+  };
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -304,7 +355,7 @@ function PlanoFormScreen() {
   );
 
   const step1 = (
-    <Card className="card-open" title="Informações" subtitle="Identifique o plano e escolha os equipamentos que seguem a preventiva">
+    <Card className="card-open" title="Informações" subtitle="Identifique o plano e escolha os equipamentos que seguem a preventiva. Um plano pode ser usado apenas para equipamentos de uma mesma unidade">
       <div className="card-body-tight">
         <Stack gap="lg">
           <Grid>
@@ -429,8 +480,14 @@ function PlanoFormScreen() {
                     label="Prestador padrão" required options={providers.map((p) => ({ value: p.id, label: p.tradeName ?? p.name, description: p.regions.length ? `Atende: ${p.regions.join(', ')}` : undefined }))} value={d.providerId}
                     onChange={(v) => setD((x) => ({ ...x, providerId: v, technician: '' }))} error={shown('providerId')} placeholder="Selecione o prestador"
                     helperText={categories.length ? `Atendem as categorias: ${categories.map((c) => refs.category(c)?.name ?? c).join(', ')}` : undefined}
+                    emptyAction={newProviderButton}
                   />
                 </DevNote>
+                {newProviderButton && (
+                  <DevNote note="Prestador não está na lista: “Novo prestador” leva ao cadastro de prestador (sem menu lateral, breadcrumb de volta ao Novo plano) com as categorias dos equipamentos já marcadas; ao salvar, volta para este passo com o prestador escolhido e o plano como estava (todos os passos). Só para quem pode cadastrar prestadores.">
+                    <div>{newProviderButton}</div>
+                  </DevNote>
+                )}
               </Col>
               {providerInactive && <Col span={12}><Feedback type="warning" title="Prestador inativo" message="O prestador padrão deste plano está inativo e não é ofertado. Escolha outro" /></Col>}
               {providers.length === 0 && <Col span={12}><Feedback type="info" message="Nenhum prestador ativo atende todas as categorias dos equipamentos selecionados. Revise a seleção no passo 1 ou cadastre um prestador" /></Col>}
@@ -448,11 +505,15 @@ function PlanoFormScreen() {
   );
 
   const step4 = (
-    <DevNote note="RF601-FLU005 / CTA002: ao menos 1 item. Tipos: Obrigatório (precisa ser marcado), Leitura obrigatória (valor + unidade de medida na execução - RF603) e Opcional.">
+    <DevNote note="RF601-FLU005: o checklist é opcional (pode-se seguir sem itens). Enquanto não houver item preenchido o botão vira “Continuar sem checklist” e um aviso explica a consequência; linhas em branco são descartadas ao continuar; a revisão final mostra “Nenhum item de checklist configurado”. Tipos: Obrigatório (precisa ser marcado), Leitura obrigatória (valor + unidade de medida na execução - RF603) e Opcional.">
       <Card className="card-open" title="Checklist" subtitle="Procedimentos que o executor percorre em cada preventiva">
         <div className="card-body-tight">
           <Stack gap="lg">
-            {shown('checklist') && <Feedback type="error" message={shown('checklist')!} />}
+            {noChecklist && (
+              <div className="fb-single">
+                <Feedback type="info" message="Sem checklist, o executor não terá itens para marcar nas execuções. Você pode adicionar itens depois, editando o plano" />
+              </div>
+            )}
             <span className="sr-only" role="status" aria-live="polite">{liveMsg}</span>
             {plain.map((c, i) => (
               <div key={c.id} data-chk-id={c.id} style={dragId === c.id ? { transform: `translateY(${dragDy}px)` } : undefined} className={`chk-item${dragId === c.id ? ' is-dragging' : ''}${overId === c.id && dragId && dragId !== c.id ? ' is-over' : ''}`}>
@@ -607,7 +668,8 @@ function PlanoFormScreen() {
       <Card className="card-open" title="Checklist" actions={editBtn(4)}>
         <div className="card-body-tight">
           <Stack gap="sm">
-            {d.checklist.map((c) => (
+            {d.checklist.filter((c) => c.kind === 'leitura' || c.text.trim()).length === 0 && <span className="page-text">Nenhum item de checklist configurado</span>}
+            {d.checklist.filter((c) => c.kind === 'leitura' || c.text.trim()).map((c) => (
               <Stack key={c.id} direction="horizontal" justify="between" align="start" gap="md">
                 <span className="page-text"><strong>{c.text || '-'}</strong></span>
                 <Badge status={c.kind === 'opcional' ? 'neutral' : c.kind === 'leitura' ? 'info' : 'brand'}>{CHECKLIST_KIND_LABEL[c.kind]}</Badge>
@@ -653,6 +715,11 @@ function PlanoFormScreen() {
             <DevNote note="Layout focado (sem sidebar): o retorno à listagem é explícito no topo, no lugar do breadcrumb. Não é o “Voltar” das etapas. Com dados não salvos, pede confirmação antes de sair.">
               <a className="back-link" href="planos.html"><IconArrowLeft size={16} aria-hidden="true" />Voltar para planos de manutenção</a>
             </DevNote>
+            {source && (
+              <DevNote note="Plano duplicado: abre o formulário já com periodicidade, janela, duração, checklist, leituras, evidências e anomalia do plano original; nome, equipamentos, executor e data de início ficam em branco (nome e equipamentos não podem se repetir sem gerar OS duplicadas; executor e início dependem da unidade escolhida). Nada é salvo até concluir os passos.">
+                <Feedback type="info" title={`Cópia de “${source.name}”`} message="Informe o nome, os equipamentos (de uma única unidade), o executor e a data de início. O restante foi copiado e pode ser ajustado" />
+              </DevNote>
+            )}
             <PageHeader
               title={editing ? 'Editar plano' : 'Novo plano'}
               subtitle={editing ? 'As alterações serão aplicadas apenas às próximas execuções' : 'Configure as manutenções preventivas dos seus equipamentos'}
@@ -703,7 +770,7 @@ function PlanoFormScreen() {
                     <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar plano'}</Button>
                   </DevNote>
                 )
-                : <Button type="submit" iconRight={<IconChevronRight size={20} />}>Continuar</Button>}
+                : <Button type="submit" iconRight={<IconChevronRight size={20} />}>{step === 4 && noChecklist ? 'Continuar sem checklist' : 'Continuar'}</Button>}
             </Stack>
               )}
         </Stack>

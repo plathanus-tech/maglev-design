@@ -1,4 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
+import { todayIso } from '../../admin/shared/clock';
+import { DateField, INVALID_DATE_MESSAGE } from './date-field';
 import {
   IconAlertTriangle, IconCheck, IconCircleDot, IconCopy, IconFilePlus, IconMinus, IconPencil, IconPlayerPlay, IconPlus, IconTrash,
   IconUserEdit, IconCircleCheck, IconMapPin, IconArrowsExchange, IconDownload, IconEye, IconFileInvoice, IconFileText, IconPhoto,
@@ -173,6 +175,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
   const [val, setVal] = useState('');
   const [sel, setSel] = useState('');
   const [date, setDate] = useState('');
+  const [badDate, setBadDate] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [file, setFile] = useState('');
@@ -180,7 +183,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
   const [tried, setTried] = useState(false);
   const key = typeof dlg === 'object' && dlg ? 'rm' : dlg;
   useEffect(() => {
-    setTried(false); setVal(''); setFile(''); setCostFiles([]); setDate(''); setFrom(''); setTo('');
+    setTried(false); setVal(''); setFile(''); setCostFiles([]); setDate(''); setBadDate(false); setFrom(''); setTo('');
     if (dlg === 'status') { setSel(preset ?? ''); setText(''); }
     else if (dlg === 'diagnosis') { setText(order.diagnosis ?? ''); setText2(order.solution ?? ''); }
     else if (dlg === 'conclude') { setText(order.solution ?? ''); }
@@ -230,14 +233,14 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
   // ── Alterar status (RGN007: sem restrição por perfil) / cancelar (RGN004: exige motivo) ──
   if (dlg === 'status') {
     const cancel = sel === STO.CANCELADA;
-    const options = refs.activeStatuses('os').filter((s) => s.id !== order.statusId && s.id !== STO.CONCLUIDA).map((s) => ({ value: s.id, label: s.name }));
-    const blocked = needsApproval(order) && [STO.ANDAMENTO, STO.VALIDACAO].includes(sel as never);
+    // “Aguardando validação” não é escolhida à mão: só se chega nela indicando a conclusão da execução (assim a OS não vai para validação sem ter sido executada)
+    const options = refs.activeStatuses('os').filter((s) => s.id !== order.statusId && s.id !== STO.CONCLUIDA && s.id !== STO.VALIDACAO).map((s) => ({ value: s.id, label: s.name }));
+    const blocked = needsApproval(order) && sel === STO.ANDAMENTO;
     const errSel = tried && !sel ? requiredMessage('Novo status') : blocked ? 'Aprove o orçamento antes de avançar para a execução' : undefined;
     const errText = tried && cancel && !text.trim() ? requiredMessage('Motivo do cancelamento') : undefined;
     const go = () => {
       setTried(true);
       if (!sel || blocked || (cancel && !text.trim())) return;
-      if (sel === STO.VALIDACAO) { setDlg('conclude'); return; }
       patchOrder(order.id, user.name, (o) => ({ ...o, statusId: sel, ...(cancel ? { cancelReason: text.trim() } : {}) }),
         [`Alterou o status de ${stName(order.statusId)} para ${stName(sel)}${cancel ? ` - motivo: ${text.trim()}` : text.trim() ? ` - ${text.trim()}` : ''}`]);
       toast.show({ type: 'success', title: cancel ? 'OS cancelada' : 'Status alterado', message: `A OS agora está em ${stName(sel)}.` });
@@ -247,7 +250,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
       <Dialog open onClose={close} title={cancel ? `Cancelar ${order.id}?` : 'Alterar status'} subtitle={`Status atual: ${stName(order.statusId)}`}
         actions={<Actions onClose={close} onConfirm={go} label={cancel ? 'Cancelar OS' : 'Salvar status'} destructive={cancel} />}>
         <Stack gap="md">
-          <DevNote note="RGN007: mudança de status sem restrição por perfil (responsável, executor ou prestador podem mover) - toda mudança fica no log com o autor. Exceção: aprovar orçamento (RGN008). Concluída só pela validação do solicitante (RGN005); OS com orçamento não aprovado não vai para execução (RGN002 / CTA001). Marcar “Aguardando aprovação” sem orçamento representa aprovação externa (ex.: CFO).">
+          <DevNote note="RGN007: mudança de status sem restrição por perfil (responsável, executor ou prestador podem mover) - toda mudança fica no log com o autor. Exceção: aprovar orçamento (RGN008). Concluída só pela validação do solicitante (RGN005); “Aguardando validação” não aparece aqui: só se chega nela ao indicar a conclusão da execução, para a OS não ir à validação sem execução; OS com orçamento não aprovado não vai para execução (RGN002 / CTA001). Marcar “Aguardando aprovação” sem orçamento representa aprovação externa (ex.: CFO).">
             <Dropdown label="Novo status" required placeholder="Selecione o status" options={options} value={sel} onChange={setSel} error={errSel} />
           </DevNote>
           {cancel
@@ -260,11 +263,11 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
 
   // ── Visita / revisita (CTA005) ──
   if (dlg === 'addvisit') {
-    const e = { date: tried && !date ? requiredMessage('Data') : undefined, from: tried && !from ? requiredMessage('Início') : undefined,
+    const e = { date: badDate ? INVALID_DATE_MESSAGE : tried && !date ? requiredMessage('Data') : undefined, from: tried && !from ? requiredMessage('Início') : undefined,
       to: tried && !to ? requiredMessage('Fim') : tried && from && to <= from ? 'O fim deve ser depois do início' : undefined, tech: tried && !text2.trim() ? requiredMessage('Técnico') : undefined };
     const go = () => {
       setTried(true);
-      if (!date || !from || !to || to <= from || !text2.trim()) return;
+      if (!date || badDate || !from || !to || to <= from || !text2.trim()) return;
       const n = order.visits.length + 1;
       patchOrder(order.id, user.name, (o) => ({ ...o, visits: [...o.visits, { id: `V${n}`, date, from, to, technician: text2.trim(), note: text.trim() || undefined }], schedule: { date, from, to } }),
         [`Agendou a ${n === 1 ? 'visita' : `revisita nº ${n}`} para ${formatDate(date)} (${from} às ${to}) com ${text2.trim()}`]);
@@ -276,7 +279,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
         actions={<Actions onClose={close} onConfirm={go} label="Adicionar visita" />}>
         <DevNote note="RF503-CTA005: uma OS aceita mais de uma visita/revisita. 💡 P09 (RF502-RGN004): a confirmar se o agendamento é do gestor, do prestador ou de ambos.">
           <Grid>
-            <Col span={12}><DatePicker label="Data agendada" required value={date} onChange={setDate} error={e.date} /></Col>
+            <Col span={12}><DateField label="Data agendada" required min={todayIso()} minMessage="A data não pode ser anterior a hoje" value={date} onChange={setDate} invalid={badDate} onInvalid={setBadDate} error={e.date} /></Col>
             <Col span={6}><Input label="Início da janela" type="time" required value={from} onChange={(ev) => setFrom(ev.target.value)} error={e.from} /></Col>
             <Col span={6}><Input label="Fim da janela" type="time" required value={to} onChange={(ev) => setTo(ev.target.value)} error={e.to} /></Col>
             <Col span={12}><Input label="Técnico" required autoComplete="off" value={text2} onChange={(ev) => setText2(ev.target.value)} error={e.tech} /></Col>

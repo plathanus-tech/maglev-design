@@ -50,6 +50,8 @@ export const journeys: Journey[] = [
         variants: [
           v('colab-sol-required', 'Campos obrigatórios e aceite dos termos', `solicitar.html?${q(withoutOpen)}#state=required`),
           v('colab-sol-duplicate', 'Aviso de duplicidade (solicitação já aberta)', `solicitar.html?${q(withOpen)}#state=duplicate`),
+          v('colab-sol-review', 'Revisão antes de enviar', `solicitar.html?${q(withoutOpen)}#state=review`),
+          v('colab-sol-phone', 'Telefone de contato inválido', `solicitar.html?${q(withoutOpen)}#state=phoneinvalid`),
           v('colab-sol-troubleshooting', 'Com solução de problemas', `solicitar.html?${q(withTips)}#state=troubleshooting`),
           { ...v('colab-sol-ts-tips', 'Dicas de solução de problemas', `solicitar.html?${q(withTips)}#state=tip1`), sub: true },
           { ...v('colab-sol-ts-resolved', 'Problema resolvido', `solicitar.html?${q(withTips)}#state=resolved`), sub: true },
@@ -60,7 +62,8 @@ export const journeys: Journey[] = [
         id: 'colab-acompanhar', label: 'RF004 - Acompanhar solicitação e confirmar resolução', path: `${s}/acompanhar.html?p=${triage}`,
         variants: [
           v('colab-ac-sent', 'Solicitação enviada (protocolo e link de acompanhamento)', `${linkToRequestByToken(newest)}&novo=1`),
-          v('colab-ac-info', 'Aguardando sua informação (responder à complementação)', `acompanhar.html?p=${awaitingInfo}`),
+          v('colab-ac-info', 'Aguardando sua informação (responder à complementação)', `acompanhar.html?p=${awaitingInfo}&reset=1`),
+          { ...v('colab-ac-answered', 'Resposta enviada (a solicitação volta para análise)', `acompanhar.html?p=${awaitingInfo}#state=answered`), sub: true },
           v('colab-ac-service', 'Em atendimento', `acompanhar.html?p=${inService}`),
           v('colab-ac-validate', 'Aguardando confirmação (O problema foi resolvido?)', `acompanhar.html?p=${toValidate}`),
           { ...v('colab-ac-val-yes', 'Problema resolvido — confirmação registrada', `acompanhar.html?p=${toValidate}#state=resolvedok`), sub: true },

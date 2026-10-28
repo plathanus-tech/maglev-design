@@ -20,7 +20,7 @@ import {
 } from './solicitacoes-shared';
 
 /** Estados: idle · reject · complement · close (abrem o diálogo) · required (campos obrigatórios) · answered (simula a resposta do solicitante - CTA004) */
-const STATES = ['idle', 'reject', 'complement', 'close', 'required', 'answered'] as const;
+const STATES = ['idle', 'reject', 'complement', 'close', 'required', 'answered', 'prioritychange'] as const;
 type Mode = (typeof STATES)[number];
 type Dlg = 'reject' | 'complement' | 'close' | null;
 
@@ -61,6 +61,7 @@ function SolicitacaoScreen() {
 
   const [maintTypeId, setMaintTypeId] = useState(req?.maintTypeId ?? '');
   const [priorityId, setPriorityId] = useState(req?.priorityId ?? (stored ? suggestedPriority(db, stored, PRIORITY_MATRIX) : ''));
+  const [priorityReason, setPriorityReason] = useState(req?.priorityChange?.reason ?? '');
   const [group, setGroup] = useState(req?.group ?? '');
   const [responsibleId, setResponsibleId] = useState(req?.responsibleId ?? '');
   const [notes, setNotes] = useState(req?.internalNotes ?? '');
@@ -81,6 +82,13 @@ function SolicitacaoScreen() {
 
   useEffect(() => {
     if (mode === 'reject' || mode === 'complement' || mode === 'close') setDialog(mode);
+    if (mode === 'prioritychange' && stored) {
+      // Variante: prioridade diferente da sugerida, com o motivo ainda em branco
+      const sug = suggestedPriority(db, stored, PRIORITY_MATRIX);
+      const other = refs.admin.priorities.find((p) => p.id !== sug);
+      if (other) setPriorityId(other.id);
+      setTried(true);
+    }
     if (mode === 'required') { setMaintTypeId(''); setPriorityId(''); setGroup(''); setResponsibleId(''); setTried(true); }
   }, [mode]);
 
@@ -115,9 +123,12 @@ function SolicitacaoScreen() {
   const unitId = unitIdOfEquipment(db, req.equipmentId);
   const staff = db.users.filter((u) => (u.status === 'ativo' && u.profile !== 'solicitante' && u.unitIds.includes(unitId)) || u.id === responsibleId);
 
+  // Prioridade diferente da sugerida pela matriz: exige motivo, que vai para o histórico junto com a sugerida e a aplicada
+  const priorityChanged = !!priorityId && !!suggestion && priorityId !== suggestion;
   const problems = {
     type: !maintTypeId ? requiredMessage('Tipo de manutenção') : undefined,
     priority: !priorityId ? requiredMessage('Prioridade') : undefined,
+    priorityReason: priorityChanged && !priorityReason.trim() ? requiredMessage('Motivo da alteração da prioridade') : undefined,
     group: !group ? requiredMessage('Grupo responsável') : undefined,
     responsible: !responsibleId ? requiredMessage('Responsável') : undefined,
   };
@@ -126,6 +137,7 @@ function SolicitacaoScreen() {
   const extra: Partial<Request> = {
     maintTypeId: maintTypeId || undefined, priorityId: priorityId || undefined, group: group || undefined,
     responsibleId: responsibleId || undefined, internalNotes: notes.trim() || undefined,
+    priorityChange: priorityChanged ? { suggestedId: suggestion, reason: priorityReason.trim() } : undefined,
   };
 
   const approve = () => {
@@ -134,7 +146,10 @@ function SolicitacaoScreen() {
       window.setTimeout(() => { const f = document.querySelector<HTMLElement>('main [aria-invalid="true"]'); f?.scrollIntoView({ block: 'center' }); f?.focus({ preventScroll: true }); }, 0);
       return;
     }
-    changeRequest(req.id, user.name, { ...extra, statusId: STS.APPROVED }, 'Aprovou a solicitação para criar OS');
+    changeRequest(req.id, user.name, { ...extra, statusId: STS.APPROVED }, [
+      ...(priorityChanged ? [`Alterou a prioridade: sugerida ${refs.priority(suggestion)?.name ?? suggestion}, aplicada ${refs.priority(priorityId)?.name ?? priorityId}. Motivo: ${priorityReason.trim()}`] : []),
+      'Aprovou a solicitação para criar OS',
+    ]);
     goTo(`os-form.html?request=${req.id}`);
   };
 
@@ -402,6 +417,11 @@ function SolicitacaoScreen() {
                               helperText={suggestion ? `Sugestão: ${refs.priority(suggestion)?.name} (criticidade ${criticality?.name}, impacto ${IMPACT_LABEL[req.impact]})` : undefined}
                             />
                           </DevNote>
+                          {priorityChanged && (
+                            <DevNote note="Prioridade diferente da sugerida pela matriz (criticidade × impacto): o motivo da alteração é obrigatório e fica no histórico da solicitação, junto com a prioridade sugerida e a aplicada. O campo some se o gestor voltar à sugestão.">
+                              <Textarea label="Motivo da alteração da prioridade" required rows={3} value={priorityReason} onChange={(e) => setPriorityReason(e.target.value)} error={show('priorityReason')} />
+                            </DevNote>
+                          )}
                           <Dropdown label="Grupo responsável" required placeholder="Selecione" options={GROUPS.map((g) => ({ value: g, label: g }))} value={group} onChange={setGroup} error={show('group')} />
                           <Dropdown
                             label="Responsável" required placeholder="Selecione" value={responsibleId} onChange={setResponsibleId} error={show('responsible')}
@@ -413,6 +433,8 @@ function SolicitacaoScreen() {
                         <Stack gap="md">
                           <ReadField label="Tipo de manutenção" value={refs.maintType(req.maintTypeId)?.name} />
                           <ReadField label="Prioridade" value={req.priorityId ? refs.priorityBadge(req.priorityId) : undefined} />
+                          {req.priorityChange && <ReadField label="Prioridade sugerida" value={refs.priorityBadge(req.priorityChange.suggestedId)} />}
+                          {req.priorityChange && <ReadField label="Motivo da alteração da prioridade" value={req.priorityChange.reason} />}
                           <ReadField label="Grupo responsável" value={req.group} />
                           <ReadField label="Responsável" value={req.responsibleId ? userName(db, req.responsibleId) : undefined} />
                           <ReadField label="Observações internas" value={req.internalNotes} />

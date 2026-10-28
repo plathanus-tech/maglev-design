@@ -1,23 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconAlertTriangle, IconArrowLeft, IconCircleCheck, IconCopy } from '@tabler/icons-react';
-import { Badge, Button, Card, EmptyState, Feedback, ImageUpload, RadioButton, Stack, Textarea, useToast } from '@maglev/ds';
+import { Badge, Button, Card, EmptyState, Feedback, RadioButton, Stack, Textarea, useToast } from '@maglev/ds';
+import { EvidenceGallery, Picked } from '../../assinante/shared/attachments';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDateTime, requiredMessage } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
-import { Request, nowLocal } from '../../assinante/shared/data';
+import { Request, nowLocal, seed } from '../../assinante/shared/data';
 import { ShareButton } from '../../assinante/shared/share-button';
 import { STO, applyOrderValidation } from '../../assinante/shared/os-common';
 import { STS } from '../../assinante/shared/solicitacoes-shared';
 import { logEntry, notify, updateSubDb, useSubDb } from '../../assinante/shared/store';
 import { goTo, param } from '../../assinante/shared/ui';
-import { linkToEquipment, linkToRequestByToken, orderOfRequest, publicTokenOf, publicHistoryOf, scheduleText, scheduledOf, simpleStatus, technicianOf, useRefs } from './lib';
+import { linkToEquipment, linkToRequestByToken, orderOfRequest, publicTokenOf, publicHistoryOf, scheduleText, lastVisitOf, scheduledOf, simpleStatus, technicianOf, useRefs } from './lib';
 
 /**
  * Estados: idle · complement (pedido de informação) · validate (aguardando a confirmação "O problema foi resolvido?") · resolvedok e unresolved
- * (demonstração do resultado já registrado, com o toast; só visão, nada é gravado) · notfound
+ * (demonstração do resultado já registrado, com o toast; só visão, nada é gravado) · answered (resposta à complementação já enviada, só visão) · notfound.
+ * `&reset=1` (usado pelo Navegador de Protótipo na variante "Aguardando sua informação") devolve a solicitação ao estado de demonstração, para refazer o fluxo.
  */
-const STATES = ['idle', 'complement', 'validate', 'resolvedok', 'unresolved', 'notfound'] as const;
+const STATES = ['idle', 'complement', 'validate', 'resolvedok', 'unresolved', 'answered', 'notfound'] as const;
 type Mode = (typeof STATES)[number];
 
 /**
@@ -44,6 +46,18 @@ function AcompanharScreen() {
   return shell(<Tracking request={request} mode={mode} />);
 }
 
+// Voltar à variante "Aguardando sua informação" pelo navegador desfaz a resposta já enviada (estado anterior); o parâmetro é removido para não repetir no recarregar
+{
+  const q = new URLSearchParams(location.search);
+  const id = q.get('p');
+  if (q.get('reset') === '1' && id) {
+    const original = seed().requests.find((x) => x.id === id);
+    if (original) updateSubDb((d) => ({ ...d, requests: d.requests.map((x) => (x.id === id ? original : x)) }));
+    q.delete('reset');
+    history.replaceState(null, '', `${location.pathname}?${q.toString()}${location.hash}`);
+  }
+}
+
 /** Mensagens de sucesso ao registrar a confirmação (RF004-FLU004/FLU005): o toast é temporário, o resultado fica no status e no histórico. */
 const VALIDATION_TOAST = {
   sim: { title: 'Atendimento concluído', message: 'Sua confirmação foi registrada.' },
@@ -57,6 +71,9 @@ function Tracking({ request: r0, mode }: { request: Request; mode: Mode }) {
   const demo = mode === 'resolvedok' ? 'sim' : mode === 'unresolved' ? 'nao' : null;
   // Variantes do navegador: aplicam o resultado só na visão (sem gravar), para ver o estado depois do envio sem refazer o fluxo
   const db = useMemo(() => {
+    if (mode === 'answered') {
+      return { ...realDb, requests: realDb.requests.map((x) => (x.id !== r0.id || !x.complement ? x : { ...x, statusId: STS.TRIAGE, complement: { ...x.complement, answeredAt: x.complement.answeredAt ?? nowLocal() } })) };
+    }
     if (!demo) return realDb;
     return {
       ...realDb,
@@ -66,7 +83,7 @@ function Tracking({ request: r0, mode }: { request: Request; mode: Mode }) {
         validation: { ...o.validation, result: demo as 'sim' | 'nao', at: nowLocal(), comment: demo === 'nao' ? 'O freezer voltou a esquentar no mesmo dia.' : undefined },
       })),
     };
-  }, [realDb, demo, r0.id]);
+  }, [realDb, demo, mode, r0.id]);
   const r = db.requests.find((x) => x.id === r0.id) ?? r0;
   const shown = useRef(false);
   useEffect(() => {
@@ -79,6 +96,8 @@ function Tracking({ request: r0, mode }: { request: Request; mode: Mode }) {
   const st = simpleStatus(db, refs.base, r);
   const tech = technicianOf(db, r);
   const scheduled = scheduledOf(db, refs.base, r);
+  // Sem próxima visita agendada, mostra o atendimento que já aconteceu (rótulo conforme a etapa) em vez de "Ainda não agendado"
+  const lastVisit = scheduled ? null : lastVisitOf(db, r);
   // Mensagem de encaminhamento só enquanto a solicitação está em atendimento (depois da conclusão ou da confirmação ela é etapa antiga)
   const forwarded = st.label === 'Em atendimento' && (!!order || r.statusId === STS.APPROVED || r.statusId === STS.CONVERTED);
   const concluded = st.label === 'Concluída';
@@ -108,14 +127,15 @@ function Tracking({ request: r0, mode }: { request: Request; mode: Mode }) {
               <div className="ext-field"><span className="ext-field-label">Protocolo</span><span className="ext-sit-value">{r.id}</span></div>
               <div className="ext-field"><span className="ext-field-label">Aberta em</span><span className="ext-sit-value">{formatDateTime(r.openedAt)}</span></div>
               {(tech || !concluded) && <div className="ext-field"><span className="ext-field-label">Técnico responsável</span><span className="ext-sit-value">{tech || 'A definir'}</span></div>}
-              {(scheduled || !concluded) && <div className="ext-field"><span className="ext-field-label">Atendimento agendado</span><span className="ext-sit-value">{scheduled ? scheduleText(scheduled) : 'Ainda não agendado'}</span></div>}
+              {(scheduled || lastVisit || !concluded) && <div className="ext-field"><span className="ext-field-label">{scheduled ? 'Atendimento agendado' : lastVisit ? (concluded || awaitingValidation ? 'Atendimento realizado' : 'Última visita') : 'Atendimento agendado'}</span><span className="ext-sit-value">{scheduled ? scheduleText(scheduled) : lastVisit ? scheduleText(lastVisit) : 'Ainda não agendado'}</span></div>}
             </div>
           </Stack>
         </Card>
       </DevNote>
 
       {(awaitingInfo || mode === 'complement') && r.complement && !r.complement.answeredAt && <ComplementCard request={r} />}
-      {r.complement?.answeredAt && (
+      {/* A confirmação da resposta é transitória: some quando a solicitação sai da análise (a resposta continua no histórico) */}
+      {r.complement?.answeredAt && ['Recebida', 'Em análise'].includes(st.label) && (
         <Feedback type="success" title="Resposta enviada" message="Recebemos a sua informação e a solicitação voltou para análise" />
       )}
       {(awaitingValidation || mode === 'validate') && order?.validation && !order.validation.result && <ValidationCard orderId={order.id} />}
@@ -189,24 +209,18 @@ function SentCard({ request }: { request: Request }) {
 /** Pedido de complementação da triagem (RF004-FLU003): texto e/ou foto; ao responder, a solicitação volta para triagem. */
 function ComplementCard({ request }: { request: Request }) {
   const [answer, setAnswer] = useState('');
-  const [photo, setPhoto] = useState<{ name: string; url: string } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState<Picked[]>([]);
   const [tried, setTried] = useState(false);
-  const error = tried && !answer.trim() && !photo ? 'Escreva uma resposta ou adicione uma foto para continuar.' : undefined;
-  const onFile = (file: File | null) => {
-    if (!file) { setPhoto(null); return; }
-    setLoading(true);
-    window.setTimeout(() => { setPhoto({ name: file.name, url: URL.createObjectURL(file) }); setLoading(false); }, 600);
-  };
+  const error = tried && !answer.trim() && !photos.length ? 'Escreva uma resposta ou adicione uma foto para continuar.' : undefined;
   const send = () => {
     setTried(true);
-    if (!answer.trim() && !photo) return;
+    if (!answer.trim() && !photos.length) return;
     const now = nowLocal();
     updateSubDb((d) => ({
       ...d,
       requests: d.requests.map((x) => (x.id !== request.id ? x : {
         ...x, statusId: STS.TRIAGE, statusChangedAt: now,
-        complement: { ...x.complement!, answer: answer.trim() || undefined, answerPhoto: photo?.name, answeredAt: now },
+        complement: { ...x.complement!, answer: answer.trim() || undefined, answerPhoto: photos.length ? photos.map((p) => p.name).join(', ') : undefined, answeredAt: now },
         log: [...x.log, logEntry(x.requesterName, 'Respondeu ao pedido de complementação')],
       })),
     }));
@@ -218,7 +232,10 @@ function ComplementCard({ request }: { request: Request }) {
         <Stack gap="md">
           <Feedback type="info" title={request.complement!.question} message={`Solicitado em ${formatDateTime(request.complement!.askedAt)}`} />
           <Textarea label="Sua resposta" rows={4} value={answer} onChange={(e) => setAnswer(e.target.value)} error={error} />
-          <ImageUpload label="Foto" fileName={photo?.name} previewUrl={photo?.url} loading={loading} onChange={onFile} />
+          <Stack gap="xs">
+            <span className="page-text"><strong>Fotos</strong></span>
+            <EvidenceGallery label="Fotos" items={photos} onAdd={(p) => setPhotos((l) => [...l, ...p].slice(0, 5))} onRemove={(k) => setPhotos((l) => l.filter((_, n) => n !== k))} />
+          </Stack>
           <p className="ext-hint">Preencha uma resposta ou adicione uma foto.</p>
           <div className="ext-actions"><Button onClick={send}>Enviar resposta</Button></div>
         </Stack>

@@ -144,6 +144,10 @@
 .link { text-decoration: none; outline: none; }
 .link::after { content: ""; position: absolute; inset: 0; }
 .kpi.clickable:hover .link { text-decoration: underline; }
+/* Seta na linha do número, na mesma coluna do ícone (mesma caixa e mesma borda direita): indica que o card leva a uma lista. Nos cards clicáveis o comparativo ocupa a linha de baixo, inteira e em uma linha só (percentual e referência lado a lado); cards informativos não têm seta */
+.linkArrow { margin-left: auto; align-self: center; display: inline-flex; align-items: center; justify-content: center; width: var(--spacing-xl); height: var(--spacing-xl); color: var(--color-text-tertiary); pointer-events: none; transition: color var(--transition-fast); }
+.kpi.clickable .main > .compare { flex-basis: 100%; }
+.kpi.clickable:hover .linkArrow { color: var(--color-text-primary); }
 
 /* Semântica (prop tone): só ícone e valor; superfície e textos secundários seguem neutros */
 .tone-neutral { background: var(--color-bg-subtle); color: var(--color-text-secondary); }

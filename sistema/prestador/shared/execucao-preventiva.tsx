@@ -33,6 +33,7 @@ function ExecucaoPrestadorScreen() {
       header={({ order, plan, badge }) => <PageHeader title="Executar preventiva" subtitle={<><CopyCode code={order.id} /> · {plan.name}</>} badge={badge} iconActions={<ShareButton kind="preventiva" id={order.id} />} />}
       equipmentLabel={(_, name) => name}
       onCancel={({ order }) => goTo(osLink(order.id))}
+      requireArrival
       viewOnlyText="Esta execução está somente para leitura"
       readOnlyActions={({ order }) => (
         <>

@@ -32,6 +32,8 @@ export const journeys: Journey[] = [
         variants: [
           v('eqf-required', 'Campos obrigatórios', 'equipamento-form.html#state=required'),
           v('eqf-warranty', 'Garantia = Sim sem datas', 'equipamento-form.html#state=warranty'),
+          v('eqf-warranty-invalid', 'Garantia: data inválida', 'equipamento-form.html#state=invaliddate'),
+          v('eqf-warranty-period', 'Garantia: fim antes do início', 'equipamento-form.html#state=warrantyperiod'),
           v('eqf-troubleshooting', 'Troubleshooting preenchido', 'equipamento-form.html#state=troubleshooting'),
           v('eqf-edit', 'Editar equipamento', 'equipamento-form.html?id=EQP-0001'),
           v('eqf-next', 'Cadastrar próximo (unidade e ambiente mantidos)', 'equipamento-form.html?unit=UNI-001&env=AMB-011'),

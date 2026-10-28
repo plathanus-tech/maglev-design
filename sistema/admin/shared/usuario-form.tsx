@@ -9,6 +9,7 @@ import { logActivity, nextId, updateDb, useSession } from './store';
 import { AdminUser, AdminUserStatus, RecordStatus } from './data';
 import { CORPORATE_DOMAIN, formatPhone, isCorporateEmail, isValidEmail, isValidPhone, onlyDigits, requiredMessage } from './format';
 import { Col, Grid, ReadField, adminUserStatusBadge, goTo, param, recordStatusBadge, setFlash } from './ui';
+import { todayIso } from './clock';
 
 /** Estados: idle · required · domain (e-mail fora de @maglev.com.br - CTA003) · duplicate (e-mail já cadastrado - CTA002) */
 const STATES = ['idle', 'required', 'domain', 'duplicate'] as const;
@@ -90,7 +91,7 @@ function UsuarioFormScreen() {
     updateDb((d) => {
       if (editing) return { ...d, adminUsers: d.adminUsers.map((u) => (u.id === editing.id ? { ...u, ...data } : u)) };
       id = nextId('USR', d.adminUsers.map((u) => u.id));
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayIso();
       const created: AdminUser = { id, email: email.trim().toLowerCase(), createdAt: today, invitedAt: today, ...data };
       return { ...d, adminUsers: [...d.adminUsers, created] };
     });

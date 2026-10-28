@@ -36,13 +36,14 @@ export function suggestedPriority(db: SubDb, r: Pick<Request, 'equipmentId' | 'i
 }
 
 /** Grava uma mudança na solicitação e registra no histórico (autor + texto). `statusChangedAt` só muda se o status mudar. */
-export function changeRequest(id: string, by: string, patch: Partial<Request>, text: string) {
+/** `text` pode ser mais de uma linha do histórico (ex.: alteração de prioridade + decisão), gravadas na ordem. */
+export function changeRequest(id: string, by: string, patch: Partial<Request>, text: string | string[]) {
   updateSubDb((db) => ({
     ...db,
     requests: db.requests.map((r) => (r.id !== id ? r : {
       ...r, ...patch,
       statusChangedAt: patch.statusId && patch.statusId !== r.statusId ? nowLocal() : r.statusChangedAt,
-      log: [...r.log, logEntry(by, text)],
+      log: [...r.log, ...([] as string[]).concat(text).map((t) => logEntry(by, t))],
     })),
   }));
 }

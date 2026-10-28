@@ -43,7 +43,7 @@ export const SCREEN_LABEL: Record<ScreenKey, string> = {
 };
 export const ACTION_LABEL: Record<ActionKey, string> = {
   visualizar: 'visualizar', cadastrar: 'cadastrar', editar: 'editar', excluir: 'excluir', ativar: 'ativar/inativar',
-  aprovar: 'aprovar orçamentos', triar: 'triar solicitações',
+  aprovar: 'aprovar orçamentos', triar: 'triar solicitações', exportar: 'exportar listas',
 };
 
 /** Próximo id de ambiente de uma unidade (ex.: AMB-011 → AMB-017). */

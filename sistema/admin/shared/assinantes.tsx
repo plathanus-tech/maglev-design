@@ -14,6 +14,7 @@ import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
 import { FilterControl } from './FilterControl';
 import { KPI_HISTORY, PLANS, Subscriber, activeUsersCount, subscriberName } from './data';
+import { ExportButton } from './ExportButton';
 import { KpiMoney } from './kpi-value';
 import { formatCnpj, formatDate, formatMoney, formatMoneyCompact, formatNumber, formatSince, noBreak, onlyDigits, tenureMonths } from './format';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
@@ -165,6 +166,11 @@ function AssinantesScreen() {
         />
       )}
       columns={withColumns ? control : undefined}
+      actions={can('assinantes', 'exportar') && (
+        <DevNote note="Exportar (Excel): baixa um .xlsx com os assinantes do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
+          <ExportButton columns={shownColumns} rows={() => filtered.map((s): Row => ({ ...s, activeUsers: activeUsersCount(s) }))} file="assinantes" sheet="Assinantes" noun={['assinante', 'assinantes']} label="Exportar assinantes para Excel" overrides={{ units: (r) => r.units, activeUsers: (r) => r.activeUsers, equipments: (r) => r.equipments, maintenanceCents: (r) => r.maintenanceCents / 100 }} />
+        </DevNote>
+      )}
     />
   );
   const empty = { title: 'Nenhum assinante encontrado', description: 'Revise a busca ou os filtros aplicados.' };

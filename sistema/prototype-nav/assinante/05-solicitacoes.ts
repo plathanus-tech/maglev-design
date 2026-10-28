@@ -39,6 +39,7 @@ export const journeys: Journey[] = [
         id: 'sol-triagem', label: 'RF402 - Triagem da solicitação', path: `${s}/solicitacao.html?id=SOL-000119`,
         variants: [
           v('sol-tri-triage', 'Em triagem (câmara fria, prioridade sugerida)', 'solicitacao.html?id=SOL-000120'),
+          v('sol-tri-priority', 'Prioridade alterada (motivo obrigatório)', 'solicitacao.html?id=SOL-000120#state=prioritychange'),
           v('sol-tri-triage2', 'Em triagem (via QR, sem classificação)', 'solicitacao.html?id=SOL-000123'),
           v('sol-tri-awaiting', 'Aguardando informação', 'solicitacao.html?id=SOL-000121'),
           v('sol-tri-answered', 'Resposta do solicitante recebida', 'solicitacao.html?id=SOL-000121#state=answered'),
@@ -60,6 +61,8 @@ export const journeys: Journey[] = [
           v('sol-nova-equipment', 'Equipamento pré-selecionado (?equipment=)', 'solicitacao-form.html?equipment=EQP-0001'),
           v('sol-nova-cadastrar-equip', 'Cadastrar equipamento (volta para a solicitação)', 'equipamento-form.html?return=solicitacao-form.html'),
           v('sol-nova-duplicate', 'Aviso de duplicidade', 'solicitacao-form.html#state=duplicate'),
+          v('sol-nova-review', 'Revisão antes de enviar', 'solicitacao-form.html#state=review'),
+          v('sol-nova-phone', 'Telefone de contato inválido', 'solicitacao-form.html#state=phoneinvalid'),
         ],
       },
       {

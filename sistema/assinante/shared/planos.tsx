@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { IconAlertTriangle, IconCalendarEvent, IconCalendarRepeat, IconCircleCheck, IconCircleOff, IconEye, IconChecks, IconPencil, IconPlayerPause, IconPlus } from '@tabler/icons-react';
+import { IconAlertTriangle, IconCalendarEvent, IconCalendarRepeat, IconCircleCheck, IconCircleOff, IconCopy, IconEye, IconChecks, IconPencil, IconPlayerPause, IconPlus } from '@tabler/icons-react';
 import { Badge, Button, Card, EmptyState, KpiCard, Stack, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, formatNumber, normalize } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { FilterControl } from '../../admin/shared/FilterControl';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
+import { ExportButton } from '../../admin/shared/ExportButton';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { Plan } from './data';
 import { ListFilters, ResponsiveTable } from './ListKit';
 import { PlanStatusDialog } from './PlanStatusDialog';
+import { RowMenu, RowMenuItem } from './RowMenu';
 import {
   PlanStats, SITUATION, SITUATION_OPTIONS, TODAY, addDays, compliance, describeFrequency, executorOf, isLate, isSoon, planEquipmentNames, planUnitIds,
   planUnitNames, plansVisible, statsOf, withMore,
@@ -23,6 +25,7 @@ type Mode = (typeof STATES)[number];
 
 const STATUS_OPTIONS = [{ value: 'todos', label: 'Todos os status' }, { value: 'ativo', label: 'Ativo' }, { value: 'pausado', label: 'Pausado' }];
 const SITUATION_FILTER_OPTIONS = SITUATION_OPTIONS.map((o) => (o.value === 'todas' ? { ...o, value: 'todos' } : o));
+const PERIOD_OPTIONS = [{ value: 'todos', label: 'Todo o período' }, { value: 'custom', label: 'Período personalizado' }];
 const FILTER_TO_SITUATION: Record<string, string> = { overdue: 'atrasado', upcoming: 'em-breve' };
 
 type Row = Record<string, unknown> & { id: string; plan: Plan; stats: PlanStats; equipments: string[]; units: string[] };
@@ -32,10 +35,13 @@ function PlanosScreen() {
   const { db, user, can, unitIds } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('todos');
+  const [status, setStatus] = useState(() => (['ativo', 'pausado'].includes(param('status') ?? '') ? (param('status') as string) : 'todos'));
   const [situation, setSituation] = useState(() => FILTER_TO_SITUATION[param('filter') ?? ''] ?? 'todos');
   const [executor, setExecutor] = useState('todos');
   const [unit, setUnit] = useState('todos');
+  const [period, setPeriod] = useState('todos');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [toggling, setToggling] = useState<Plan | null>(null);
 
   const plans = useMemo(() => (mode === 'empty' ? [] : plansVisible(db, user, unitIds)), [db, user, unitIds, mode]);
@@ -75,20 +81,26 @@ function PlanosScreen() {
     return (status === 'todos' || p.status === status)
       && (situation === 'todos' || r.stats.situation === situation)
       && (executor === 'todos' || exKey === executor)
-      && (unit === 'todos' ||planUnitIds(db, p).includes(unit))
+      && (unit === 'todos' || planUnitIds(db, p).includes(unit))
+      // Período das execuções: qualquer execução do plano (pendente, atrasada ou concluída) com data prevista no intervalo
+      && (period !== 'custom' || r.stats.executions.some((e) => (!from || e.dueDate >= from) && (!to || e.dueDate <= to)))
       && (!q || normalize(`${p.name} ${r.equipments.join(' ')} ${r.units.join(' ')} ${executorOf(db, p.executor).primary}`).includes(q));
   });
-  const resetKey = `${query}|${status}|${situation}|${executor}|${unit}`;
+  const resetKey = `${query}|${status}|${situation}|${executor}|${unit}|${period}|${from}|${to}`;
 
   const actions = (r: Row) => {
     const p = r.plan; const activate = p.status === 'pausado';
+    // Visualizar fica à vista; Editar, Pausar/Retomar e Duplicar vão para o menu ⋮ (cada um segue a sua permissão)
+    const items: RowMenuItem[] = [];
+    if (can('planos', 'editar')) items.push({ label: 'Editar', icon: <IconPencil size={16} />, onClick: () => goTo(`plano-form.html?id=${p.id}`) });
+    if (can('planos', 'ativar')) items.push({ label: activate ? 'Retomar' : 'Pausar', icon: activate ? <IconCircleCheck size={16} /> : <IconPlayerPause size={16} />, onClick: () => setToggling(p) });
+    if (can('planos', 'cadastrar')) items.push({ label: 'Duplicar', icon: <IconCopy size={16} />, onClick: () => goTo(`plano-form.html?from=${p.id}`) });
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Abrir plano" target={p.name} onClick={() => goTo(`plano.html?id=${p.id}`)} />
-        {can('planos', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar plano" target={p.name} onClick={() => goTo(`plano-form.html?id=${p.id}`)} />}
-        {can('planos', 'ativar') && (
-          <RowAction icon={activate ? <IconCircleCheck size={16} /> : <IconPlayerPause size={16} />} label={activate ? 'Ativar plano' : 'Pausar plano'} target={p.name} onClick={() => setToggling(p)} />
-        )}
+        <DevNote note="Menu ⋮ do plano: Editar, Pausar/Retomar (RF602) e Duplicar. Duplicar abre o “Novo plano” já com periodicidade, janela, duração, checklist, leituras, evidências e tratamento de anomalia copiados, e em branco o nome, os equipamentos, o executor e a data de início (para não gerar OS repetidas para o mesmo equipamento). Cada item segue a permissão do perfil (Editar, Ativar/Inativar, Cadastrar).">
+          <RowMenu target={p.name} label="Mais ações do plano" items={items} />
+        </DevNote>
       </RowActions>
     );
   };
@@ -112,16 +124,21 @@ function PlanosScreen() {
   const { columns: shownColumns, control, fieldsFor } = useColumnPrefs('sub-planos', columns, { mobileFixed: ['situation', 'executorName'] });
   const filterControl = (
     <FilterControl
-      note="Filtros agrupados (status, situação, executor, unidade). Status do plano: Ativo ou Pausado (RF602-RGN003); pausado não gera novas execuções. Situação (RF602-RGN001): Atrasado = há execução com data prevista ultrapassada sem conclusão (inclui as 'Não realizada' pendentes de regularização); Em breve = próxima execução em até 7 dias; Em dia = demais. Plano pausado e sem atraso fica sem situação. Abre já filtrado por situação quando vem dos cards do Início (?filter=overdue|upcoming)."
+      note="Filtros agrupados (status, situação, executor, unidade, período). Período das execuções: usa a data prevista das execuções do plano (pendentes, atrasadas ou concluídas), para planejar o que vem e revisar o que já passou; com De/Até preenchidos, aparecem os planos com ao menos uma execução no intervalo (a coluna Próxima execução continua mostrando só a próxima, então o plano pode aparecer com a próxima fora do intervalo). Status do plano: Ativo ou Pausado (RF602-RGN003); pausado não gera novas execuções. Situação (RF602-RGN001): Atrasado = há execução com data prevista ultrapassada sem conclusão (inclui as 'Não realizada' pendentes de regularização); Em breve = próxima execução em até 7 dias; Em dia = demais. Plano pausado e sem atraso fica sem situação. Abre já filtrado por situação quando vem dos cards do Início (?filter=overdue|upcoming)."
       filters={[
         { id: 'status', label: 'Status', options: STATUS_OPTIONS, value: status, onChange: setStatus },
         { id: 'situation', label: 'Situação', options: SITUATION_FILTER_OPTIONS, value: situation, onChange: setSituation },
         { id: 'executor', label: 'Executor', options: executorOptions, value: executor, onChange: setExecutor },
         { id: 'unit', label: 'Unidade', options: unitOptions, value: unit, onChange: setUnit },
+        { id: 'period', label: 'Período das execuções (data prevista)', options: PERIOD_OPTIONS, value: period, onChange: setPeriod, range: { when: 'custom', from, to, onChange: (f, t) => { setFrom(f); setTo(t); } } },
       ]}
     />
   );
-  const toolbar = <div className="toolbar-fill"><ListFilters searchLabel="Buscar plano por nome, equipamento, unidade ou executor" placeholder="Buscar por plano, equipamento ou executor" query={query} onQuery={setQuery} filterControl={filterControl} columns={control} /></div>;
+  const toolbar = <div className="toolbar-fill"><ListFilters searchLabel="Buscar plano por nome, equipamento, unidade ou executor" placeholder="Buscar por plano, equipamento ou executor" query={query} onQuery={setQuery} filterControl={filterControl} columns={control} actions={can('planos', 'exportar') && (
+    <DevNote note="Exportar (Excel): baixa um .xlsx com os planos do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
+      <ExportButton columns={shownColumns} rows={filtered} file="planos-de-manutencao" sheet="Planos" noun={['plano', 'planos']} label="Exportar planos para Excel" overrides={{ equipments: (r) => r.equipments.join('; '), units: (r) => r.units.join('; ') }} />
+    </DevNote>
+  )} /></div>;
   const noPlans = plans.length === 0;
 
   return (
@@ -140,17 +157,17 @@ function PlanosScreen() {
         <Grid>
           <Col span={3} fill>
             <DevNote note="Planos com status Ativo entre os planos listados (RF602-CTA002: os cards batem com a lista).">
-              <KpiCard label="Planos ativos" value={formatNumber(kpis.active)} description={`${formatNumber(rows.length)} planos no total`} icon={<IconCalendarRepeat size={20} />} />
+              <KpiCard label="Planos ativos" value={formatNumber(kpis.active)} description={`${formatNumber(rows.length)} planos no total`} icon={<IconCalendarRepeat size={20} />} href="planos.html?status=ativo" />
             </DevNote>
           </Col>
           <Col span={3} fill>
             <DevNote note="RF602-RGN001: execuções com data prevista ultrapassada sem conclusão. O card conta execuções; a lista (filtro Situação = Atrasado) mostra os planos que têm ao menos uma. Execuções 'Não realizada' continuam pesando no cumprimento (RF601-RGN005).">
-              <KpiCard label="Execuções atrasadas" value={formatNumber(kpis.late)} description="Previstas e ainda não concluídas" icon={<IconAlertTriangle size={20} />} />
+              <KpiCard label="Execuções atrasadas" value={formatNumber(kpis.late)} description="Previstas e ainda não concluídas" icon={<IconAlertTriangle size={20} />} href="planos.html?filter=overdue" />
             </DevNote>
           </Col>
           <Col span={3} mobileFull fill>
             <DevNote note="Execuções pendentes com data prevista entre hoje e os próximos 7 dias. “Hoje” é sempre a data atual do servidor. No protótipo a data é fixa (05/10/2026), só para manter os dados de demonstração previsíveis.">
-              <KpiCard label="Próximas execuções · 7 dias" value={formatNumber(kpis.soon)} description={`Até ${formatDate(addDays(TODAY, 7))}`} icon={<IconCalendarEvent size={20} />} />
+              <KpiCard label="Próximas execuções · 7 dias" value={formatNumber(kpis.soon)} description={`Até ${formatDate(addDays(TODAY, 7))}`} icon={<IconCalendarEvent size={20} />} href="planos.html?filter=upcoming" />
             </DevNote>
           </Col>
           <Col span={3} mobileFull fill>

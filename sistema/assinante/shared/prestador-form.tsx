@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { Button, Card, Checkbox, Dialog, Dropdown, Feedback, Input, MultiSelect, RadioButton, Stack, Textarea } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
-import { UFS, formatCnpj, formatPhone, isValidCnpj, isValidEmail, isValidPhone, onlyDigits, requiredMessage } from '../../admin/shared/format';
+import { PHONE_INVALID_EXAMPLE, PHONE_INVALID_MESSAGE, UFS, formatCnpj, formatPhone, isValidCnpj, isValidEmail, isValidPhone, onlyDigits, requiredMessage } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { Provider, ProviderContact, SPECIALTIES, Technician } from './data';
@@ -12,7 +12,7 @@ import { nextSeq, updateSubDb, useSubSession } from './store';
 import { Col, Grid, ReadField, goTo, param, setFlash, useRefs } from './ui';
 
 /** Estados: idle · required (salvar vazio) · duplicate (CNPJ/CPF já cadastrado - CTA002) · invalid (CNPJ inválido) */
-const STATES = ['idle', 'required', 'duplicate', 'invalid'] as const;
+const STATES = ['idle', 'required', 'duplicate', 'invalid', 'phoneinvalid'] as const;
 type Mode = (typeof STATES)[number];
 
 interface Region { id: string; city: string; uf: string }
@@ -44,22 +44,27 @@ function PrestadorFormScreen() {
   const refs = useRefs();
   const editing = db.providers.find((p) => p.id === param('id'));
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [d, setD] = useState<Draft>(() => (editing ? fromProvider(editing) : structuredClone(BLANK)));
+  // Aberto pelo Novo plano (?return=plano-form.html): sem menu lateral, breadcrumb de volta ao plano e, ao salvar, volta com o prestador escolhido
+  const returnTo = !editing && param('return') === 'plano-form.html' ? 'plano-form.html' : null;
+  const [d, setD] = useState<Draft>(() => (editing ? fromProvider(editing) : { ...structuredClone(BLANK), categoryIds: (param('cat') ?? '').split(',').filter(Boolean) }));
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<'required' | 'multiple' | null>(null);
   const [tick, setTick] = useState(0);
+  // Telefone marcado como inválido (variante do protótipo; a regra real de DDD/sequência é de desenvolvimento): o erro some ao editar o número
+  const [badPhone, setBadPhone] = useState('');
 
   // Variantes do navegador: demais campos preenchidos, para o CNPJ ser o único erro
   useEffect(() => {
     if (editing || mode === 'idle') return;
     if (mode !== 'required') {
       setD((x) => ({
-        ...x, name: 'Ar Frio Climatização Ltda', tradeName: 'Ar Frio', doc: mode === 'duplicate' ? formatCnpj(db.providers[0].doc) : '12.345.678/0001-00',
-        contacts: [{ id: uid(), name: 'Marcos Teixeira', role: 'Sócio', phone: formatPhone('48991234567'), email: 'marcos@arfrio.com.br', main: true }],
+        ...x, name: 'Ar Frio Climatização Ltda', tradeName: 'Ar Frio', doc: mode === 'duplicate' ? formatCnpj(db.providers[0].doc) : mode === 'phoneinvalid' ? '11.222.333/0001-81' : '12.345.678/0001-00',
+        contacts: [{ id: uid(), name: 'Marcos Teixeira', role: 'Sócio', phone: mode === 'phoneinvalid' ? PHONE_INVALID_EXAMPLE : formatPhone('48991234567'), email: 'marcos@arfrio.com.br', main: true }],
         specialties: ['Climatização'], categoryIds: ['CAT-006'], regions: [{ id: uid(), city: 'Florianópolis', uf: 'SC' }],
       }));
     }
+    if (mode === 'phoneinvalid') setBadPhone(PHONE_INVALID_EXAMPLE);
     setTried(true); setTick((n) => n + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -128,7 +133,7 @@ function PrestadorFormScreen() {
   };
   const contactErr = (c: ProviderContact) => ({
     name: req(c.name, 'Nome'), role: req(c.role, 'Função'),
-    phone: req(c.phone, 'Telefone/WhatsApp') ?? (!isValidPhone(c.phone) ? 'Informe um telefone válido' : undefined),
+    phone: req(c.phone, 'Telefone/WhatsApp') ?? (!isValidPhone(c.phone) ? 'Informe um telefone válido' : badPhone && c.phone === badPhone ? PHONE_INVALID_MESSAGE : undefined),
     email: req(c.email, 'E-mail') ?? (!isValidEmail(c.email) ? 'Informe um e-mail válido' : undefined),
   });
   const regionErr = (r: Region) => ({ city: req(r.city, 'Cidade'), uf: req(r.uf, 'UF') });
@@ -173,13 +178,18 @@ function PrestadorFormScreen() {
       technicians: !company ? [] : d.technicians.map((t, i) => ({ ...t, id: t.id.startsWith('new-') ? `${id}-T${Date.now().toString(36)}${i}` : t.id, name: t.name.trim(), phone: onlyDigits(t.phone), email: t.email.trim() })),
     };
     updateSubDb((db0) => ({ ...db0, providers: editing ? db0.providers.map((p) => (p.id === id ? provider : p)) : [...db0.providers, provider] }));
+    if (returnTo) {
+      setFlash({ type: 'success', title: 'Prestador cadastrado', message: 'Ele já está selecionado como executor do plano.' });
+      window.setTimeout(() => goTo(`${returnTo}?restore=1&provider=${id}`), 400);
+      return;
+    }
     setFlash(editing
       ? { type: 'success', title: 'Prestador atualizado', message: 'As alterações foram salvas.' }
       : { type: 'success', title: 'Prestador cadastrado', message: d.status === 'ativo' ? 'Ele já pode ser escolhido em OS e planos das categorias que atende.' : 'Ele está inativo e não será ofertado em OS e planos.' });
     window.setTimeout(() => goTo(`prestador.html?id=${id}`), 400);
   };
 
-  const cancel = () => goTo(editing ? `prestador.html?id=${editing.id}` : 'prestadores.html');
+  const cancel = () => goTo(editing ? `prestador.html?id=${editing.id}` : returnTo ? `${returnTo}?restore=1` : 'prestadores.html');
   const allowed = can('prestadores', editing ? 'editar' : 'cadastrar');
 
   if (param('id') && !editing) {
@@ -190,13 +200,15 @@ function PrestadorFormScreen() {
   }
 
   return (
-    <AppLayout active="prestadores" screen="prestadores">
+    <AppLayout active={returnTo ? 'planos' : 'prestadores'} screen="prestadores" layout={returnTo ? 'focused' : 'default'}>
       <form className="form-page" onSubmit={onSubmit} onChangeCapture={() => setBanner(null)} noValidate>
         <Stack gap="xl">
           <PageHeader
             title={editing ? `Editar ${providerName(editing)}` : 'Novo prestador'}
-            breadcrumb={[{ label: 'Prestadores', href: 'prestadores.html' }, { label: editing ? 'Editar' : 'Novo prestador' }]}
-            subtitle={editing ? undefined : 'Informe os dados do prestador de serviços'}
+            breadcrumb={returnTo
+              ? [{ label: 'Planos de manutenção', href: 'planos.html' }, { label: 'Novo plano', href: `${returnTo}?restore=1` }, { label: 'Novo prestador' }]
+              : [{ label: 'Prestadores', href: 'prestadores.html' }, { label: editing ? 'Editar' : 'Novo prestador' }]}
+            subtitle={editing ? undefined : returnTo ? 'Ao salvar, você volta para o Novo plano com este prestador já selecionado' : 'Informe os dados do prestador de serviços'}
           />
           {banner && (
             <div className="floating-feedback">
@@ -240,7 +252,7 @@ function PrestadorFormScreen() {
                         <Input label="E-mail" required type="email" autoComplete="off" value={d.email} onChange={(ev) => set('email', ev.target.value)} error={show(e.email)} />
                       </DevNote>
                     </Col>
-                    <Col span={6}><Input label="Telefone/WhatsApp" required type="tel" autoComplete="off" value={formatPhone(d.phone)} onChange={(ev) => set('phone', ev.target.value)} error={show(e.phone)} /></Col>
+                    <Col span={6}><Input label="Telefone/WhatsApp" required type="tel" autoComplete="off" value={formatPhone(d.phone)} onChange={(ev) => set('phone', ev.target.value)} error={show(e.phone)} helperText="Usado para contato e avisos de ordens de serviço pelo WhatsApp" /></Col>
                   </>
                 )}
                 <Col span={12}>
@@ -280,7 +292,7 @@ function PrestadorFormScreen() {
                           <Grid>
                             <Col span={6}><Input label="Nome" required autoComplete="off" value={c.name} onChange={(ev) => setContact(c.id, { name: ev.target.value })} error={show(err.name)} /></Col>
                             <Col span={6}><Input label="Função" required autoComplete="off" value={c.role} onChange={(ev) => setContact(c.id, { role: ev.target.value })} error={show(err.role)} /></Col>
-                            <Col span={6}><Input label="Telefone/WhatsApp" required type="tel" autoComplete="off" value={formatPhone(c.phone)} onChange={(ev) => setContact(c.id, { phone: ev.target.value })} error={show(err.phone)} /></Col>
+                            <Col span={6}><Input label="Telefone/WhatsApp" required type="tel" autoComplete="off" value={formatPhone(c.phone)} onChange={(ev) => setContact(c.id, { phone: ev.target.value })} error={show(err.phone)} helperText="Usado para contato e avisos de ordens de serviço pelo WhatsApp" /></Col>
                             <Col span={6}><Input label="E-mail" required type="email" autoComplete="off" value={c.email} onChange={(ev) => setContact(c.id, { email: ev.target.value })} error={show(err.email)} /></Col>
                             {company && <Col span={12}>
                               <Checkbox label="Contato principal" checked={!!c.main} disabled={!!c.main} onChange={() => setMain(c.id)} />

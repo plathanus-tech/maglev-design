@@ -5,11 +5,12 @@ import { Button, Card, Checkbox, Dialog, Dropdown, EmptyState, Feedback, ImageUp
 import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
+import { PhotoSlot } from './photo-slot';
 import { useHashState } from '../../admin/shared/useHashState';
-import { formatDateTime, formatPhone, isValidPhone, noBreak, onlyDigits, requiredMessage } from '../../admin/shared/format';
+import { formatDateTime, formatPhone, isValidPhone, noBreak, onlyDigits, requiredMessage, PHONE_INVALID_EXAMPLE, PHONE_INVALID_MESSAGE } from '../../admin/shared/format';
 import { IMPACT_LABEL, Impact, Request, TipResult, TroubleshootingRun, nowLocal } from './data';
 import { logEntry, nextSeq, notify, updateSubDb, useSubDb, useSubSession } from './store';
-import { CellPair, Col, Grid, param, takeFlash, useRefs } from './ui';
+import { CellPair, Col, Grid, ReadField, param, takeFlash, useRefs } from './ui';
 import { IS_THUMB, STS, isOpenBase } from './solicitacoes-shared';
 import { OpenRequestCard } from '../../colaborador/shared/open-request-card';
 
@@ -17,10 +18,10 @@ import { LegalText } from './legal-placeholder';
 import '../../admin/shared/primeiro-acesso.css';
 import './solicitacao-form.css';
 
-/** Estados: idle · required · duplicate (aviso de duplicidade) · troubleshooting (aviso + Começar) · tip1 · lasttip · tipsdone (volta ao formulário) · resolved */
-const STATES = ['idle', 'required', 'duplicate', 'troubleshooting', 'tip1', 'lasttip', 'tipsdone', 'resolved'] as const;
+/** Estados: idle · required · duplicate (aviso de duplicidade) · troubleshooting (aviso + Começar) · tip1 · lasttip · tipsdone (volta ao formulário) · resolved · review (revisão antes de enviar) · phoneinvalid (telefone de contato inválido) */
+const STATES = ['idle', 'required', 'duplicate', 'troubleshooting', 'tip1', 'lasttip', 'tipsdone', 'resolved', 'review', 'phoneinvalid'] as const;
 type Mode = (typeof STATES)[number];
-type Stage = 'form' | 'tips' | 'resolved';
+type Stage = 'form' | 'tips' | 'resolved' | 'review';
 const MAX_PHOTOS = 5;
 const DESC_MAX = 1000;
 
@@ -31,21 +32,11 @@ const DRAFT_KEY = 'maglev.v2.sub.solicitacaoDraft';
 const IS_THUMB_URL = new URLSearchParams(location.search).has('thumb');
 interface Draft { unitId: string; problemId: string; impact: string; description: string; related: string; prevNote: string }
 /** Lê (e apaga) o que o usuário já tinha preenchido antes de ir cadastrar um equipamento. */
+let draftCache: Draft | null | undefined;   // o React (modo dev) chama o inicializador do estado duas vezes: lê uma única vez por carregamento
 function takeDraft(): Draft | null {
-  try { const raw = sessionStorage.getItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_KEY); return raw ? (JSON.parse(raw) as Draft) : null; } catch { return null; }
-}
-
-/** Foto da solicitação: ImageUpload do DS (o mesmo do Novo equipamento) com envio simulado; sem foto é o slot vazio que adiciona a próxima. */
-function PhotoSlot({ label, optional, photo, onChange }: { label: string; optional?: boolean; photo?: { name: string; url: string }; onChange: (p: { name: string; url: string } | null) => void }) {
-  const [loading, setLoading] = useState(false);
-  const timer = useRef<number>();
-  useEffect(() => () => { window.clearTimeout(timer.current); }, []);
-  const onFile = (file: File | null) => {
-    if (!file) { onChange(null); return; }
-    setLoading(true);
-    timer.current = window.setTimeout(() => { onChange({ name: file.name, url: URL.createObjectURL(file) }); setLoading(false); }, 600);
-  };
-  return <ImageUpload label={label} optional={optional} fileName={photo?.name} previewUrl={photo?.url} loading={loading} onChange={onFile} />;
+  if (draftCache !== undefined) return draftCache;
+  try { const raw = sessionStorage.getItem(DRAFT_KEY); sessionStorage.removeItem(DRAFT_KEY); draftCache = raw ? (JSON.parse(raw) as Draft) : null; } catch { draftCache = null; }
+  return draftCache;
 }
 
 export interface SolicitacaoFormCoreProps {
@@ -104,6 +95,8 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
   const [tried, setTried] = useState(false);
   const [tick, setTick] = useState(0);
   const [saving, setSaving] = useState(false);
+  // Telefone marcado como inválido (variante do protótipo; a regra real de DDD/sequência é de desenvolvimento): o erro some ao editar o número
+  const [badPhone, setBadPhone] = useState('');
   const [banner, setBanner] = useState(false);
   const [dupDismissed, setDupDismissed] = useState(false);
   // Troubleshooting (RF403)
@@ -143,6 +136,14 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     if (mode === 'lasttip') { setDone(entry.tips.map((_, k) => k % 2 === 0)); setStage('tips'); setTipIdx(entry.tips.length - 1); }
     if (mode === 'tipsdone') { setFinished(true); setRun({ overall: 'sem-sucesso', tips: entry.tips.map((t, k) => ({ text: t.text, result: k % 2 === 0 ? 'realizada' : 'pulada' })) }); }
     if (mode === 'resolved') setStage('resolved');
+    if (mode === 'phoneinvalid') {
+      setImpact('medio'); setDescription('A porta não veda direito e forma gelo na borda.'); setRelated('nao'); setTerms(true);
+      setContactPhone(PHONE_INVALID_EXAMPLE); setBadPhone(PHONE_INVALID_EXAMPLE); setTried(true); setTick((n) => n + 1);
+    }
+    if (mode === 'review') {
+      setImpact('medio'); setDescription('A porta não veda direito e forma gelo na borda. Percebi ontem à noite, durante o fechamento.'); setRelated('nao'); setTerms(true);
+      setStage('review');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
@@ -168,7 +169,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     description: !description.trim() ? requiredMessage('Descrição') : undefined,
     related: !related ? requiredMessage('Relacionado a reparo anterior') : undefined,
     name: !contactName.trim() ? requiredMessage('Nome para contato') : undefined,
-    phone: !onlyDigits(contactPhone) ? requiredMessage('Telefone para contato') : !isValidPhone(contactPhone) ? 'Informe um telefone válido' : undefined,
+    phone: !onlyDigits(contactPhone) ? requiredMessage('Telefone para contato') : !isValidPhone(contactPhone) ? 'Informe um telefone válido' : badPhone && contactPhone === badPhone ? PHONE_INVALID_MESSAGE : undefined,
     terms: external && !terms ? 'Aceite os Termos de Uso e a Política de Privacidade para enviar' : undefined,
   };
   const show = (k: keyof typeof problems) => (tried ? problems[k] : undefined);
@@ -241,10 +242,21 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
   };
 
   // ── Envio ──
+  // Etapa de revisão (sempre antes de enviar): o formulário só valida e leva ao resumo; o envio é confirmado lá
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setTried(true); setBanner(false); setTick((n) => n + 1);
     if (invalid || !equipment) return;
+    setStage('review');
+    window.scrollTo({ top: 0 });
+  };
+  /** Volta ao formulário (nada se perde) e leva a pessoa à seção que quer corrigir. */
+  const backToEdit = (section?: 'equipment' | 'problem' | 'contact') => {
+    setStage('form');
+    window.setTimeout(() => (section ? document.querySelector(`.sec-${section}`)?.scrollIntoView({ block: 'start' }) : window.scrollTo({ top: 0 })), 50);
+  };
+  const send = () => {
+    if (!equipment) return;
     setSaving(true);
     let id = '';
     updateSubDb((d) => {
@@ -306,6 +318,58 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
           )}
         </Stack>
       </>);
+  }
+
+  // ── Revisão antes de enviar ──
+  if (stage === 'review' && equipment) {
+    const unit = db.units.find((u) => u.id === equipment.unitId);
+    const env = db.environments.find((x) => x.id === equipment.environmentId);
+    const edit = (section: 'equipment' | 'problem' | 'contact') => <Button variant="ghost" size="sm" disabled={saving} onClick={() => backToEdit(section)}>Editar</Button>;
+    return shell(<>
+      <Stack gap="xl" className="form-page">
+        {header}
+        <DevNote note="Etapa de revisão: sempre que se cria uma solicitação (portal e QR Code), o formulário leva a este resumo antes do envio. Mostra unidade e ativo, a ocorrência e o contato; cada bloco tem Editar (volta ao formulário na seção, sem perder o que foi preenchido) e o envio só acontece em “Confirmar e enviar”. Os mesmos dados do formulário, sem campos novos.">
+          <Feedback type="info" title="Revise sua solicitação" message="Confira as informações abaixo. Se algo estiver errado, corrija antes de enviar" />
+        </DevNote>
+        <Card title="Unidade e ativo" actions={edit('equipment')}>
+          <div className="card-body-tight">
+            <Grid>
+              <Col span={6} mobileFull><ReadField label="Unidade" value={unit?.name ?? '-'} /></Col>
+              <Col span={6} mobileFull><ReadField label="Ambiente" value={env?.name ?? '-'} /></Col>
+              <Col span={6} mobileFull><ReadField label="Equipamento" value={equipment.name} /></Col>
+              <Col span={6} mobileFull><ReadField label="Código" value={equipment.code || equipment.id} /></Col>
+            </Grid>
+          </div>
+        </Card>
+        <Card title="Ocorrência" actions={edit('problem')}>
+          <div className="card-body-tight">
+            <Grid>
+              <Col span={6} mobileFull><ReadField label="Tipo de solicitação" value={problemName} /></Col>
+              <Col span={6} mobileFull><ReadField label="Impacto" value={impact ? IMPACT_LABEL[impact as Impact] : '-'} /></Col>
+              <Col span={12}><ReadField label="Descrição" value={description.trim()} /></Col>
+              <Col span={6} mobileFull><ReadField label="Fotos" value={photos.length ? (photos.length === 1 ? '1 foto anexada' : `${photos.length} fotos anexadas`) : 'Nenhuma foto'} /></Col>
+              <Col span={6} mobileFull><ReadField label="Relacionado a reparo anterior" value={related === 'sim' ? 'Sim' : 'Não'} /></Col>
+              {related === 'sim' && prevNote.trim() && <Col span={12}><ReadField label="Observação do reparo anterior" value={prevNote.trim()} /></Col>}
+              {!external && <Col span={12}><ReadField label="Solução de problemas" value={run.overall === 'sem-sucesso' ? 'Tentada, sem sucesso' : tips.length ? 'Não iniciada' : 'Sem dicas para este problema'} /></Col>}
+            </Grid>
+          </div>
+        </Card>
+        <Card title="Contato para retorno" actions={edit('contact')}>
+          <div className="card-body-tight">
+            <Grid>
+              <Col span={6} mobileFull><ReadField label="Nome" value={contactName.trim()} /></Col>
+              <Col span={6} mobileFull><ReadField label="Telefone" value={contactPhone} /></Col>
+            </Grid>
+          </div>
+        </Card>
+        <div className={external ? 'ext-actions' : undefined}>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+            <Button disabled={saving} onClick={send}>{saving ? 'Enviando...' : 'Confirmar e enviar'}</Button>
+            <Button variant="secondary" disabled={saving} onClick={() => backToEdit()}>Voltar e corrigir</Button>
+          </Stack>
+        </div>
+      </Stack>
+    </>);
   }
 
   // ── Dicas ──
@@ -381,7 +445,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
               </Card>
             </DevNote>
           ) : (
-          <Card className="card-open" title="Equipamento" subtitle="Escolha a unidade e o equipamento com o problema">
+          <Card className="card-open sec-equipment" title="Equipamento" subtitle="Escolha a unidade e o equipamento com o problema">
             <div className="card-body-tight">
               <Grid>
                 <Col span={12}>
@@ -434,7 +498,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
             <div className="ext-divider" role="separator" aria-label="Abrir nova solicitação"><span>Abrir nova solicitação</span></div>
           )}
 
-          <Card className="card-open" title="Problema" subtitle="Conte o que está acontecendo">
+          <Card className="card-open sec-problem" title="Problema" subtitle="Conte o que está acontecendo">
             <div className="card-body-tight">
               <Grid>
                 <Col span={6}><Dropdown label="Tipo de solicitação" required placeholder="Selecione" options={typeOptions} value={problemId} onChange={pickProblem} error={show('problem')} /></Col>
@@ -489,11 +553,11 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
             </div>
           </Card>
 
-          <Card className="card-open" title="Contato para retorno" subtitle="Usaremos estes dados para falar com você sobre a solicitação">
+          <Card className="card-open sec-contact" title="Contato para retorno" subtitle="Usaremos estes dados para falar com você sobre a solicitação">
             <div className="card-body-tight">
               <Grid>
                 <Col span={6} mobileFull><Input label="Nome" required autoComplete="name" value={contactName} onChange={(e) => setContactName(e.target.value)} error={show('name')} /></Col>
-                <Col span={6} mobileFull><Input label="Telefone" required type="tel" inputMode="tel" autoComplete="tel" placeholder="(00) 00000-0000" value={contactPhone} onChange={(e) => setContactPhone(formatPhone(e.target.value))} error={show('phone')} /></Col>
+                <Col span={6} mobileFull><Input label="Telefone" required type="tel" inputMode="tel" autoComplete="tel" placeholder="(00) 00000-0000" value={contactPhone} onChange={(e) => setContactPhone(formatPhone(e.target.value))} error={show('phone')} helperText="Usaremos este número para retorno e avisos pelo WhatsApp" /></Col>
               </Grid>
             </div>
           </Card>
@@ -509,8 +573,8 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
 
           <div className={external ? 'ext-actions' : undefined}>
             <Stack direction="horizontal" justify="start" gap="sm" wrap>
-              <Button type="submit" disabled={saving}>{saving ? 'Enviando...' : 'Enviar solicitação'}</Button>
-              <Button variant="secondary" disabled={saving} onClick={onCancel}>Cancelar</Button>
+              <Button type="submit">Revisar solicitação</Button>
+              <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
             </Stack>
           </div>
         </Stack>
