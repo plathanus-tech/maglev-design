@@ -10,6 +10,7 @@ import { DevNote } from './dev-notes/DevNote';
 import { MobileCardList } from './MobileCardList';
 import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
+import { SessionConflictModal } from './SessionConflictModal';
 import { Db, LevelItem, Ticket, subscriberName, visualBadge } from './data';
 import { formatDateTime, formatNumber, normalize, openedAgo } from './format';
 import { KpiCount } from './kpi-value';
@@ -20,7 +21,7 @@ import { todayIso } from './clock';
 import { Col, Grid, ReadField, param, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
 
 /** Estados: idle · empty (nenhum chamado em aberto - todos resolvidos) */
-const STATES = ['idle', 'empty'] as const;
+const STATES = ['idle', 'empty', 'session'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
@@ -92,6 +93,8 @@ const NO_RESPONSIBLE = 'sem-responsavel';
 function DashboardScreen() {
   const { db, can } = useSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
+  // Sessão única (variante #state=session): a conta já está aberta em outra sessão; nada do painel aparece até a pessoa escolher
+  const [sessionChoice, setSessionChoice] = useState<'pending' | 'here'>('pending');
   const isMobile = useIsMobile();
   const [page, setPage] = useState(1);
   const [period, setPeriod] = useState<Period>('7d');
@@ -230,8 +233,11 @@ function DashboardScreen() {
   };
   const empty = { title: 'Nenhum chamado em aberto', description: 'Todas as solicitações e ordens de serviço dos assinantes estão resolvidas.' };
 
+  const blocked = mode === 'session' && sessionChoice === 'pending';
+
   return (
     <AppLayout active="dashboard" screen="dashboard">
+      <div aria-hidden={blocked || undefined} {...(blocked ? ({ inert: '' } as object) : {})}>
       <Stack gap="xl">
         <PageHeader
           title="Dashboard"
@@ -329,6 +335,13 @@ function DashboardScreen() {
         </DevNote>
         </div>
       </Stack>
+      </div>
+      {blocked && (
+        <SessionConflictModal
+          device="Chrome · Windows" since={formatDateTime(new Date(Date.now() - 3 * 3_600_000).toISOString())}
+          onContinueHere={() => setSessionChoice('here')}
+        />
+      )}
 
       {selected && (() => {
         const r = toRow(selected);

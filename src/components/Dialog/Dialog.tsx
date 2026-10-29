@@ -22,18 +22,22 @@ export interface DialogProps {
   closeLabel?: string;
   /** Em telas estreitas (≤ 640px) abre como bottom sheet: ancorado no rodapé, largura total e altura limitada à viewport. Em telas maiores é o diálogo centralizado de sempre. */
   sheet?: boolean;
+  /** `false` = decisão obrigatória: sem botão de fechar, e Esc e clique fora não fecham. Só para escolhas que precisam ser feitas antes de seguir. */
+  dismissible?: boolean;
 }
 
 /**
  * Diálogo modal: prende o foco, fecha com Esc/clique fora, trava o scroll do fundo
  * e devolve o foco ao elemento que o abriu.
  */
-export function Dialog({ open, onClose, title, subtitle, children, actions, size = 'md', className, closeLabel = 'Fechar', sheet = false }: DialogProps) {
+export function Dialog({ open, onClose, title, subtitle, children, actions, size = 'md', className, closeLabel = 'Fechar', sheet = false, dismissible = true }: DialogProps) {
   const titleId = useId();
   const subtitleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const dismissibleRef = useRef(dismissible);
+  dismissibleRef.current = dismissible;
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +50,7 @@ export function Dialog({ open, onClose, title, subtitle, children, actions, size
     document.body.style.overflow = 'hidden';
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onCloseRef.current(); return; }
+      if (e.key === 'Escape') { if (dismissibleRef.current) onCloseRef.current(); return; }
       if (e.key !== 'Tab') return;
       const items = focusables();
       if (items.length === 0) { e.preventDefault(); return; }
@@ -66,7 +70,7 @@ export function Dialog({ open, onClose, title, subtitle, children, actions, size
   if (!open) return null;
 
   return (
-    <div className={cx(styles.overlay, sheet && styles.overlaySheet)} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={cx(styles.overlay, sheet && styles.overlaySheet)} onMouseDown={(e) => { if (dismissible && e.target === e.currentTarget) onClose(); }}>
       <div
         ref={dialogRef}
         role="dialog"
@@ -81,7 +85,7 @@ export function Dialog({ open, onClose, title, subtitle, children, actions, size
             <h2 id={titleId} className={styles.title}>{title}</h2>
             {subtitle && <p id={subtitleId} className={styles.subtitle}>{subtitle}</p>}
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label={closeLabel} type="button"><IconX size={18} aria-hidden="true" /></button>
+          {dismissible && <button className={styles.closeBtn} onClick={onClose} aria-label={closeLabel} type="button"><IconX size={18} aria-hidden="true" /></button>}
         </div>
         {children != null && <div className={styles.body}>{children}</div>}
         {actions && <div className={styles.footer}>{actions}</div>}

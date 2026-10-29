@@ -3,7 +3,7 @@ import { IconCheck, IconLogout } from '@tabler/icons-react';
 import { Badge, Button, Checkbox, Dialog, Feedback, Stack, useToast } from '@maglev/ds';
 import { DevNote } from './dev-notes/DevNote';
 import { AccessSession, AdminUser } from './data';
-import { ACCESS_ALERTS, POLICY_TEXT } from './access-security';
+import { ACCESS_ALERTS } from './access-security';
 import { endSession, markAccessReviewed, useSession } from './store';
 import { formatDate, formatDateTime } from './format';
 import { ReadField, RowAction, RowActions } from './ui';
@@ -27,7 +27,7 @@ export function useAccessResponse(user: AdminUser | undefined) {
 
   /** Selos dos alertas da sessão (vazio quando não há). */
   const alertBadges = (s: AccessSession): ReactNode => s.alerts.map((a) => <Badge key={a} status="warning">{ACCESS_ALERTS[a].label}</Badge>);
-  /** Título da linha no histórico: “Acesso ao painel” e, com alerta, o motivo por extenso (“com alerta: novo dispositivo e horário atípico”). */
+  /** Título da linha no histórico: “Acesso ao painel” e, com alerta, o motivo por extenso (“com alerta: novo dispositivo e contexto inesperado”). */
   const title = (s: AccessSession) => {
     if (!s.alerts.length) return 'Acesso ao painel';
     const names = s.alerts.map((a) => ACCESS_ALERTS[a].label.toLowerCase());
@@ -60,7 +60,7 @@ export function useAccessResponse(user: AdminUser | undefined) {
 
   const banner = pending.length > 0 ? (
     <DevNote note="Alerta de acesso (política de segurança): aparece enquanto houver sessão ativa com alerta ainda não reconhecida; o administrador reconhece o acesso ou encerra a sessão. Os mesmos alertas chegam como notificação aos administradores.">
-      <Feedback type="warning" title={pending.length === 1 ? '1 acesso ativo com alerta' : `${pending.length} acessos ativos com alerta`} message="Confira o dispositivo e o horário na lista abaixo. Se não reconhecer o acesso, encerre a sessão" />
+      <Feedback type="warning" title={pending.length === 1 ? '1 acesso ativo com alerta' : `${pending.length} acessos ativos com alerta`} message="Confira o dispositivo e os dados do acesso na lista abaixo. Se não reconhecer o acesso, encerre a sessão" />
     </DevNote>
   ) : null;
 
@@ -87,6 +87,6 @@ export function useAccessResponse(user: AdminUser | undefined) {
   return {
     sessions, banner, dialog, actions, alertBadges, describe, title,
     /** Nota para desenvolvimento da tabela do histórico (acessos e alertas). */
-    note: `Histórico de ações + acessos (complemento aos controles de sessão da auditoria): cada login é uma linha do tipo “Acesso”, com dispositivo (lido do navegador) e, se houver, uma região aproximada; não há geolocalização precisa nem monitoramento contínuo. Alertas: novo dispositivo, horário atípico (💡 fora de ${POLICY_TEXT}, a confirmar com o cliente), contexto inesperado (região ou rede diferente do habitual; depende de dados do servidor) e tentativas de senha falhas antes do acesso. Respostas na coluna Ações: Reconhecer acesso e Encerrar sessão (com opção de exigir nova senha), só para quem pode ativar/inativar usuários e nunca na própria conta; cada ação fica no histórico de ações de quem a fez.`,
+    note: `Histórico de ações + acessos (complemento aos controles de sessão da auditoria): cada login é uma linha do tipo “Acesso”, com dispositivo (lido do navegador) e, se houver, uma região aproximada; não há geolocalização precisa nem monitoramento contínuo. Alertas: novo dispositivo, contexto inesperado (região ou rede diferente do habitual; depende de dados do servidor) e tentativas de senha falhas antes do acesso. Respostas na coluna Ações: Reconhecer acesso e Encerrar sessão (com opção de exigir nova senha), só para quem pode ativar/inativar usuários e nunca na própria conta; cada ação fica no histórico de ações de quem a fez.`,
   };
 }

@@ -65,3 +65,8 @@
 .checked .dot { opacity: 1; }
 
 .optionLabel { font-size: var(--font-size-base); color: var(--color-text-primary); }
+
+.optionText { display: flex; flex-direction: column; min-width: 0; }
+.hasDescription { align-items: flex-start; }
+.hasDescription .circle { margin-top: var(--spacing-2xs); }
+.optionDescription { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }

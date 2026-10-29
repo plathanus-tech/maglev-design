@@ -24,7 +24,7 @@ export function AlertBell() {
   const label = items.length ? `Notificações, ${items.length} ${items.length === 1 ? 'acesso com alerta' : 'acessos com alerta'}` : 'Notificações';
 
   return (
-    <DevNote note="Notificação ao administrador quando ocorre um acesso incomum (novo dispositivo, horário atípico, contexto inesperado ou tentativas de senha falhas). Só perfil Administrador recebe, e só de usuários do Admin. O aviso leva ao Histórico de ações do usuário, onde estão as respostas (reconhecer e encerrar a sessão). Horário atípico também gera notificação.">
+    <DevNote note="Notificação ao administrador quando ocorre um acesso incomum (novo dispositivo, contexto inesperado ou tentativas de senha falhas). Só perfil Administrador recebe, e só de usuários do Admin. O aviso leva ao Histórico de ações do usuário, onde estão as respostas (reconhecer e encerrar a sessão). Acessar em outro horário não gera notificação (não há limite de horário).">
       <div ref={anchor} className="bell-anchor">
         <Tooltip content="Notificações" placement="bottom">
           <Button variant="ghost" iconOnly className="theme-btn" iconLeft={<IconBell size={16} />} aria-label={label} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)} />

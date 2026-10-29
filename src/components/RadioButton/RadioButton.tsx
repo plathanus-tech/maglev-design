@@ -3,7 +3,11 @@ import { IconCircleX } from '@tabler/icons-react';
 import { cx } from '../../utils/cx';
 import styles from './RadioButton.module.css';
 
-export interface RadioOption { label: string; value: string; }
+export interface RadioOption {
+  label: string; value: string;
+  /** Legenda curta sob o rótulo (Body/XS, tom terciário), para explicar o efeito da opção. */
+  description?: string;
+}
 
 export interface RadioButtonProps {
   options: RadioOption[];
@@ -27,14 +31,17 @@ export function RadioButton({ options, value, onChange, name, label, disabled = 
       {label && <legend className={styles.label}>{label}</legend>}
       <div className={cx(styles.group, orientation === 'horizontal' && styles.horizontal)}>
         {options.map(opt => (
-          <label key={opt.value} className={cx(styles.option, value === opt.value && styles.checked, disabled && styles.disabled)}>
+          <label key={opt.value} className={cx(styles.option, opt.description && styles.hasDescription, value === opt.value && styles.checked, disabled && styles.disabled)}>
             <input
               type="radio" className={styles.input} name={name} value={opt.value} checked={value === opt.value} disabled={disabled}
               aria-invalid={error ? true : undefined}
               onChange={() => onChange?.(opt.value)}
             />
             <span className={styles.circle} aria-hidden="true"><span className={styles.dot} /></span>
-            <span className={styles.optionLabel}>{opt.label}</span>
+            <span className={styles.optionText}>
+              <span className={styles.optionLabel}>{opt.label}</span>
+              {opt.description && <span className={styles.optionDescription}>{opt.description}</span>}
+            </span>
           </label>
         ))}
       </div>

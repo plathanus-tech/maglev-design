@@ -84,7 +84,10 @@ export const journeys: Journey[] = [
     items: [
       {
         id: 'dashboard', label: 'RF101 - Dashboard da plataforma', path: `${s}/dashboard.html`,
-        variants: [v('dashboard-empty', 'Sem chamados em aberto', 'dashboard.html#state=empty')],
+        variants: [
+          v('dashboard-empty', 'Sem chamados em aberto', 'dashboard.html#state=empty'),
+          v('dashboard-session', 'Conta já conectada em outra sessão (modal)', 'dashboard.html#state=session'),
+        ],
       },
     ],
   },
@@ -184,16 +187,28 @@ export const journeys: Journey[] = [
       {
         id: 'cfg-categorias', label: 'RF402 - Categorias de equipamentos', path: `${s}/configuracoes-categorias.html`,
         variants: [
-          v('cfg-cat-new', 'Novo registro', 'configuracoes-categorias.html#state=new'),
-          v('cfg-cat-edit', 'Editar registro', 'configuracoes-categorias.html#state=edit'),
-          v('cfg-cat-duplicate', 'Nome já cadastrado', 'configuracoes-categorias.html#state=duplicate'),
+          v('cfg-cat-new', 'Nova categoria (página)', 'configuracoes-categoria-form.html'),
+          v('cfg-cat-edit', 'Editar categoria (com exceções)', 'configuracoes-categoria-form.html?id=CAT-005'),
+          v('cfg-cat-required', 'Campos obrigatórios', 'configuracoes-categoria-form.html#state=required'),
           v('cfg-cat-delete', 'Excluir (sem vínculos)', 'configuracoes-categorias.html#state=delete'),
           v('cfg-cat-deleteblocked', 'Exclusão bloqueada (com vínculos)', 'configuracoes-categorias.html#state=deleteblocked'),
         ],
       },
       { id: 'cfg-especialidades', label: 'RF408 - Cadastro de Especialidades', path: `${s}/configuracoes-especialidades.html` },
-      { id: 'cfg-tipos-solicitacao', label: 'RF403 - Tipos de solicitação', path: `${s}/configuracoes-tipos-solicitacao.html` },
-      { id: 'cfg-tipos-manutencao', label: 'RF404 - Tipos de manutenção', path: `${s}/configuracoes-tipos-manutencao.html` },
+      {
+        id: 'cfg-tipos-solicitacao', label: 'RF403 - Tipos de solicitação', path: `${s}/configuracoes-tipos-solicitacao.html`,
+        variants: [
+          v('cfg-ts-new', 'Novo tipo (página)', 'configuracoes-tipo-solicitacao-form.html'),
+          v('cfg-ts-required', 'Campos obrigatórios', 'configuracoes-tipo-solicitacao-form.html#state=required'),
+        ],
+      },
+      {
+        id: 'cfg-tipos-manutencao', label: 'RF404 - Tipos de manutenção', path: `${s}/configuracoes-tipos-manutencao.html`,
+        variants: [
+          v('cfg-tm-new', 'Novo tipo (página)', 'configuracoes-tipo-manutencao-form.html'),
+          v('cfg-tm-required', 'Campos obrigatórios', 'configuracoes-tipo-manutencao-form.html#state=required'),
+        ],
+      },
       {
         id: 'cfg-prioridades', label: 'RF405 - Prioridades', path: `${s}/configuracoes-prioridades.html`,
         variants: [v('cfg-pri-edit', 'Editar nível', 'configuracoes-prioridades.html#state=edit')],
@@ -205,8 +220,8 @@ export const journeys: Journey[] = [
       {
         id: 'cfg-status', label: 'RF407 - Status', path: `${s}/configuracoes-status.html`,
         variants: [
-          v('cfg-st-new', 'Novo status', 'configuracoes-status.html#state=new'),
-          v('cfg-st-required', 'Campos obrigatórios', 'configuracoes-status.html#state=required'),
+          v('cfg-st-new', 'Novo status (página)', 'configuracoes-status-form.html'),
+          v('cfg-st-required', 'Campos obrigatórios', 'configuracoes-status-form.html#state=required'),
         ],
       },
     ],

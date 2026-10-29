@@ -435,3 +435,12 @@ section.contact-card { border: none; background: var(--color-gray-50); }
   /* o Stack aplica o gap inline, por isso !important */
   form.form-page > div:first-child { gap: var(--spacing-md) !important; }
 }
+
+/* Exceções por assinante (categoria): lista rolável de caixas de seleção, só tokens */
+.exc-list { display: grid; gap: var(--spacing-sm) var(--spacing-md); grid-template-columns: repeat(auto-fill, minmax(calc(var(--spacing-3xl) * 5), 1fr)); max-block-size: calc(var(--spacing-3xl) * 7); overflow-y: auto; }
+.exc-item { display: flex; flex-direction: column; min-width: 0; }
+.exc-name { overflow-wrap: anywhere; }
+.exc-sub { font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+
+/* Modal de sessão já ativa: o painel fica atrás, bem desfocado */
+div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(--spacing-xs))); }

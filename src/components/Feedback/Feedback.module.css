@@ -57,3 +57,5 @@
   border-color: var(--color-status-info-fg);
   color: var(--color-status-info-fg);
 }
+
+.details { margin-block-start: var(--spacing-sm); }

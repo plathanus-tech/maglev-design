@@ -159,7 +159,7 @@ export interface Profile { id: string; name: string; description: string; fixed?
 // ═══ Configurações (RF401–RF407) ════════════════════════════
 /** `icon`: identificador estável do ícone no catálogo (icon-catalog.ts) - só categorias de equipamento usam; opcional. */
 /** `categoryIds` (só Tipos de solicitação): categorias de equipamento em que o tipo é oferecido na abertura; vazio ou ausente = todas as categorias. */
-export interface ConfigItem { id: string; name: string; description: string; status: RecordStatus; links: number; icon?: string; categoryIds?: string[] }
+export interface ConfigItem { id: string; name: string; description: string; status: RecordStatus; links: number; icon?: string; categoryIds?: string[]; /** Só categorias: assinantes para os quais o cadastro NÃO vale (vazio = todos). */ exceptionIds?: string[] }
 /** Prioridades e criticidades: níveis fixos - só nome, descrição e cor (tipo visual) editáveis. */
 export interface LevelItem { id: string; level: string; name: string; description: string; visual: Visual; links: number }
 
@@ -180,7 +180,7 @@ export const BASE_SITUATIONS: Array<{ value: BaseSituation; label: string }> = [
   { value: 'cancelado', label: 'Cancelado' },
 ];
 export const baseLabel = (b: BaseSituation) => BASE_SITUATIONS.find((x) => x.value === b)!.label;
-export interface StatusItem { id: string; module: StatusModule; name: string; visual: Visual; base: BaseSituation; order: number; status: RecordStatus; links: number }
+export interface StatusItem { id: string; module: StatusModule; name: string; visual: Visual; base: BaseSituation; order: number; status: RecordStatus; links: number; /** Assinantes para os quais o cadastro NÃO vale (vazio = todos). */ exceptionIds?: string[] }
 
 // ═══ Chamados em aberto (Dashboard RF101) ═══════════════════════════
 export type TicketType = 'solicitacao' | 'os';
@@ -568,7 +568,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 16;
+export const DB_VERSION = 18;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.
@@ -613,7 +613,8 @@ export function seed(): Db {
     adminUsers: ADMIN_USERS,
     activity: buildActivity(ADMIN_USERS, subscribers),
     profiles: PROFILES,
-    categories: CATEGORIES,
+    // Demonstração: "Produção de gelo" não vale para 3 assinantes (exceção)
+    categories: CATEGORIES.map((c) => (c.name === 'Produção de gelo' ? { ...c, exceptionIds: subscribers.slice(1, 4).map((s) => s.id) } : c)),
     specialties: SPECIALTY_ITEMS,
     requestTypes: REQUEST_TYPES,
     maintenanceTypes: MAINTENANCE_TYPES,

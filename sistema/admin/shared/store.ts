@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SUSPENSION_GRACE_DAYS, AccessSession, ActionKey, Activity, ActivityKind, ActivityModule, AdminUser, DB_VERSION, Db, Profile, ScreenKey, Subscriber, seed, subscriberName } from './data';
 import { addDaysIso } from './format';
-import { AccessAlert, deviceLabel, isAtypical, ACCESS_POLICY } from './access-security';
+import { AccessAlert, deviceLabel, ACCESS_POLICY } from './access-security';
 import { QrReason, RegEquipment, currentQr, qrReasonLabel, tokenFor } from './qr-registry';
 import { clockNow, clockIso, todayIso } from './clock';
 
@@ -75,7 +75,7 @@ export function regularize(actorId: string, subscriber: Subscriber) {
 }
 
 /**
- * Registra o acesso (login) e detecta os eventos da política: novo dispositivo, horário atípico e tentativas de senha falhas antes do acesso.
+ * Registra o acesso (login) e detecta os eventos da política: novo dispositivo e tentativas de senha falhas antes do acesso.
  * “Contexto inesperado” (rede/região) depende de dados do servidor e não é detectado no protótipo. Devolve os alertas gerados.
  */
 export function recordAccess(user: AdminUser, failedAttempts = 0): AccessAlert[] {
@@ -84,7 +84,6 @@ export function recordAccess(user: AdminUser, failedAttempts = 0): AccessAlert[]
   const now = clockNow();
   const alerts: AccessAlert[] = [];
   if (!db.accessSessions.some((x) => x.userId === user.id && x.device === device)) alerts.push('novo-dispositivo');
-  if (isAtypical(now)) alerts.push('horario-atipico');
   if (failedAttempts >= ACCESS_POLICY.failedAttempts) alerts.push('tentativas-falhas');
   const entry = { id: `ACS-${Date.now()}`, userId: user.id, at: now.toISOString(), device, alerts, status: 'ativa' as const };
   updateDb((d) => ({ ...d, accessSessions: [...d.accessSessions.map((x) => (x.userId === user.id && x.status === 'ativa' ? { ...x, status: 'expirada' as const } : x)), entry] }));

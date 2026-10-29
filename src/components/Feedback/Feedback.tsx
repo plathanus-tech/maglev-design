@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { IconCircleCheck, IconCircleX, IconAlertTriangle, IconInfoCircle, IconX } from '@tabler/icons-react';
 import { cx } from '../../utils/cx';
 import styles from './Feedback.module.css';
@@ -13,6 +14,8 @@ export interface FeedbackProps {
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
   title?: string;
+  /** Conteúdo extra (ex.: dados em campos) logo abaixo da mensagem, dentro do mesmo alerta. */
+  details?: ReactNode;
   /** Link de ação dentro da mensagem, logo abaixo do texto (ex.: "Falar com o suporte"). Com `href` é um `<a>`; só com `onClick`, um botão. */
   link?: { label: string; href?: string; onClick?: () => void };
   dismissible?: boolean;
@@ -24,7 +27,7 @@ export interface FeedbackProps {
 }
 
 /** Mensagem de status inline (banner). Para confirmações efêmeras use `Toast`. */
-export function Feedback({ type, message, title, link, dismissible, onDismiss, dismissLabel = 'Fechar', role }: FeedbackProps) {
+export function Feedback({ type, message, title, details, link, dismissible, onDismiss, dismissLabel = 'Fechar', role }: FeedbackProps) {
   const liveRole = role ?? (type === 'error' || type === 'warning' ? 'alert' : 'status');
   return (
     <div className={cx(styles.alert, styles[type])} role={liveRole}>
@@ -32,6 +35,7 @@ export function Feedback({ type, message, title, link, dismissible, onDismiss, d
       <div className={styles.body}>
         {title && <div className={styles.title}>{title}</div>}
         <div className={styles.message}>{message}</div>
+        {details && <div className={styles.details}>{details}</div>}
         {link && (link.href
           ? <a className={styles.link} href={link.href} onClick={link.onClick}>{link.label}</a>
           : <button className={styles.link} type="button" onClick={link.onClick}>{link.label}</button>)}

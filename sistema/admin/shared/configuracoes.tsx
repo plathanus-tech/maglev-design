@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import {
-  Badge, Button, Dialog, Dropdown, Input, MultiSelect, RadioButton, Stack, Table, TableColumn, Textarea, useToast,
+  Badge, Button, Dialog, Dropdown, Input, RadioButton, Stack, Table, TableColumn, Textarea, useToast,
 } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
@@ -14,8 +14,10 @@ import {
   StatusModule, VISUALS, Visual, baseLabel, moduleLabel, visualBadge, visualLabel,
 } from './data';
 import { formatNumber, normalize, requiredMessage } from './format';
-import { CategoryIcon, IconPicker } from './IconPicker';
-import { Col, Grid, RowAction, RowActions, TableToolbar, Text, recordStatusBadge, statusBadgeOf, visualBadgeOf } from './ui';
+import { CategoryIcon } from './IconPicker';
+import { reachText } from './config-scope';
+import { SINGULAR, StatusConfirmDialog, useReach } from './config-confirm';
+import { Col, Grid, RowAction, RowActions, TableToolbar, Text, goTo, recordStatusBadge, statusBadgeOf, visualBadgeOf } from './ui';
 
 /**
  * RF401 - padrão único para todos os cadastros de Configurações (RF402–RF407):
@@ -33,6 +35,10 @@ type Header = (actions?: ReactNode) => ReactNode;
 const matches = (q: string, ...fields: string[]) => !q.trim() || fields.some((f) => normalize(f).includes(normalize(q)));
 
 type SimpleKey = 'categories' | 'specialties' | 'requestTypes' | 'maintenanceTypes';
+/** Cadastros com formulário em página (Alcance por assinante); os demais seguem em modal. */
+const PAGE_FORM: Partial<Record<SimpleKey, string>> = {
+  categories: 'configuracoes-categoria-form.html', requestTypes: 'configuracoes-tipo-solicitacao-form.html', maintenanceTypes: 'configuracoes-tipo-manutencao-form.html',
+};
 const PAGES = [
   { slug: 'categorias', label: 'Categorias de equipamentos', subtitle: 'Usadas no cadastro de equipamentos, de prestadores e nos filtros de todos os assinantes' },
   { slug: 'especialidades', label: 'Especialidades', subtitle: 'Especialidades técnicas disponíveis no cadastro de prestadores de todos os assinantes' },
@@ -76,6 +82,8 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
   const meta = SIMPLE[dbKey];
   const items = db[dbKey];
   const [pending, setPending] = useState<Pending>(null);
+  // Categorias, tipos de solicitação e de manutenção: cadastro e edição em página própria (alcance com exceções por assinante); Especialidades segue em modal
+  const openForm = (item: ConfigItem | null) => (PAGE_FORM[dbKey] ? goTo(item ? `${PAGE_FORM[dbKey]}?id=${item.id}` : PAGE_FORM[dbKey]!) : setPending({ kind: 'form', item }));
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const filtered = items.filter((i) => matches(query, i.name, i.description ?? ''));
@@ -84,6 +92,7 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
 
   useEffect(() => {
     if (!active) return;
+    if (PAGE_FORM[dbKey] && (mode === 'new' || mode === 'edit' || mode === 'duplicate' || mode === 'required')) return;
     if (mode === 'new') setPending({ kind: 'form', item: null });
     if (mode === 'required') setPending({ kind: 'form', item: null, tried: true });
     if (mode === 'edit') setPending({ kind: 'form', item: items[0] });
@@ -107,13 +116,14 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
     { key: 'name', label: 'Nome', render: (v, r) => (dbKey === 'categories' ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={r.icon} /><span>{String(v)}</span></Stack> : String(v)) },
     { key: 'description', label: 'Descrição', render: (v) => (v ? String(v) : '-') },
     ...(dbKey === 'requestTypes' ? [{ key: 'categoryIds', label: 'Categorias', render: (_: unknown, r: SimpleRow) => categoriesText(r) }] : []),
+    ...(PAGE_FORM[dbKey] ? [{ key: 'exceptionIds', label: 'Alcance', render: (_: unknown, r: SimpleRow) => reachText(r.exceptionIds) }] : []),
     { key: 'links', label: `Vínculos (${meta.linkLabel})`, align: 'right' },
     { key: 'status', label: 'Status', render: (v) => recordStatusBadge(v as RecordStatus) },
     {
       key: 'id', label: 'Ações', sticky: 'right',
       render: (_, r) => (
         <RowActions>
-          {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => setPending({ kind: 'form', item: r })} />}
+          {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => openForm(r)} />}
           {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar' : 'Ativar'} target={r.name} onClick={() => setToggling(r)} />}
           {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir" target={r.name} onClick={() => setPending({ kind: 'delete', item: r })} />}
         </RowActions>
@@ -132,7 +142,7 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
 
   return (
     <Stack gap="xl">
-      {header(can('configuracoes', 'cadastrar') && <Button iconLeft={<IconPlus size={20} />} onClick={() => setPending({ kind: 'form', item: null })}>{meta.newLabel}</Button>)}
+      {header(can('configuracoes', 'cadastrar') && <Button iconLeft={<IconPlus size={20} />} onClick={() => openForm(null)}>{meta.newLabel}</Button>)}
       <DevNote note={`${meta.note} Padrão RF401: inativo deixa de ser oferecido nas listas de seleção, mas continua visível nos registros antigos (RGN002). 💡 Coluna de vínculos: sugestão da spec.`}>
         {isMobile ? (
           <MobileCardList
@@ -142,10 +152,10 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
             items={pageRows.map((r) => ({
               id: r.id, title: dbKey === 'categories' ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={r.icon} /><span>{r.name}</span></Stack> : r.name, subtitle: r.description || undefined,
               badge: recordStatusBadge(r.status),
-              fields: fieldsFor([...(dbKey === 'requestTypes' ? [{ label: 'Categorias', value: categoriesText(r) }] : []), { label: `Vínculos (${meta.linkLabel})`, value: r.links }]),
+              fields: fieldsFor([...(dbKey === 'requestTypes' ? [{ label: 'Categorias', value: categoriesText(r) }] : []), ...(PAGE_FORM[dbKey] ? [{ label: 'Alcance', value: reachText(r.exceptionIds) }] : []), { label: `Vínculos (${meta.linkLabel})`, value: r.links }]),
               actions: (
                 <RowActions>
-                  {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => setPending({ kind: 'form', item: r })} />}
+                  {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => openForm(r)} />}
                   {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar' : 'Ativar'} target={r.name} onClick={() => setToggling(r)} />}
                   {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir" target={r.name} onClick={() => setPending({ kind: 'delete', item: r })} />}
                 </RowActions>
@@ -167,8 +177,6 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
           key={pending.item?.id ?? 'new'}
           singular={meta.singular}
           linkLabel={meta.linkLabel}
-          withIcon={dbKey === 'categories'}
-          categoryOptions={dbKey === 'requestTypes' ? db.categories.filter((c) => c.status === 'ativo' || pending.item?.categoryIds?.includes(c.id)).map((c) => ({ value: c.id, label: c.name })) : undefined}
           item={pending.item}
           initialTried={pending.tried}
           draft={pending.draft}
@@ -212,22 +220,20 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
   );
 }
 
-function SimpleForm({ singular, linkLabel, withIcon, categoryOptions, item, others, initialTried, draft, onClose, onSave }: {
-  singular: string; linkLabel: string; withIcon?: boolean; /** Só Tipos de solicitação: categorias disponíveis para vincular. */ categoryOptions?: Array<{ value: string; label: string }>; item: ConfigItem | null; others: ConfigItem[]; initialTried?: boolean; draft?: Partial<ConfigItem>;
-  onClose: () => void; onSave: (d: Pick<ConfigItem, 'name' | 'description' | 'status' | 'icon'> & { categoryIds?: string[] }) => void;
+function SimpleForm({ singular, linkLabel, item, others, initialTried, draft, onClose, onSave }: {
+  singular: string; linkLabel: string; item: ConfigItem | null; others: ConfigItem[]; initialTried?: boolean; draft?: Partial<ConfigItem>;
+  onClose: () => void; onSave: (d: Pick<ConfigItem, 'name' | 'description' | 'status'>) => void;
 }) {
   const scope = useScopeLine(item?.links, linkLabel, singular);
   const [name, setName] = useState(draft?.name ?? item?.name ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
   const [status, setStatus] = useState<RecordStatus>(item?.status ?? 'ativo');
-  const [icon, setIcon] = useState<string | undefined>(item?.icon);
-  const [categoryIds, setCategoryIds] = useState<string[]>(item?.categoryIds ?? []);
   const [tried, setTried] = useState(!!initialTried);
   const dup = others.some((o) => normalize(o.name) === normalize(name));
   const nameError = !tried ? undefined : !name.trim() ? requiredMessage('Nome') : dup ? `Já existe ${singular === 'categoria' ? 'uma categoria' : `um ${singular}`} com este nome` : undefined;
   // Mudou o Status de um registro existente: depois de Salvar, pede confirmação (o modal de edição dá lugar ao de confirmação)
   const [confirming, setConfirming] = useState(false);
-  const commit = () => onSave({ name: name.trim(), description: description.trim(), status, icon: withIcon ? icon : undefined, ...(categoryOptions ? { categoryIds: categoryIds.length ? categoryIds : undefined } : {}) });
+  const commit = () => onSave({ name: name.trim(), description: description.trim(), status });
   const save = () => {
     setTried(true);
     if (!name.trim() || dup) return;
@@ -254,66 +260,11 @@ function SimpleForm({ singular, linkLabel, withIcon, categoryOptions, item, othe
         <DevNote note="Nome obrigatório e único dentro do cadastro (RF401-CTA003); comparação sem diferenciar maiúsculas e acentos. O subtítulo do modal diz que o cadastro vale para todos os assinantes (escopo único hoje) e, na edição, quanto já está em uso; renomear reflete nos registros antigos porque eles apontam para o item.">
           <Input label="Nome" required value={name} onChange={(e) => setName(e.target.value)} error={nameError} />
         </DevNote>
-        {withIcon && (
-          <DevNote note="Ícone opcional da categoria (primeira versão): escolhido num catálogo curado de 67 ícones Tabler com nome e palavras-chave em português. Salva-se só o identificador estável do ícone, nunca o componente. Sem upload de imagens. Poderá ser usado depois em outros pontos da interface para facilitar o reconhecimento.">
-            <IconPicker value={icon} onChange={setIcon} />
-          </DevNote>
-        )}
         <Textarea optional label="Descrição" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-        {categoryOptions && (
-          <DevNote note="Categorias em que o tipo é oferecido na Nova solicitação (portal e QR Code): com um equipamento escolhido, aparecem os tipos sem categoria (valem para todas) e os que incluem a categoria dele. Sem categoria marcada = todas. Tipos de emergência (Vazamento, Elétrica) e Outro ficam sem categoria, para estarem sempre disponíveis. Só categorias ativas; uma categoria já vinculada e depois inativada continua aparecendo aqui.">
-            <Stack gap="xs">
-              <MultiSelect optional label="Categorias" placeholder="Todas as categorias" removeLabel={(l) => `Remover categoria ${l}`} options={categoryOptions} value={categoryIds} onChange={setCategoryIds} />
-              <p className="field-note">Sem categoria marcada, o tipo é oferecido para todos os equipamentos</p>
-            </Stack>
-          </DevNote>
-        )}
         {item && <RadioButton name="cfg-status" label="Status" orientation="horizontal" options={[{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }]} value={status} onChange={(v) => setStatus(v as RecordStatus)} />}
       </Stack>
     </Dialog>
   );
-}
-
-/** Confirmação de ativar/inativar (mesmo padrão de Usuários): título com o nome, texto do efeito e ação em largura total. */
-function StatusConfirmDialog({ name, deactivate, detail, links = 0, linkLabel = 'registros', onClose, onConfirm }: {
-  name: string; deactivate: boolean; detail: string; links?: number; linkLabel?: string; onClose: () => void; onConfirm: () => void;
-}) {
-  const { usage } = useReach(links, linkLabel);
-  return (
-    <Dialog
-      open size="sm" onClose={onClose}
-      title={deactivate ? `Inativar ${name}?` : `Ativar ${name}?`}
-      actions={(
-        <>
-          <Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button size="sm" variant={deactivate ? 'destructive' : 'primary'} onClick={onConfirm}>{deactivate ? 'Inativar' : 'Ativar'}</Button>
-        </>
-      )}
-    >
-      <Stack gap="sm">
-        <Text>{detail}</Text>
-        <Text>{`Vale para todos os assinantes. ${usage}`}</Text>
-      </Stack>
-    </Dialog>
-  );
-}
-
-/** Singular dos rótulos de vínculo (usado quando há exatamente 1 vínculo). */
-const SINGULAR: Record<string, string> = { prestadores: 'prestador', equipamentos: 'equipamento', 'solicitações': 'solicitação', registros: 'registro', chamados: 'chamado' };
-
-/**
- * Alcance de uma alteração: todos os cadastros de Configurações são globais (valem para todos os assinantes), então basta dizer quanto
- * já está em uso e em quantos assinantes, sem listar redes. DADOS DE DEMONSTRAÇÃO: os assinantes alcançados são estimados a partir dos vínculos.
- */
-function useReach(links: number, linkLabel: string) {
-  const { db } = useSession();
-  const live = db.subscribers.filter((x) => x.status !== 'inativo').length;
-  const subs = links <= 0 ? 0 : Math.min(live, Math.max(1, Math.ceil(links / 18)));
-  const usage = links <= 0
-    ? 'Ainda não está em uso por nenhum assinante'
-    : `Em uso em ${formatNumber(links)} ${links === 1 ? SINGULAR[linkLabel] ?? linkLabel : linkLabel} de ${subs} ${subs === 1 ? 'assinante' : 'assinantes'}`;
-  const noun = links === 1 ? SINGULAR[linkLabel] ?? linkLabel : linkLabel;
-  return { subs, usage, noun };
 }
 
 /**
@@ -488,13 +439,11 @@ function LevelForm({ item, isPrio, others, onClose, onSave }: {
 
 // ═══ Status configuráveis (RF407) ═══════════════════════════════════
 type StatusRow = Record<string, unknown> & StatusItem;
-type StatusDraft = { module: StatusModule | ''; name: string; visual: Visual | ''; base: BaseSituation | ''; position: string; status: RecordStatus };
 
 function StatusList({ mode, active, header }: { mode: Mode; active: boolean; header: Header }) {
   const toast = useToast();
   const { db, can } = useSession();
   const [module, setModule] = useState<StatusModule | 'todos'>('todos');
-  const [form, setForm] = useState<{ item: StatusItem | null; tried?: boolean } | null>(null);
   const [removing, setRemoving] = useState<StatusItem | null>(null);
   const [toggling, setToggling] = useState<StatusItem | null>(null);
   const [query, setQuery] = useState('');
@@ -502,9 +451,6 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
 
   useEffect(() => {
     if (!active) return;
-    if (mode === 'new') setForm({ item: null });
-    if (mode === 'required') setForm({ item: null, tried: true });
-    if (mode === 'edit') setForm({ item: db.statuses[0] });
     if (mode === 'deleteblocked') setRemoving(db.statuses[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, active]);
@@ -528,13 +474,14 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
     { key: 'name', label: 'Status', render: (_, r) => statusBadgeOf(r.visual, r.name) },
     { key: 'visual', label: 'Tipo visual', render: (v) => visualLabel(v as Visual) },
     { key: 'base', label: 'Situação-base', render: (v) => baseLabel(v as BaseSituation) },
+    { key: 'exceptionIds', label: 'Alcance', render: (_, r) => reachText(r.exceptionIds) },
     { key: 'links', label: 'Vínculos', align: 'right' },
     { key: 'status', label: 'Situação', render: (v) => recordStatusBadge(v as RecordStatus) },
     {
       key: 'id', label: 'Ações', sticky: 'right',
       render: (_, r) => (
         <RowActions>
-          {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar status" target={r.name} onClick={() => setForm({ item: r })} />}
+          {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar status" target={r.name} onClick={() => goTo(`configuracoes-status-form.html?id=${r.id}`)} />}
           {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar status' : 'Ativar status'} target={r.name} onClick={() => setToggling(r)} />}
           {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir status" target={r.name} onClick={() => setRemoving(r)} />}
         </RowActions>
@@ -554,7 +501,7 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
 
   return (
     <Stack gap="xl">
-      {header(can('configuracoes', 'cadastrar') && <Button iconLeft={<IconPlus size={20} />} onClick={() => setForm({ item: null })}>Novo status</Button>)}
+      {header(can('configuracoes', 'cadastrar') && <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('configuracoes-status-form.html')}>Novo status</Button>)}
       <DevNote note="RF407: status configuráveis por módulo/etapa (criar, editar, excluir - RGN004), cada um com tipo visual da paleta fixa de 5 (RGN005, sem cor livre) e situação-base fixa do sistema (💡 proposta técnica): as regras automáticas usam a situação-base, não o nome - criar status não quebra o fluxo (CTA005). Status aparecem só no módulo a que pertencem (CTA004). Crítico e Atenção alimentam os alertas dos dashboards (RGN007). Carga inicial: RGN001–RGN003. 💡 Preventiva como módulo: a confirmar, não incluída. 💡 P13: a cliente enviará os tipos visuais de cada status.">
         {isMobile ? (
           <MobileCardList
@@ -568,11 +515,12 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
                 { label: 'Ordem', value: r.order },
                 { label: 'Tipo visual', value: statusBadgeOf(r.visual, visualLabel(r.visual)) },
                 { label: 'Situação-base', value: baseLabel(r.base) },
+                { label: 'Alcance', value: reachText(r.exceptionIds) },
                 { label: 'Vínculos', value: r.links },
               ]),
               actions: (
                 <RowActions>
-                  {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar status" target={r.name} onClick={() => setForm({ item: r })} />}
+                  {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar status" target={r.name} onClick={() => goTo(`configuracoes-status-form.html?id=${r.id}`)} />}
                   {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar status' : 'Ativar status'} target={r.name} onClick={() => setToggling(r)} />}
                   {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir status" target={r.name} onClick={() => setRemoving(r)} />}
                 </RowActions>
@@ -589,33 +537,6 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
         )}
       </DevNote>
 
-      {form && (
-        <StatusForm
-          key={form.item?.id ?? 'new'}
-          item={form.item}
-          initialTried={form.tried}
-          defaultModule={module === 'todos' ? '' : module}
-          all={db.statuses}
-          onClose={() => setForm(null)}
-          onSave={(data) => {
-            logConfig(form.item ? 'edicao' : 'cadastro', `${form.item ? 'Editou' : 'Cadastrou'} o status ${data.name}`);
-            const { position, ...fields } = data;
-            if (form.item) {
-              const id = form.item.id;
-              const from = form.item.module;
-              write((l) => {
-                const placed = placeStatus(l.map((x) => (x.id === id ? { ...x, ...fields } : x)), id, position);
-                return from === fields.module ? placed : renumber(placed, from);
-              });
-            } else {
-              const id = `ST-${Date.now()}`;
-              write((l) => placeStatus([...l, { id, links: 0, order: 0, ...fields }], id, position));
-            }
-            toast.show({ type: 'success', title: form.item ? 'Status atualizado' : 'Status cadastrado', message: form.item ? 'Nome e tipo visual refletem em todas as telas (CTA002).' : `“${data.name}” já pode ser usado em ${moduleLabel(data.module)}.` });
-            setForm(null);
-          }}
-        />
-      )}
       {toggling && (
         <StatusConfirmDialog
           name={toggling.name} links={toggling.links} linkLabel="registros"
@@ -645,133 +566,6 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
   );
 }
 
-/**
- * Posição no fluxo: o usuário escolhe "No início", "Depois de <status>" ou "No final" entre os status do módulo; a ordem numérica
- * é só interna. `start` | `end` | `after:<id>`.
- */
-const siblingsOf = (all: StatusItem[], module: StatusModule | '', selfId?: string) =>
-  all.filter((s) => s.module === module && s.id !== selfId).sort((a, b) => a.order - b.order);
-const positionKey = (siblings: StatusItem[], index: number) => (index <= 0 ? 'start' : index >= siblings.length ? 'end' : `after:${siblings[index - 1].id}`);
-const positionOptions = (siblings: StatusItem[]) => [
-  { value: 'start', label: 'No início' },
-  // “Depois do último” equivale a “No final”: não é oferecido duas vezes
-  ...siblings.slice(0, -1).map((s) => ({ value: `after:${s.id}`, label: `Depois de “${s.name}”` })),
-  { value: 'end', label: 'No final' },
-];
-/** Insere `id` na posição escolhida entre os status do módulo e renumera a ordem (1..n) sem repetir nem pular posições. */
-const placeStatus = (list: StatusItem[], id: string, position: string): StatusItem[] => {
-  const target = list.find((s) => s.id === id)!;
-  const siblings = siblingsOf(list, target.module, id);
-  const index = position === 'start' ? 0 : position === 'end' ? siblings.length : siblings.findIndex((s) => s.id === position.slice(6)) + 1;
-  const ordered = [...siblings.slice(0, index), target, ...siblings.slice(index)];
-  const order = new Map(ordered.map((s, i) => [s.id, i + 1]));
-  return list.map((s) => (order.has(s.id) ? { ...s, order: order.get(s.id)! } : s));
-};
-/** Renumera um módulo (1..n) mantendo a ordem atual: usado quando um status sai dele. */
-const renumber = (list: StatusItem[], module: StatusModule): StatusItem[] => {
-  const order = new Map(siblingsOf(list, module).map((s, i) => [s.id, i + 1]));
-  return list.map((s) => (order.has(s.id) ? { ...s, order: order.get(s.id)! } : s));
-};
-
-function StatusForm({ item, all, defaultModule, initialTried, onClose, onSave }: {
-  item: StatusItem | null; all: StatusItem[]; defaultModule: StatusModule | ''; initialTried?: boolean;
-  onClose: () => void; onSave: (d: Omit<StatusItem, 'id' | 'links' | 'order'> & { position: string }) => void;
-}) {
-  const [d, setD] = useState<StatusDraft>(() => (item
-    ? { module: item.module, name: item.name, visual: item.visual, base: item.base, position: positionKey(siblingsOf(all, item.module, item.id), siblingsOf(all, item.module).findIndex((s) => s.id === item.id)), status: item.status }
-    : { module: defaultModule, name: '', visual: '', base: '', position: 'end', status: 'ativo' }));
-  const scope = useScopeLine(item?.links, 'registros', 'status');
-  const [tried, setTried] = useState(!!initialTried);
-  const set = <K extends keyof StatusDraft>(k: K, v: StatusDraft[K]) => setD((x) => ({ ...x, [k]: v }));
-  const positions = positionOptions(siblingsOf(all, d.module, item?.id));
-  // Linha da ordem: status do módulo na sequência, com o atual inserido na posição escolhida
-  const flow = (() => {
-    const sib = siblingsOf(all, d.module, item?.id);
-    const index = d.position === 'start' ? 0 : d.position === 'end' ? sib.length : sib.findIndex((x) => x.id === d.position.slice(6)) + 1;
-    const rows: Array<{ id: string; name: string; visual: Visual; current?: boolean }> = sib.map((x) => ({ id: x.id, name: x.name, visual: x.visual }));
-    rows.splice(index, 0, { id: '__current', name: d.name, visual: d.visual as Visual, current: true });
-    return rows;
-  })();
-  const dup = all.some((s) => s.id !== item?.id && s.module === d.module && normalize(s.name) === normalize(d.name));
-  const err = (ok: boolean, field: string) => (tried && !ok ? requiredMessage(field) : undefined);
-  const errors = {
-    module: err(!!d.module, 'Módulo / etapa'),
-    name: err(!!d.name.trim(), 'Nome') ?? (tried && dup ? 'Já existe um status com este nome neste módulo' : undefined),
-    visual: err(!!d.visual, 'Tipo visual'),
-    base: err(!!d.base, 'Situação-base'),
-  };
-  const [confirming, setConfirming] = useState(false);
-  const commit = () => onSave({ module: d.module as StatusModule, name: d.name.trim(), visual: d.visual as Visual, base: d.base as BaseSituation, position: d.position, status: d.status });
-  const save = () => {
-    setTried(true);
-    if (!d.module || !d.name.trim() || dup || !d.visual || !d.base) return;
-    if (item && d.status !== item.status) setConfirming(true); else commit();
-  };
-  if (confirming && item) {
-    return (
-      <StatusConfirmDialog
-        name={item.name} links={item.links} linkLabel="registros" deactivate={d.status === 'inativo'}
-        detail={d.status === 'inativo' ? 'Deixa de ser oferecido em novos cadastros, mas continua nos registros antigos.' : 'Volta a ser oferecido nas telas de cadastro.'}
-        onClose={() => setConfirming(false)}
-        onConfirm={commit}
-      />
-    );
-  }
-  return (
-    <Dialog
-      open size="lg" onClose={onClose} title={item ? 'Editar status' : 'Novo status'} subtitle={scope}
-      actions={<><Button size="sm" variant="secondary" onClick={onClose}>Cancelar</Button><Button size="sm" onClick={save}>Salvar</Button></>}
-    >
-      <Stack gap="md">
-      <Grid>
-        <Col span={6}><Input label="Nome" required value={d.name} onChange={(e) => set('name', e.target.value)} error={errors.name} /></Col>
-        <Col span={6}>
-          <DevNote note="FLU003 / CTA003: escolha obrigatória entre os 5 tipos visuais fixos - não há cor livre.">
-            <Dropdown label="Tipo visual" required options={VISUALS.map((v) => ({ value: v.value, label: v.label }))} value={d.visual} onChange={(v) => set('visual', v as Visual)} error={errors.visual} />
-          </DevNote>
-        </Col>
-        <Col span={6}>
-          <DevNote note="FLU002: o status pertence a um módulo/etapa e só aparece nele (CTA004).">
-            <Dropdown label="Módulo / etapa" required options={STATUS_MODULES} value={d.module} onChange={(v) => setD((x) => ({ ...x, module: v as StatusModule, position: 'end' }))} error={errors.module} />
-          </DevNote>
-        </Col>
-        <Col span={6}>
-          <DevNote note="💡 Proposta técnica (RGN004): a situação-base é fixa do sistema e é o que as regras automáticas usam (encerrar solicitação, contar downtime, bloquear execução em “Aguardando aprovação”). Validar com a cliente e o desenvolvimento.">
-            <Dropdown label="Situação-base" required options={BASE_SITUATIONS} value={d.base} onChange={(v) => set('base', v as BaseSituation)} error={errors.base} />
-          </DevNote>
-        </Col>
-        <Col span={6}>
-          <DevNote note="A posição é escolhida em relação aos status do mesmo módulo/etapa (No início, Depois de…, No final; padrão: No final). O sistema guarda a ordem numérica internamente e renumera os demais: não há campo de número nem posições repetidas.">
-            <Dropdown label="Posição no fluxo" options={positions} value={d.position} onChange={(v) => set('position', v)} disabled={!d.module} helperText="Define onde o status aparece no fluxo." />
-          </DevNote>
-        </Col>
-        {item && (
-          <Col span={6}>
-            <RadioButton name="st-status" label="Status" orientation="horizontal" options={[{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }]} value={d.status} onChange={(v) => set('status', v as RecordStatus)} />
-          </Col>
-        )}
-        {d.module && (
-          <Col span={12}>
-            <DevNote note="Linha da ordem dos status do módulo/etapa: mostra os status atuais na sequência e onde este ficará (destacado), acompanhando a escolha de “Posição no fluxo”. É só leitura; a ordem numérica continua interna.">
-              <Stack gap="xs">
-                <Text>Ordem dos status neste módulo</Text>
-                <ol className="status-flow" aria-label="Ordem dos status neste módulo">
-                  {flow.map((f, i) => (
-                    <li key={f.id} className={f.current ? 'status-flow-item is-current' : 'status-flow-item'} aria-current={f.current ? 'step' : undefined}>
-                      <span className="status-flow-num" aria-hidden="true">{i + 1}</span>
-                      {f.current ? statusBadgeOf((d.visual || 'neutro') as Visual, d.name.trim() || 'Nome do status') : statusBadgeOf(f.visual, f.name)}
-                    </li>
-                  ))}
-                </ol>
-              </Stack>
-            </DevNote>
-          </Col>
-        )}
-      </Grid>
-      </Stack>
-    </Dialog>
-  );
-}
 
 // ═══ Tela ═══════════════════════════════════════════════════════════
 function ConfiguracoesScreen() {
