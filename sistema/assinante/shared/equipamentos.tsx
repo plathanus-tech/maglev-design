@@ -324,9 +324,14 @@ function EquipamentosScreen() {
     </>
   );
 
+  // Discreto, ao lado do total: quantos dos equipamentos do filtro estão ativos (mesmo critério do indicador: todos os que não estão inativos)
+  const activeInList = rows.filter((r) => !isInactive(refs, r.equipment)).length;
+  // Só faz sentido com todos os status: filtrando um status, a contagem de ativos seria redundante (ou zero)
+  const listRange = (from: number, to: number, total: number) => `Mostrando ${from}–${to} de ${total}${status === ALL ? ` · ${formatNumber(activeInList)} ${activeInList === 1 ? 'ativo' : 'ativos'}` : ''}`;
+
   const listView = isMobile ? (
     <MobileCardList
-      headingId="equipments-title" title="Lista de equipamentos" titleHidden toolbar={toolbarFor(true, mobileSelectBar)} emptyTitle={empty.title}
+      headingId="equipments-title" rangeLabel={listRange} title="Lista de equipamentos" titleHidden toolbar={toolbarFor(true, mobileSelectBar)} emptyTitle={empty.title}
       selection={selectMode ? { selectedIds: selected, onToggle: toggleOne, label: (id) => `Selecionar ${rows.find((r) => r.id === id)?.name ?? 'equipamento'}` } : undefined}
       stickyFooter={selectMode && selectedCount > 0 ? <Button iconLeft={<IconPrinter size={20} />} onClick={() => setBatchOpen(true)}>{selectedCount === 1 ? 'Imprimir 1 etiqueta' : `Imprimir ${selectedCount} etiquetas`}</Button> : undefined}
       page={page} pageSize={PAGE_SIZE} total={rows.length} onPageChange={setPage}
@@ -345,7 +350,7 @@ function EquipamentosScreen() {
     <Table<Row>
       caption="Lista de equipamentos" toolbar={toolbarFor(true, selectionBar)} columns={[selectColumn, ...shownColumns]} rows={pageRows}
       sortKey="name" sortDir={sortDir} onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-      empty={empty} pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage }}
+      empty={empty} pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage, rangeLabel: listRange }}
     />
   );
 

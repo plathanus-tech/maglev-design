@@ -97,11 +97,8 @@ export function FilterControl({ filters, note, buttonLabel = 'Filtros', title = 
           {fields}
         </Dialog>
       ) : (
-        <Popover open={open} onClose={closePopover} anchorRef={anchor} label={title}>
-          <Stack gap="md">
-            {fields}
-            <Stack direction="horizontal" justify="end" gap="sm">{buttons}</Stack>
-          </Stack>
+        <Popover open={open} onClose={closePopover} anchorRef={anchor} label={title} footer={buttons}>
+          <Stack gap="md">{fields}</Stack>
         </Popover>
       )}
     </>

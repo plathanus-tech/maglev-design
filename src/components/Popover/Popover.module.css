@@ -9,7 +9,11 @@
   border-radius: var(--radius-overlay);
   box-shadow: var(--shadow-lg);
   color: var(--color-text-primary);
+  /* a altura máxima vem do espaço visível (inline); só o corpo rola e o rodapé de ações fica fixo */
+  display: flex; flex-direction: column;
 }
+.body { min-height: 0; overflow-y: auto; margin-inline: calc(var(--spacing-xs) * -1); padding-inline: var(--spacing-xs); }
+.footer { flex-shrink: 0; display: flex; justify-content: flex-end; gap: var(--spacing-sm); padding-top: var(--spacing-md); }
 
 /* Menu de ações (lista curta de itens): no mobile o painel se ajusta ao conteúdo em vez de ocupar 352px, sempre dentro da margem da tela */
 @media (max-width: 767px) {

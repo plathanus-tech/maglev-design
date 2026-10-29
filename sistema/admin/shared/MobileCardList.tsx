@@ -21,7 +21,7 @@ export interface MobileCardItem {
 /** Modo de seleção múltipla: cada card ganha um Checkbox, tocar no card marca/desmarca e o rodapé de ações individuais (⋮) some. */
 export interface MobileSelection { selectedIds: Set<string>; onToggle: (id: string) => void; label: (id: string) => string }
 
-export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction }: {
+export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction, rangeLabel }: {
   title: string;
   titleHidden?: boolean;
   subtitle?: string;
@@ -40,6 +40,8 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
   stickyFooter?: ReactNode;
   /** Ação ao lado do "Mostrando X–Y de Z" (ex.: "Ver todas"): o texto fica à esquerda e a ação à direita, na mesma linha. */
   footerAction?: ReactNode;
+  /** Texto do intervalo (padrão: "Mostrando X–Y de Z"). */
+  rangeLabel?: (from: number, to: number, total: number) => string;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const from = (page - 1) * pageSize + 1;
@@ -90,7 +92,7 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
       {total > 0 && footerAction && (
         <Stack gap="sm">
           <Stack direction="horizontal" justify="between" align="center" gap="sm">
-            <span className="page-text" aria-live="polite">{`Mostrando ${from}–${to} de ${total}`}</span>
+            <span className="page-text" aria-live="polite">{rangeLabel ? rangeLabel(from, to, total) : `Mostrando ${from}–${to} de ${total}`}</span>
             {footerAction}
           </Stack>
           {pageCount > 1 && <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />}
@@ -98,7 +100,7 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
       )}
       {total > 0 && !footerAction && (
         <Stack gap="sm" align="center">
-          <span className="page-text" aria-live="polite">{`Mostrando ${from}–${to} de ${total}`}</span>
+          <span className="page-text" aria-live="polite">{rangeLabel ? rangeLabel(from, to, total) : `Mostrando ${from}–${to} de ${total}`}</span>
           {pageCount > 1 && <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />}
         </Stack>
       )}

@@ -2,6 +2,9 @@ import { CSSProperties, ReactNode, RefObject, useEffect, useId, useLayoutEffect,
 import { createPortal } from 'react-dom';
 import styles from './Popover.module.css';
 
+/** Altura mínima (px) garantida ao painel: com menos espaço abaixo do botão, ele sobe para alcançá-la. */
+const MIN_ROOM = 320;
+
 export interface PopoverProps {
   open: boolean;
   onClose: () => void;
@@ -13,6 +16,8 @@ export interface PopoverProps {
   align?: 'start' | 'end';
   /** Menu de ações curto: no mobile o painel se ajusta ao conteúdo (em vez da largura padrão) e fica dentro da margem da tela. */
   fit?: boolean;
+  /** Ações do painel (ex.: Aplicar e Limpar): ficam fixas no rodapé enquanto só o conteúdo rola, então nunca ficam fora da tela. */
+  footer?: ReactNode;
   children: ReactNode;
 }
 
@@ -22,7 +27,7 @@ export interface PopoverProps {
  * (Dropdown) funcionam dentro dele: enquanto um menu está aberto, o clique não fecha o painel.
  * Para conteúdo que exige decisão ou foco preso, use `Dialog`.
  */
-export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, children }: PopoverProps) {
+export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, footer, children }: PopoverProps) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<CSSProperties>();
@@ -34,7 +39,15 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
     const place = () => {
       const r = anchorRef.current?.getBoundingClientRect();
       if (!r) return;
-      setStyle({ top: r.bottom + 4, ...(align === 'end' ? { right: document.documentElement.clientWidth - r.right } : { left: r.left }) });
+      const edge = 8;
+      const below = window.innerHeight - r.bottom - 4 - edge;
+      // Com pouco espaço embaixo (ex.: tabela curta, página sem rolagem) o painel sobe o suficiente para ter ao menos MIN_ROOM de altura,
+      // sobrepondo o botão se for preciso, sem nunca sair da área visível; o conteúdo rola e o rodapé de ações fica fixo
+      const top = below >= MIN_ROOM ? r.bottom + 4 : Math.max(edge, window.innerHeight - edge - MIN_ROOM);
+      setStyle({
+        top, maxHeight: window.innerHeight - edge - top,
+        ...(align === 'end' ? { right: document.documentElement.clientWidth - r.right } : { left: r.left }),
+      });
     };
     place();
     window.addEventListener('resize', place);
@@ -65,7 +78,8 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
   if (!open) return null;
   return createPortal(
     <div ref={panelRef} id={id} role="dialog" aria-label={label} className={fit ? `${styles.panel} ${styles.fit}` : styles.panel} style={style}>
-      {children}
+      <div className={styles.body}>{children}</div>
+      {footer && <div className={styles.footer}>{footer}</div>}
     </div>,
     document.body,
   );
