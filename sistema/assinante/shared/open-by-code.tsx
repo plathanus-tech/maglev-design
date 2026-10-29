@@ -9,18 +9,10 @@ import { CategoryIcon } from '../../admin/shared/IconPicker';
 import '../../externo/shared/externo.css';
 import { useSubDb, useSubSession } from './store';
 import { goTo, useRefs } from './ui';
+import { makeDetector, tokenOf } from './qr-link';
 import './rowmenu.css';
 
-/** Leitor de QR Code do navegador (Chrome/Android e similares); onde não existir, a pessoa digita o código da etiqueta. */
-type Detector = { detect: (v: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> };
-const makeDetector = (): Detector | null => {
-  const Ctor = (window as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
-  return Ctor ? new Ctor({ formats: ['qr_code'] }) : null;
-};
-
 const norm = (v: string) => v.trim().toLowerCase();
-/** Aceita o código da etiqueta ou o link do QR (…/q/<identificador>). */
-const tokenOf = (raw: string) => /\/q\/([\w-]+)/.exec(raw)?.[1];
 
 /**
  * Atalho ao lado de “Nova solicitação”: ler o QR Code (mobile) ou informar o código do equipamento (desktop e mobile) e cair direto na

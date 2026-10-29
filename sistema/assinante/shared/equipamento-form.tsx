@@ -7,7 +7,9 @@ import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
 import { DateField, INVALID_DATE_MESSAGE } from './date-field';
 import { formatMoney, onlyDigits, requiredMessage } from '../../admin/shared/format';
-import { Equipment, TroubleshootingEntry, dayOnly, hoursAgo, nowLocal } from './data';
+import { Equipment, TroubleshootingEntry, dayOnly, hoursAgo, nowLocal, qrLink } from './data';
+import { QrLinkField, ReplaceQrDialog, qrProblem, tokenOf } from './qr-link';
+import { QrCode } from './QrCode';
 import { nextShortId, notify, updateSubDb, useSubSession } from './store';
 import { daysText, warrantyOf } from './warranty';
 import { Col, FormSection, Grid, goTo, param, setFlash, useRefs } from './ui';
@@ -189,6 +191,11 @@ function EquipamentoFormScreen() {
   // Aberto pela Nova solicitação (?return=solicitacao-form.html): ao salvar, volta para lá com o equipamento escolhido
   const returnTo = !editing && param('return') === 'solicitacao-form.html' ? 'solicitacao-form.html' : null;
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
+  // QR Code: no cadastro, gerar automático · já tenho a etiqueta (lida na lista ou aqui) · vincular depois; na edição, mostrar o atual e substituir
+  const [qrMode, setQrMode] = useState<'auto' | 'have' | 'later'>(() => (param('qr') ? 'have' : 'auto'));
+  const [qrRaw, setQrRaw] = useState(() => param('qr') ?? '');
+  const [pendingQr, setPendingQr] = useState('');
+  const [replacingQr, setReplacingQr] = useState(false);
 
   // Variantes do navegador (só no cadastro): preenchem um exemplo e mostram o estado
   useEffect(() => {
@@ -255,6 +262,7 @@ function EquipamentoFormScreen() {
     wEnd: d.warranty === 'sim' ? (badDate.wEnd ? INVALID_DATE_MESSAGE : !d.wEnd ? requiredMessage('Fim da garantia') : d.wStart && d.wEnd < d.wStart ? 'O fim da garantia deve ser igual ou posterior ao início' : undefined) : undefined,
     tips: emptyTips.length ? requiredMessage('Dica') : undefined,
     // O código é o que está na etiqueta e localiza o equipamento: um por equipamento
+    qr: !editing && qrMode === 'have' ? qrProblem(db, qrRaw) : undefined,
     code: d.code.trim() && db.equipments.some((x) => x.id !== editing?.id && x.code.trim().toLowerCase() === d.code.trim().toLowerCase()) ? 'Já existe um equipamento com este código' : undefined,
   };
   // O período incorreto aparece assim que as duas datas estão preenchidas, sem esperar o salvar
@@ -321,17 +329,20 @@ function EquipamentoFormScreen() {
     updateSubDb((db0) => {
       // Sem código/patrimônio informado, o sistema gera um (PAT-0000, na sequência) para o equipamento sempre ter um código de busca e de etiqueta
       const code = data.code || nextAssetCode(db0.equipments);
-      if (editing) return { ...db0, equipments: db0.equipments.map((x) => (x.id === editing.id ? { ...x, ...data, code } : x)) };
+      // Substituir o QR Code: o anterior vai para o histórico e nunca é reutilizado
+      if (editing) return { ...db0, equipments: db0.equipments.map((x) => (x.id === editing.id ? { ...x, ...data, code, ...(pendingQr ? { qrToken: pendingQr, qrPrevious: [...(x.qrPrevious ?? []), x.qrToken].filter(Boolean) } : {}) } : x)) };
       id = nextShortId('EQP', db0.equipments.map((x) => x.id));
       // Todo equipamento nasce com QR Code único e não sequencial (RF305-RGN001/RGN004) e data de cadastro (RF301-FLU004)
-      const created: Equipment = { id, ...data, code, createdAt: nowLocal(), qrToken: `q${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-4)}` };
+      const created: Equipment = { id, ...data, code, createdAt: nowLocal(), qrToken: qrMode === 'auto' ? `q${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-4)}` : qrMode === 'have' ? tokenOf(qrRaw)! : '' };
       return { ...db0, equipments: [...db0.equipments, created] };
     });
     const w = warrantyOf(data.warranty);
     if (w.kind === 'expiring') {
       notify(db.users.filter((u) => u.status === 'ativo' && (u.profile === 'administrador' || u.profile === 'gestor')).map((u) => u.id), { kind: 'equipamento', title: 'Garantia a vencer', text: `${data.name}: a garantia ${daysText(w.daysLeft ?? 0)}`, href: `equipamento.html?id=${id}` });
     }
-    if (editing) setFlash({ type: 'success', title: 'Equipamento atualizado', message: 'As alterações foram salvas.' });
+    if (editing) setFlash({ type: 'success', title: 'Equipamento atualizado', message: pendingQr ? 'As alterações foram salvas. O novo QR Code já identifica o equipamento e o anterior deixou de valer.' : 'As alterações foram salvas.' });
+    else if (qrMode === 'later') setFlash({ type: 'warning', title: 'Equipamento cadastrado sem QR Code', message: 'Ele só abre solicitações por QR Code e ganha etiqueta quando você vincular um QR Code. Edite o equipamento para vincular.' });
+    else if (qrMode === 'have') setFlash({ type: 'success', title: 'Equipamento cadastrado', message: 'Ele foi vinculado ao QR Code informado e já abre solicitações pela etiqueta.' });
     else if (returnTo) setFlash({ type: 'success', title: 'Equipamento cadastrado', message: 'O QR Code foi gerado. Ele já está selecionado na solicitação.' });
     else setFlash({ type: 'success', title: 'Equipamento cadastrado', message: intent.current === 'next' ? 'O QR Code foi gerado. Preencha o próximo, que já vem com a mesma unidade e o mesmo ambiente.' : 'O QR Code do equipamento foi gerado e já pode ser impresso.' });
     if (returnTo) { window.setTimeout(() => goTo(`${returnTo}?restore=1&equipment=${id}`), 400); return; }
@@ -500,6 +511,46 @@ function EquipamentoFormScreen() {
           </FormSection>
         </DevNote>
 
+        <DevNote note="QR Code do equipamento. Cadastro novo: Gerar automaticamente (o sistema cria um QR Code único, não sequencial) · Já tenho a etiqueta (lê ou informa o QR Code de uma etiqueta já impressa; vem preenchido quando o cadastro foi aberto pelo botão de QR Code da lista; o sistema valida que o QR Code não está vinculado a outro equipamento) · Vincular depois (💡 sugestão, não pedida pelo cliente: o equipamento nasce sem QR Code, aparece com aviso na lista e no detalhe, não tem etiqueta para imprimir e não abre solicitação por QR até vincular; a vinculação é feita na edição). Edição: mostra o QR Code atual e permite substituir (desktop: enviar imagem; mobile: câmera, foto ou arquivo); a troca só vale ao salvar, o QR Code antigo vai para o histórico e nunca é reutilizado.">
+          <FormSection className="card-open" title="7. QR Code" subtitle={editing ? 'O código que identifica este equipamento na etiqueta' : 'Como o equipamento será ligado ao QR Code da etiqueta'}>
+            <div className="card-body-tight">
+              {editing ? (
+                <Stack gap="md">
+                  {editing.qrToken ? (
+                    <Stack direction="horizontal" gap="md" align="center" wrap>
+                      <div className="eq-qr eq-qr--sm"><QrCode value={qrLink(editing)} label={`QR Code atual de ${editing.name}`} /></div>
+                      <Stack gap="2xs">
+                        <span className="read-label">QR Code atual</span>
+                        <span className="cell-primary">{qrLink(editing).replace('https://', '')}</span>
+                        {editing.qrPrevious?.length ? <span className="field-note">{`${editing.qrPrevious.length} ${editing.qrPrevious.length === 1 ? 'QR Code anterior' : 'QR Codes anteriores'} no histórico (não podem ser reutilizados)`}</span> : null}
+                      </Stack>
+                    </Stack>
+                  ) : (
+                    <Feedback type="warning" title="Sem QR Code vinculado" message="Este equipamento ainda não abre solicitações por QR Code e não tem etiqueta para imprimir. Vincule um QR Code para ativar" />
+                  )}
+                  {pendingQr && (
+                    <Feedback type="info" title="Novo QR Code escolhido" message={`${pendingQr} passa a identificar o equipamento quando você salvar`} link={{ label: 'Desfazer', onClick: () => setPendingQr('') }} />
+                  )}
+                  <Stack direction="horizontal"><Button type="button" variant="secondary" size="sm" onClick={() => setReplacingQr(true)}>{editing.qrToken ? 'Substituir QR Code' : 'Vincular QR Code'}</Button></Stack>
+                </Stack>
+              ) : (
+                <Stack gap="md">
+                  <RadioButton
+                    name="qr-mode" label="QR Code" value={qrMode} onChange={(v) => setQrMode(v as 'auto' | 'have' | 'later')}
+                    options={[
+                      { value: 'auto', label: 'Gerar automaticamente', description: 'O sistema cria um QR Code único para imprimir a etiqueta.' },
+                      { value: 'have', label: 'Já tenho a etiqueta com QR Code', description: 'Leia ou informe o QR Code de uma etiqueta já impressa e vincule a este equipamento.' },
+                      { value: 'later', label: 'Vincular depois', description: 'O equipamento fica sem QR Code até você vincular um; enquanto isso, não abre solicitações por QR Code.' },
+                    ]}
+                  />
+                  {qrMode === 'have' && <QrLinkField value={qrRaw} onChange={setQrRaw} error={tried ? problems.qr : undefined} />}
+                  {qrMode === 'later' && <Feedback type="warning" message="Sem QR Code o equipamento aparece com aviso na lista e no detalhe. Vincule um na edição do equipamento" />}
+                </Stack>
+              )}
+            </div>
+          </FormSection>
+        </DevNote>
+
         <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
           <Button type="submit" disabled={saving} onClick={() => { intent.current = 'save'; }}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Salvar'}</Button>
           {!editing && !returnTo && (
@@ -510,6 +561,7 @@ function EquipamentoFormScreen() {
           <Button variant="secondary" disabled={saving} onClick={() => goTo(editing ? `equipamento.html?id=${editing.id}` : returnTo ? `${returnTo}?restore=1` : 'equipamentos.html')}>Cancelar</Button>
         </Stack>
       </Stack>
+      {replacingQr && editing && <ReplaceQrDialog current={editing.qrToken} equipmentId={editing.id} onClose={() => setReplacingQr(false)} onConfirm={(t) => { setPendingQr(t); setReplacingQr(false); }} />}
     </form>,
   );
 }

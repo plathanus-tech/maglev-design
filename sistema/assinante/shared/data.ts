@@ -11,7 +11,7 @@ import { daysText, expiringWarranties } from './warranty';
 import { alertText, attendanceAlerts } from './os-alerts';
 import { clockNow } from '../../admin/shared/clock';
 
-export const DB_VERSION = 36;
+export const DB_VERSION = 37;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
@@ -113,8 +113,10 @@ export interface Equipment {
   /** Nome do arquivo das fotos (upload simulado no protótipo - RF301): do equipamento e da etiqueta/placa. */
   photoName?: string; labelPhotoName?: string;
   createdAt: string;
-  /** Identificador não sequencial do QR Code (RF305-RGN004). */
+  /** Identificador não sequencial do QR Code (RF305-RGN004). Vazio = sem QR Code vinculado (cadastrado com “vincular depois”): não abre solicitação por QR até vincular. */
   qrToken: string;
+  /** QR Codes que já foram substituídos neste equipamento: ficam no histórico e nunca podem ser reutilizados. */
+  qrPrevious?: string[];
   troubleshooting: TroubleshootingEntry[];
   /** Quando entrou no status "Parado" (downtime - RF304-RGN005). */
   stoppedSince?: string;
@@ -417,6 +419,8 @@ export function seed(): SubDb {
     });
     n++;
   }
+  // DEMONSTRAÇÃO: um equipamento cadastrado com “vincular QR Code depois” (sem QR Code), para ver o aviso
+  equipments[equipments.length - 1].qrToken = '';
   // Garantia nos equipamentos de solicitações em aberto (para ver o destaque na triagem): Fritadeira 01 vence em 22 dias (SOL-000119, com dica de serviço anterior), Câmara fria 01 em 11 (SOL-000120) e Forno combinado 01 segue em garantia (SOL-000122)
   const setWarranty = (id: string, endsInDays: number) => { const e = equipments.find((x) => x.id === id); if (e) e.warranty = { has: true, start: dayOnly(120), end: dayOnly(-endsInDays) }; };
   setWarranty('EQP-0016', 22); setWarranty('EQP-0020', 11); setWarranty('EQP-0025', 200);

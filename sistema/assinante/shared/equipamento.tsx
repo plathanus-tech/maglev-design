@@ -77,6 +77,7 @@ function EquipamentoScreen() {
   if (stopped && !inactive && mode !== 'recurrence') attention.push({ id: 'stopped', severity: 'warning', title: 'Equipamento parado', message: `Parado desde ${eq.stoppedSince ? formatDateTime(eq.stoppedSince) : 'data não registrada'}. Acompanhe as OS abertas na aba Ordens de serviço` });
   if (!inactive && recurrence.alert && mode !== 'stopped') attention.push({ id: 'recurrence', severity: 'warning', title: 'Falhas recorrentes neste equipamento', message: `${recurrence.count} corretivas nos últimos ${RECURRENCE_DAYS} dias. Avalie a causa raiz ou considere a substituição do equipamento` });
   if (!stopped && !inactive && refs.visualOf(eq.statusId) === 'atencao' && mode === 'idle') attention.push({ id: 'alert', severity: 'warning', title: 'Equipamento com alerta ou falha', message: 'Há um problema registrado, mas ele ainda opera' });
+  if (!eq.qrToken && !inactive) attention.push({ id: 'noqr', severity: 'warning', title: 'Sem QR Code vinculado', message: 'Este equipamento ainda não abre solicitações por QR Code e não tem etiqueta para imprimir. Edite o equipamento para vincular um QR Code' });
   const canEdit = can('equipamentos', 'editar');
   const canRequest = can('solicitacoes', 'cadastrar') && !inactive;
   const url = qrLink(eq);
@@ -85,8 +86,10 @@ function EquipamentoScreen() {
   const primary: 'request' | 'activate' | 'edit' | null = canRequest ? 'request' : inactive && canToggle ? 'activate' : canEdit ? 'edit' : null;
   const moreActions: RowMenuItem[] = [
     ...(canEdit && primary !== 'edit' ? [{ label: 'Editar equipamento', icon: <IconPencil size={16} />, onClick: () => goTo(`equipamento-form.html?id=${eq.id}`) }] : []),
-    { label: 'Imprimir etiqueta', icon: <IconPrinter size={16} />, onClick: () => setQr('label') },
-    { label: 'Copiar link de solicitação', icon: <IconCopy size={16} />, onClick: () => copy(url) },
+    ...(eq.qrToken ? [
+      { label: 'Imprimir etiqueta', icon: <IconPrinter size={16} />, onClick: () => setQr('label') },
+      { label: 'Copiar link de solicitação', icon: <IconCopy size={16} />, onClick: () => copy(url) },
+    ] : []),
     ...(canToggle && !inactive ? [{ label: 'Inativar', icon: <IconCircleOff size={16} />, onClick: () => setToggling(true) }] : []),
   ];
   const today = dayOnly(0);

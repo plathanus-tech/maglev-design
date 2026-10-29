@@ -21,6 +21,7 @@ import { RowMenu, RowMenuItem } from './RowMenu';
 import { photoSrc } from './photos';
 import { updateSubDb, useSubSession } from './store';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, recordStatusBadge, takeFlash, useRefs } from './ui';
+import { LinkQrButton, QrMissingFlag } from './qr-link';
 import {
   EquipmentToggleDialog, BatchLabelDialog, QrDialogs, isAlert, isInactive, isOverdue, isStopped, nextPreventive, openOrdersOf, spent30d, spentOf,
 } from './equipamento-lib';
@@ -30,7 +31,7 @@ import './equipamento.css';
 /** Última aba aberta (Hierárquica ou Lista): ao voltar do detalhe do equipamento pelo breadcrumb, a lista reabre nela. */
 const TAB_KEY = 'maglev.sub.equipamentos.tab';
 const savedTab = () => { try { return sessionStorage.getItem(TAB_KEY); } catch { return null; } };
-const STATES = ['idle', 'hierarchical', 'expanded', 'list', 'noresults', 'inactivate', 'qr'] as const;
+const STATES = ['idle', 'hierarchical', 'expanded', 'list', 'noresults', 'inactivate', 'qr', 'qrlink', 'qrlinked'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
@@ -56,7 +57,8 @@ function EquipamentosScreen() {
   // Ícone herdado da categoria cadastrada no Admin (sem ícone, só o conteúdo)
   const WithIcon = ({ e, children }: { e?: Equipment; children: ReactNode }) => {
     const icon = e ? refs.category(e.categoryId)?.icon : undefined;
-    return icon ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={icon} size={20} />{children}</Stack> : <>{children}</>;
+    const flag = e ? <QrMissingFlag equipment={e} /> : null;
+    return icon ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={icon} size={20} />{children}{flag}</Stack> : <>{children}{flag}</>;
   };
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const eqStatuses = refs.activeStatuses('equipamento');
@@ -499,9 +501,12 @@ function EquipamentosScreen() {
           title="Equipamentos"
           subtitle="Gerencie os equipamentos da sua operação e acompanhe sua situação"
           actions={can('equipamentos', 'cadastrar') && (
+            <>
             <DevNote note="Abre o cadastro de equipamento (RF301-FLU001). Só perfis com permissão “Cadastrar” em Equipamentos veem o botão (Solicitante e Executor só leem). Respeita as unidades do perfil (RF302-RGN002). O botão não deve ser exibido para usuários sem a permissão “Cadastrar” em Equipamentos.">
               <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('equipamento-form.html')}>Novo equipamento</Button>
             </DevNote>
+            <LinkQrButton preset={mode === 'qrlink' ? 'empty' : mode === 'qrlinked' ? 'linked' : undefined} />
+            </>
           )}
         />
 

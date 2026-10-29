@@ -13,11 +13,11 @@ import { useHashState } from './useHashState';
 import { useIsMobile } from './useMediaQuery';
 import { useSession } from './store';
 import { FilterControl } from './FilterControl';
-import { KPI_HISTORY, PLANS, Subscriber, activeUsersCount, subscriberName } from './data';
+import { KPI_HISTORY, PLANS, Subscriber, activeUsersCount, subscriberName, onboardingLabel } from './data';
 import { ExportButton } from './ExportButton';
 import { KpiMoney } from './kpi-value';
 import { formatCnpj, formatDate, formatMoney, formatMoneyCompact, formatNumber, formatSince, noBreak, onlyDigits, tenureMonths } from './format';
-import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, onboardingBadge, subscriberStatusBadge, takeFlash } from './ui';
+import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, onboardingStateBadge, subscriberStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · overdue (filtro Inadimplente) · noresults (busca sem resultados) · deactivate (RF204 pela listagem) */
 const STATES = ['idle', 'overdue', 'noresults', 'deactivate', 'columns'] as const;
@@ -132,7 +132,8 @@ function AssinantesScreen() {
     { key: 'cnpj', label: 'CNPJ', render: (v) => noBreak(formatCnpj(String(v))) },
     { key: 'plan', label: 'Plano contratado' },
     { key: 'status', label: 'Status', render: (v) => subscriberStatusBadge(v as Subscriber['status']) },
-    { key: 'onboarding', label: 'Implantação', render: (v) => onboardingBadge(v as Subscriber['onboarding']) },
+    { key: 'onboarding', label: 'Implantação', render: (v) => onboardingLabel(v as Subscriber['onboarding']) },
+    { key: 'onboardingState', label: 'Situação', render: (v) => onboardingStateBadge(v as Subscriber['onboardingState']) },
     {
       key: 'since', label: 'Cliente desde',
       render: (v) => <CellPair primary={formatDate(String(v))} secondary={tenureMonths(String(v))} />,
@@ -232,7 +233,8 @@ function AssinantesScreen() {
                 fields: fieldsFor([
                   { label: 'CNPJ', value: formatCnpj(s.cnpj) },
                   { label: 'Plano contratado', value: s.plan },
-                  { label: 'Implantação', value: onboardingBadge(s.onboarding) },
+                  { label: 'Implantação', value: onboardingLabel(s.onboarding) },
+                  { label: 'Situação', value: onboardingStateBadge(s.onboardingState) },
                   { label: 'Cliente desde', value: formatSince(s.since) },
                   { label: 'Unidades', value: s.units },
                   { label: 'Usuários ativos', value: s.activeUsers },

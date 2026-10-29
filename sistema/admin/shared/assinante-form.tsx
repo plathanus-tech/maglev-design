@@ -5,27 +5,27 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { useHashState } from './useHashState';
 import { getDb, logActivity, nextId, useSession, updateDb } from './store';
-import { CONTACT_AREAS, Contact, ContactArea, INACTIVATION_REASONS, InactivationReason, ONBOARDING_STAGES, PLANS, Subscriber, subscriberName } from './data';
+import { CONTACT_AREAS, Contact, ContactArea, INACTIVATION_REASONS, InactivationReason, ONBOARDING_STAGES, ONBOARDING_STATES, PLANS, Subscriber, subscriberName } from './data';
 import { EnvironmentDialog } from './EnvironmentDialog';
 import { OverdueDialog } from './OverdueDialog';
 import {
   UFS, formatCep, formatCnpj, formatPhone, isValidCnpj, isValidEmail, isValidPhone, onlyDigits, requiredMessage,
 } from './format';
 import { lookupCep } from './cep';
-import { Col, FormSection, Grid, ReadField, goTo, param, setFlash } from './ui';
+import { Col, FormSection, Grid, ReadField, SectionLabel, goTo, param, setFlash } from './ui';
 import { todayIso } from './clock';
 
 /** Estados: idle · required (salvar vazio) · cnpjinvalid · cnpjduplicate (CTA001) */
 const STATES = ['idle', 'required', 'cnpjinvalid', 'cnpjduplicate'] as const;
 type Mode = (typeof STATES)[number];
 
-type Draft = Pick<Subscriber, 'cnpj' | 'legalName' | 'tradeName' | 'stateReg' | 'cityReg' | 'address' | 'contractedUnits' | 'contacts' | 'plan' | 'onboarding' | 'status' | 'admin'>;
+type Draft = Pick<Subscriber, 'cnpj' | 'legalName' | 'tradeName' | 'stateReg' | 'cityReg' | 'address' | 'contractedUnits' | 'contacts' | 'plan' | 'onboarding' | 'onboardingState' | 'status' | 'admin'>;
 
 const blankContact = (area: ContactArea = 'responsavel'): Contact => ({ id: `new-${Math.random().toString(36).slice(2, 8)}`, area, name: '', email: '', phone: '' });
 const BLANK: Draft = {
   cnpj: '', legalName: '', tradeName: '', stateReg: '', cityReg: '',
   address: { cep: '', street: '', number: '', complement: '', district: '', city: '', uf: '' },
-  contractedUnits: '', contacts: [blankContact()], plan: '', onboarding: 'nao-iniciada', status: 'ativo',
+  contractedUnits: '', contacts: [blankContact()], plan: '', onboarding: 'contrato', onboardingState: 'preparando', status: 'ativo',
   admin: { name: '', email: '', phone: '' },
 };
 const STATUS_OPTIONS = [
@@ -250,30 +250,39 @@ function AssinanteFormScreen() {
           <FormSection className="card-open" title="Contratação">
             <div className="card-body-tight">
               <Grid>
-                <Col span={4}>
+                <Col span={6}>
                   <DevNote note="Campo informativo (P01): não há cobrança nem pagamento na plataforma (RGN002). Alterações de plano são feitas pelo suporte neste cadastro (RGN003). Planos com limites são FE012 (fora do escopo).">
                     <Dropdown label="Plano / contratação" required options={PLANS.map((p) => ({ value: p, label: p }))} value={d.plan} onChange={(v) => set('plan', v)} error={errors.plan} />
                   </DevNote>
                 </Col>
-                <Col span={4}>
+                <Col span={6}>
                   <DevNote note="💡 Citada pela cliente em 28/09 - a confirmar se é informativa ou se limita o cadastro de unidades (FE012). No protótipo, informativa e opcional.">
                     <Input optional label="Unidades contratadas" inputMode="numeric" value={d.contractedUnits} onChange={(e) => set('contractedUnits', onlyDigits(e.target.value))} />
                   </DevNote>
                 </Col>
-                <Col span={4}>
-                  <DevNote note="Implantação (FE013, incluída a pedido): etapa em que o assinante está na entrada dele na plataforma, mostrada também na listagem. 💡 Etapas do que o cliente descreveu (dados mestres e unidades, mapeamento de ativos, etiquetas de QR afixadas, vínculo por leitura, validação de cobertura antes da ativação final), mais Não iniciada e Concluída; a confirmar com o cliente e o time de implantação. Informativa: não bloqueia nem libera nada. Novo assinante começa em Não iniciada.">
+                <Col span={12}><SectionLabel>Implantação</SectionLabel></Col>
+                <Col span={6}>
+                  <DevNote note="Implantação (incluída a pedido): em que etapa está a entrada do assinante na plataforma (Contrato assinado · Admin criado · Cadastro de unidades · Cadastro de equipamentos · Dados mestres · Onboarding e testes · Em operação · Concluído), mostrada também na listagem. 💡 Etapas a confirmar com o cliente e o time de implantação. Informativa: não bloqueia nem libera nada. Novo assinante começa em Contrato assinado.">
                     <Dropdown label="Implantação" required options={ONBOARDING_STAGES.map((o) => ({ value: o.value, label: o.label }))} value={d.onboarding} onChange={(v) => set('onboarding', v as Subscriber['onboarding'])} />
                   </DevNote>
                 </Col>
+                <Col span={6}>
+                  <DevNote note="Situação da implantação (Preparando · Em andamento · Concluído): estado da etapa atual, ao lado da Implantação na listagem. Informativa; começa em Preparando no cadastro novo.">
+                    <Dropdown label="Situação da implantação" required options={ONBOARDING_STATES.map((o) => ({ value: o.value, label: o.label }))} value={d.onboardingState} onChange={(v) => set('onboardingState', v as Subscriber['onboardingState'])} />
+                  </DevNote>
+                </Col>
+                {editing && <Col span={12}><SectionLabel id="status-assinante">Status do assinante</SectionLabel></Col>}
                 {editing && (
                   <Col span={12}>
-                    <DevNote note="Status do assinante (RF201-RGN002 / RF204), na segunda linha: Ativo · Inadimplente · Inativo. Ao salvar com o status alterado abre o modal de confirmação correspondente (inadimplente: prazo de regularização e aviso aos gestores; inativo: impacto e motivo obrigatório; de volta a ativo: ativar/regularizar), e só depois os dados são gravados; cancelar o modal não salva nada. Quem está Inativo só volta para Ativo (sai o Inadimplente da lista). A inativação continua manual: sem cobrança nem automação.">
+                    <div role="group" aria-labelledby="status-assinante">
+                    <DevNote note="Status do assinante (RF201-RGN002 / RF204), depois da Implantação, com título próprio: Ativo · Inadimplente · Inativo. Ao salvar com o status alterado abre o modal de confirmação correspondente (inadimplente: prazo de regularização e aviso aos gestores; inativo: impacto e motivo obrigatório; de volta a ativo: ativar/regularizar), e só depois os dados são gravados; cancelar o modal não salva nada. Quem está Inativo só volta para Ativo (sai o Inadimplente da lista). A inativação continua manual: sem cobrança nem automação.">
                       <RadioButton
-                        name="subscriber-status" label="Status do assinante" orientation="horizontal"
+                        name="subscriber-status" orientation="horizontal"
                         options={editing.status === 'inativo' ? STATUS_OPTIONS.filter((o) => o.value !== 'inadimplente') : STATUS_OPTIONS}
                         value={d.status} onChange={(v) => set('status', v as Subscriber['status'])}
                       />
                     </DevNote>
+                    </div>
                   </Col>
                 )}
                 {inactivating && (

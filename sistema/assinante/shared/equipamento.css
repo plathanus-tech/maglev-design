@@ -221,3 +221,14 @@ button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(
   .eq-kpis > :last-child:nth-child(odd) { grid-column: 1 / -1; }
   .kpi-money-sm { font-size: var(--font-size-2xl); }
 }
+
+/* QR Code existente: ícone com "+" de criação no botão da lista e indicador de equipamento sem QR Code */
+.qr-link-icon { position: relative; display: inline-flex; }
+.qr-link-plus {
+  position: absolute; inset-block-start: calc(var(--spacing-xs) * -1); inset-inline-end: calc(var(--spacing-sm) * -1);
+  display: inline-flex; align-items: center; justify-content: center; inline-size: var(--spacing-md); block-size: var(--spacing-md);
+  border-radius: var(--radius-full); background: var(--color-action-primary); color: var(--color-on-action-primary);
+}
+.qr-missing-flag { display: inline-flex; align-items: center; color: var(--color-status-warning-fg); }
+.qr-missing-flag:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+.eq-qr--sm { inline-size: calc(var(--spacing-3xl) * 2); flex-shrink: 0; }

@@ -133,7 +133,9 @@ export function EquipmentLabel({ equipment, className = '' }: { equipment: Label
 
 const PREVIEW_LABELS = 4;
 /** Impressão em lote (RF305, sugestão): uma etiqueta por equipamento selecionado. A prévia mostra as primeiras; a impressão leva todas. */
-export function BatchLabelDialog({ equipments, onClose }: { equipments: LabelEquipment[]; onClose: () => void }) {
+export function BatchLabelDialog({ equipments: all, onClose }: { equipments: LabelEquipment[]; onClose: () => void }) {
+  // Equipamento sem QR Code vinculado não tem etiqueta para imprimir
+  const equipments = all.filter((e) => e.qrToken);
   const n = equipments.length;
   return (
     <>
@@ -152,6 +154,7 @@ export function BatchLabelDialog({ equipments, onClose }: { equipments: LabelEqu
               {equipments.slice(0, PREVIEW_LABELS).map((e) => <EquipmentLabel key={e.id} equipment={e} className="eq-label--preview" />)}
             </div>
             {n > PREVIEW_LABELS && <p className="field-note">{`A impressão incluirá as ${n} etiquetas selecionadas`}</p>}
+            {all.length > n && <p className="field-note">{`${all.length - n} ${all.length - n === 1 ? 'equipamento selecionado está' : 'equipamentos selecionados estão'} sem QR Code vinculado e ${all.length - n === 1 ? 'não entra' : 'não entram'} na impressão`}</p>}
           </Stack>
         </DevNote>
       </Dialog>
@@ -164,7 +167,7 @@ export function BatchLabelDialog({ equipments, onClose }: { equipments: LabelEqu
 
 export function QrDialogs({ equipment, mode, onMode }: { equipment: LabelEquipment | null; mode: 'qr' | 'label' | null; onMode: (m: 'qr' | 'label' | null) => void }) {
   const copy = useCopy();
-  if (!equipment || !mode) return null;
+  if (!equipment || !mode || !equipment.qrToken) return null;
   const link = qrLink(equipment);
   const close = () => onMode(null);
 
