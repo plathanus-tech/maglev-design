@@ -176,3 +176,36 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
   .fb-single > * { align-items: center; }
   .fb-single [class*="_icon_"] { margin-top: 0; }
 }
+
+/* ── Barra inferior (mobile): criações sempre à mão ── */
+.app-bottomnav {
+  position: fixed; inset-inline: 0; inset-block-end: 0; z-index: var(--z-sticky);
+  display: flex; background: var(--color-bg-surface); border-top: var(--border-width-thin) solid var(--color-border-subtle);
+  padding-block-end: env(safe-area-inset-bottom); box-shadow: var(--shadow-xs);
+}
+.app-bottomnav-item {
+  flex: 1; min-width: 0; min-block-size: var(--spacing-3xl); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing-2xs);
+  background: transparent; border: 0; cursor: pointer; font: inherit; color: var(--color-text-secondary);
+  padding-block: var(--spacing-md) var(--spacing-sm);
+}
+.app-bottomnav-item:hover { background: var(--color-bg-subtle); }
+.app-bottomnav-item:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
+.app-bottomnav-icon { position: relative; display: inline-flex; color: var(--brand-primary); }
+/* "+" no canto do ícone: deixa claro que o item cria algo novo (não leva à lista) */
+.app-bottomnav-plus {
+  position: absolute; inset-block-start: calc(var(--spacing-xs) * -1); inset-inline-end: calc(var(--spacing-sm) * -1);
+  display: inline-flex; align-items: center; justify-content: center; inline-size: var(--spacing-md); block-size: var(--spacing-md);
+  border-radius: var(--radius-full); background: var(--color-action-primary); color: var(--color-on-action-primary);
+}
+.app-bottomnav-label { display: flex; flex-direction: column; align-items: center; font-size: var(--font-size-sm); font-weight: var(--font-weight-label); line-height: var(--line-height-tight); max-inline-size: 100%; }
+.app-bottomnav-label > span { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-shell.has-bottomnav .app-main { padding-block-end: calc(var(--spacing-3xl) + var(--spacing-xl) + env(safe-area-inset-bottom)); }
+
+/* ── Cabeçalho: empresa do assinante (contexto do portal) ── */
+.app-company { font-size: var(--font-size-md); font-weight: var(--font-weight-label); color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-inline-size: 100%; }
+/* Mobile: o nome fica embaixo do logo, em tamanho menor */
+.app-brand-stack { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 0; gap: var(--spacing-2xs); }
+.app-brand-stack .logo-link { display: inline-flex; }
+.app-brand-stack .logo-link img { block-size: 1.25rem; inline-size: auto; }
+.app-brand-stack .app-company { font-size: var(--font-size-sm); line-height: var(--line-height-tight); max-inline-size: 8.5rem; }
+.app-topbar header div:has(> .app-brand-stack) { height: auto; min-width: 0; }

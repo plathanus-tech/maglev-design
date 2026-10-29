@@ -72,7 +72,7 @@ export function KpiCard({
     && (trend.text ?? `${(trend.percent ?? 0).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
 
   return (
-    <Card className={cx(styles.kpi, href && styles.clickable, className)} padding="none">
+    <Card className={cx('kpi-card', styles.kpi, href && styles.clickable, className)} padding="none">
       <div className={styles.body}>
         <div className={styles.head}>
           {href

@@ -10,7 +10,8 @@ import { useHashState } from '../../admin/shared/useHashState';
 import { formatDateTime, formatPhone, isValidPhone, noBreak, onlyDigits, requiredMessage, PHONE_INVALID_EXAMPLE, PHONE_INVALID_MESSAGE } from '../../admin/shared/format';
 import { IMPACT_LABEL, Impact, Request, TipResult, TroubleshootingRun, nowLocal } from './data';
 import { logEntry, nextSeq, notify, updateSubDb, useSubDb, useSubSession } from './store';
-import { CellPair, Col, Grid, ReadField, param, takeFlash, useRefs } from './ui';
+import { CellPair, Col, FormSection, Grid, ReadField, param, takeFlash, useRefs } from './ui';
+import { SafetyGuidance } from './equipamento-lib';
 import { IS_THUMB, STS, isOpenBase } from './solicitacoes-shared';
 import { OpenRequestCard } from '../../colaborador/shared/open-request-card';
 
@@ -67,6 +68,8 @@ export interface SolicitacaoFormCoreProps {
  * Mesma ordem de tela (RGN013): equipamento → problema → solução de problemas (opcional) → demais campos → enviar.
  */
 export function SolicitacaoFormCore({ external = false, shell, header, actor, unitIds, fixedEquipmentId, channel, onSent, onCancel, resolvedActions, troubleshootingHeader, trackHref, onRemember }: SolicitacaoFormCoreProps) {
+  // Portal: seções recolhíveis no mobile (consistência com os demais formulários); o QR Code (externo) mantém os cards
+  const Section = external ? Card : FormSection;
   const refs = useRefs();
   const db = useSubDb();
   const user = actor;
@@ -159,7 +162,11 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     { key: 'r', label: 'Aberta em', render: (_, row) => noBreak(formatDateTime(row.r.openedAt)) },
     { key: 'status', label: 'Status', render: (_, row) => refs.statusBadge(row.r.statusId) },
   ];
-  const typeOptions = refs.admin.requestTypes.filter((t) => t.status === 'ativo').map((t) => ({ value: t.id, label: t.name }));
+  // Tipos sugeridos pela categoria do equipamento: sem categoria = vale para todas (Outro e as emergências ficam sempre à mão)
+  const typeFits = (t: { categoryIds?: string[] }, categoryId?: string) => !categoryId || !t.categoryIds?.length || t.categoryIds.includes(categoryId);
+  const activeTypes = refs.admin.requestTypes.filter((t) => t.status === 'ativo');
+  const typeOptions = activeTypes.filter((t) => typeFits(t, equipment?.categoryId)).map((t) => ({ value: t.id, label: t.name }));
+  const typesFiltered = typeOptions.length < activeTypes.length;
 
   const problems = {
     unit: !external && !unitId ? requiredMessage('Unidade') : undefined,
@@ -199,7 +206,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     : undefined;
   /** Discreto, abaixo do campo, enquanto nenhum equipamento está escolhido */
   const registerLink = allowRegister
-    ? <Button variant="ghost" size="sm" onClick={registerEquipment}>Não encontrou o equipamento? Cadastre um novo</Button>
+    ? <Button variant="ghost" size="sm" className="register-link" onClick={registerEquipment}>Não encontrou o equipamento? Cadastre um novo</Button>
     : undefined;
 
   const pickUnit = (v: string) => { setUnitId(v); if (equipment && equipment.unitId !== v) { setEquipmentId(''); setProblemId(''); } };
@@ -207,6 +214,9 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     const e = db.equipments.find((x) => x.id === v);
     setEquipmentId(v); setDupDismissed(false); resetRun();
     if (e) setUnitId(e.unitId);
+    // se o tipo escolhido não se aplica à categoria do novo equipamento, volta a pedir o tipo
+    const cur = refs.admin.requestTypes.find((t) => t.id === problemId);
+    if (cur && !typeFits(cur, e?.categoryId)) setProblemId('');
   };
   const pickProblem = (v: string) => { setProblemId(v); resetRun(); };
   function resetRun() { setRun({ overall: 'nao-iniciado', tips: [] }); setFinished(false); setDone([]); setTipIdx(0); }
@@ -386,6 +396,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
             >
               <div className="card-body-tight">
                 <Stack gap="lg">
+                  <SafetyGuidance note={equipment?.safetyNote} />
                   <div className="tip-progress" role="progressbar" aria-label="Progresso das dicas" aria-valuemin={0} aria-valuemax={tips.length} aria-valuenow={tipIdx + 1} aria-valuetext={`Dica ${tipIdx + 1} de ${tips.length}`}>
                     <div className="tip-progress-bar" style={{ width: `${pct}%` }} />
                   </div>
@@ -433,7 +444,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
 
           {external && equipment ? (
             <DevNote note="Colaborador RF002: equipamento, unidade e ambiente pré-preenchidos pelo QR Code - não há escolha de equipamento.">
-              <Card className="card-open" title="Equipamento" subtitle="Identificado pelo QR Code">
+              <Section className="card-open" title="Equipamento" subtitle="Identificado pelo QR Code">
                 <div className="card-body-tight">
                   <dl className="ext-kv">
                     <div><dt>Nome</dt><dd>{equipment.name}</dd></div>
@@ -442,10 +453,10 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
                     <div><dt>Ambiente</dt><dd>{db.environments.find((x) => x.id === equipment.environmentId)?.name ?? '-'}</dd></div>
                   </dl>
                 </div>
-              </Card>
+              </Section>
             </DevNote>
           ) : (
-          <Card className="card-open sec-equipment" title="Equipamento" subtitle="Escolha a unidade e o equipamento com o problema">
+          <Section className="card-open sec-equipment" title="Equipamento" subtitle="Escolha a unidade e o equipamento com o problema">
             <div className="card-body-tight">
               <Grid>
                 <Col span={12}>
@@ -461,7 +472,13 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
                 </Col>
               </Grid>
             </div>
-          </Card>
+          </Section>
+          )}
+
+          {equipment?.safetyNote && (
+            <DevNote note="💡 Orientação de segurança cadastrada no equipamento (texto livre, opcional): aparece assim que o equipamento é escolhido, antes de descrever o problema, no portal e no QR Code. Só orienta; não substitui o procedimento interno de emergência.">
+              <SafetyGuidance note={equipment.safetyNote} />
+            </DevNote>
           )}
 
           {equipment && openOnes.length > 0 && !dupDismissed && (
@@ -498,10 +515,10 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
             <div className="ext-divider" role="separator" aria-label="Abrir nova solicitação"><span>Abrir nova solicitação</span></div>
           )}
 
-          <Card className="card-open sec-problem" title="Problema" subtitle="Conte o que está acontecendo">
+          <Section className="card-open sec-problem" title="Problema" subtitle="Conte o que está acontecendo">
             <div className="card-body-tight">
               <Grid>
-                <Col span={6}><Dropdown label="Tipo de solicitação" required placeholder="Selecione" options={typeOptions} value={problemId} onChange={pickProblem} error={show('problem')} /></Col>
+                <Col span={6}><Dropdown label="Tipo de solicitação" required placeholder="Selecione" options={typeOptions} value={problemId} onChange={pickProblem} error={show('problem')} helperText={typesFiltered ? 'Mostramos os tipos mais comuns para esta categoria. Se não encontrar, use Outro' : undefined} /></Col>
                 <Col span={6}>
                   <DevNote note="💡 Impacto: sugestão Baixo / Médio / Alto, a confirmar. A triagem usa o impacto na matriz de prioridade (Admin RF405).">
                     <RadioButton name="impact" label="Impacto" orientation="horizontal" options={(Object.keys(IMPACT_LABEL) as Impact[]).map((v) => ({ value: v, label: IMPACT_LABEL[v] }))} value={impact} onChange={(v) => setImpact(v as Impact)} error={show('impact')} />
@@ -551,16 +568,16 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
                 )}
               </Grid>
             </div>
-          </Card>
+          </Section>
 
-          <Card className="card-open sec-contact" title="Contato para retorno" subtitle="Usaremos estes dados para falar com você sobre a solicitação">
+          <Section className="card-open sec-contact" title="Contato para retorno" subtitle="Usaremos estes dados para falar com você sobre a solicitação">
             <div className="card-body-tight">
               <Grid>
                 <Col span={6} mobileFull><Input label="Nome" required autoComplete="name" value={contactName} onChange={(e) => setContactName(e.target.value)} error={show('name')} /></Col>
                 <Col span={6} mobileFull><Input label="Telefone" required type="tel" inputMode="tel" autoComplete="tel" placeholder="(00) 00000-0000" value={contactPhone} onChange={(e) => setContactPhone(formatPhone(e.target.value))} error={show('phone')} helperText="Usaremos este número para retorno e avisos pelo WhatsApp" /></Col>
               </Grid>
             </div>
-          </Card>
+          </Section>
 
           {external && (
             <DevNote note="Colaborador RF002: aceite dos Termos e da Política de Privacidade obrigatório (LGPD). Cada documento abre em um modal; os textos serão fornecidos pelo cliente e hoje são provisórios (placeholder, sinalizado no modal).">

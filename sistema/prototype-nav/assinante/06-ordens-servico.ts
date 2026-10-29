@@ -40,10 +40,10 @@ export const journeys: Journey[] = [
         id: 'os-form', label: 'RF502 - Criar / editar OS', path: `${s}/os-form.html?request=SOL-000122`,
         variants: [
           v('osf-required', 'Campos obrigatórios', 'os-form.html?request=SOL-000122#state=required'),
+          v('osf-leave', 'Criar a OS depois? (ao sair da criação)', 'os-form.html?request=SOL-000122#state=leave'),
           v('osf-provider', 'Prestador externo filtrado pela categoria', 'os-form.html?request=SOL-000122#state=providerfilter'),
           v('osf-edit', 'Editar / classificar OS em andamento', 'os-form.html?id=OS-000011'),
           v('osf-edit-internal', 'Editar OS com executor interno', 'os-form.html?id=OS-000012'),
-          v('osf-noorigin', 'Sem origem (OS avulsa não existe)', 'os-form.html#state=noorigin'),
         ],
       },
       {

@@ -1,0 +1,9 @@
+/* Garantia: indicador discreto (ícone) ao lado do nome do equipamento nas listas e destaque na solicitação, só com tokens existentes */
+.warranty-flag { display: inline-flex; align-items: center; gap: var(--spacing-2xs); vertical-align: middle; margin-left: var(--spacing-xs); color: var(--color-text-warning); }
+/* Faixa mais próxima do fim (até 15 dias): tom crítico e os dias restantes ao lado do ícone, sem fundo */
+.warranty-flag.is-urgent { color: var(--color-text-error); }
+.warranty-flag-days { font: var(--text-body-xs); font-weight: var(--font-weight-label); white-space: nowrap; }
+.warranty-expiring { color: var(--color-text-warning); font-weight: var(--font-weight-label); }
+.warranty-expiring.is-urgent { color: var(--color-text-error); }
+/* Garantia na linha de baixo do card Equipamento associado, ocupando a largura toda */
+.sol-eq-wide { grid-column: 1 / -1; }

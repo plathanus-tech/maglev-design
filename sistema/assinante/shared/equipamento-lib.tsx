@@ -5,7 +5,7 @@ import logoLight from '../../../public/maglev-logo.svg';
 import { MobileCardItem, MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { Table, TableColumn } from '@maglev/ds';
-import { DEMO_NOW, RECURRENCE_DAYS, RECURRENCE_N, Equipment, Executor, SubDb, WorkOrder, dayOnly, qrLink } from './data';
+import { DEMO_NOW, RECURRENCE_DAYS, RECURRENCE_N, Equipment, Executor, SubDb, WorkOrder, dayOnly, orderRealizedCents, qrLink } from './data';
 import { useRefs } from './ui';
 import { updateSubDb, useSubSession } from './store';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
@@ -24,8 +24,7 @@ export const openOrdersOf = (db: SubDb, r: Refs, equipmentId: string): WorkOrder
   db.orders.filter((o) => o.equipmentId === equipmentId && !['concluido', 'cancelado'].includes(r.base(o.statusId) ?? ''));
 
 /** Custos realizados de uma OS: itens lançados, sem OS cancelada e sem orçamento ainda não decidido (RF303-RGN003). */
-export const realizedCents = (r: Refs, o: WorkOrder) => (r.base(o.statusId) === 'cancelado' ? 0
-  : o.costs.filter((c) => !(c.kind === 'orcamento' && o.budget && !o.budget.decision)).reduce((n, c) => n + c.cents, 0));
+export const realizedCents = (r: Refs, o: WorkOrder) => (r.base(o.statusId) === 'cancelado' ? 0 : orderRealizedCents(o));
 export const spentOf = (db: SubDb, r: Refs, equipmentId: string) => db.orders.filter((o) => o.equipmentId === equipmentId).reduce((n, o) => n + realizedCents(r, o), 0);
 /** Data de referência do custo: última movimentação da OS (💡 a confirmar com o negócio). */
 const costDate = (o: WorkOrder) => (o.activities.length ? o.activities.reduce((m, a) => (a.at > m ? a.at : m), o.createdAt) : o.createdAt);
@@ -231,6 +230,9 @@ export function SimpleList<T extends ListRow>({ id, title, subtitle, rows, colum
 export const withUnit = (db: SubDb, e: Equipment) => `${db.units.find((u) => u.id === e.unitId)?.name ?? '-'} · ${db.environments.find((x) => x.id === e.environmentId)?.name ?? '-'}`;
 
 /** Aviso padrão de segurança do troubleshooting (RGN006 / RF403: etapas de risco). */
+/** Orientação de segurança cadastrada no equipamento (opcional): aparece para quem vai abrir a solicitação e no detalhe do equipamento. */
+export const SafetyGuidance = ({ note }: { note?: string }) => note ? <Feedback type="warning" title="Orientação de segurança" message={note} /> : null;
+
 export const TroubleshootingSafety = () => (
   <Feedback
     type="warning" title="Cuidado com etapas que envolvem risco"

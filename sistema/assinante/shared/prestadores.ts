@@ -1,5 +1,5 @@
 /** Regras de Prestadores (RF701-RF703), só lógica - sem tela. */
-import { Provider, SubDb, Technician, WorkOrder } from './data';
+import { Provider, SubDb, Technician, WorkOrder, orderRealizedCents } from './data';
 import { TODAY, addDays } from './preventivas';
 
 /** Todas as OS atribuídas ao prestador (RF703-CTA001): executor do tipo prestador com `providerId`. */
@@ -10,7 +10,7 @@ export const providerOrders = (db: SubDb, providerId: string, unitIds?: string[]
 /** Data de conclusão da OS: validação do solicitante, execução da preventiva ou último registro do log. */
 export const orderCompletedAt = (db: SubDb, o: WorkOrder) =>
   o.validation?.at ?? db.executions.find((x) => x.id === o.executionId)?.doneAt ?? o.activities[o.activities.length - 1]?.at ?? o.createdAt;
-export const orderCostCents = (o: WorkOrder) => o.costs.reduce((n, c) => n + c.cents, 0);
+export const orderCostCents = (o: WorkOrder) => orderRealizedCents(o);
 
 export const providerName = (p: Pick<Provider, 'name' | 'tradeName'>) => p.tradeName ?? p.name;
 /** Especialidades do técnico em texto corrido (listas e opções), ou vazio */

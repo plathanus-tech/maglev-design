@@ -17,7 +17,7 @@ import { formatDate, formatDateTime, formatMoney, formatPhone, isValidPhone, mas
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { describeFrequency } from './preventivas';
 import { photoSrc } from './photos';
-import { IMPACT_LABEL, COST_KIND_LABEL, CostKind, NO_UNIT, WorkOrder, nowLocal } from './data';
+import { IMPACT_LABEL, COST_KIND_LABEL, CostKind, NO_UNIT, WorkOrder, nowLocal, orderRealizedCents, unconfirmedBudgetCents } from './data';
 import { equipmentOf, environmentName, logEntry, notify, ordersVisible, unitName, updateSubDb, useSubSession, userName } from './store';
 import { CellPair, Col, Grid, ReadField, RowAction, RowActions, Text, TroubleshootingNotes, goTo, param, takeFlash, useRefs } from './ui';
 import { KpiMoney } from '../../admin/shared/kpi-value';
@@ -29,7 +29,7 @@ import './os.css';
 import './solicitacao.css';
 import './preventivas.css';
 
-type Dlg = 'approve' | 'reject' | 'status' | 'addvisit' | 'addcost' | 'reassign' | 'conclude' | 'addbudget' | 'diagnosis' | 'file' | 'reassignval' | { rm: string } | null;
+type Dlg = 'approve' | 'reject' | 'status' | 'addvisit' | 'addcost' | 'reassign' | 'conclude' | 'addbudget' | 'diagnosis' | 'file' | 'reassignval' | 'confirmcost' | { rm: string } | null;
 
 /** Estados: idle · approve · reject · cancel · addvisit · addcost · validate · validateno · reassign (diálogos/ações abertos) */
 const STATES = ['idle', 'approve', 'reject', 'cancel', 'addvisit', 'addcost', 'validate', 'validateno', 'reassign', 'conclude', 'addbudget'] as const;
@@ -189,6 +189,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
     else if (dlg === 'conclude') { setText(order.solution ?? ''); }
     else if (dlg === 'addvisit') { setText(''); setText2(order.executor.kind === 'prestador' ? order.executor.technician ?? '' : userName(db, order.executor.kind === 'interno' ? order.executor.userId : '')); }
     else if (dlg === 'addcost') { setSel('peca'); setText(''); }
+    else if (dlg === 'confirmcost') { setText(''); setVal(maskMoney(String(order.budget?.cents ?? 0))); }
     else if (dlg === 'addbudget') { setText(''); }
     else if (dlg === 'file') { setSel('foto'); }
     else if (dlg === 'reassignval') { setSel(''); setText(''); setText2(''); }
@@ -290,6 +291,41 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
     );
   }
 
+  // ── Confirmar custo realizado (orçamento aprovado → realizado) ──
+  if (dlg === 'confirmcost' && order.budget) {
+    const b = order.budget;
+    const typed = onlyDigits(val);
+    const cents = typed === '' ? null : Number(typed);
+    const differs = cents !== null && cents !== b.cents;
+    const e = {
+      val: tried && cents === null ? requiredMessage('Valor realizado') : undefined,
+      reason: tried && differs && !text.trim() ? requiredMessage('Motivo da diferença') : undefined,
+    };
+    const go = () => {
+      setTried(true);
+      if (cents === null || (differs && !text.trim())) return;
+      patchOrder(order.id, user.name, (o) => ({ ...o, budget: o.budget ? { ...o.budget, realized: { cents, confirmedAt: nowLocal(), by: user.name, reason: differs ? text.trim() : undefined } } : o.budget }),
+        [`Confirmou o custo realizado do orçamento aprovado${differs ? `, diferente do aprovado. Motivo: ${text.trim()}` : ''}`]);
+      toast.show({ type: 'success', title: 'Custo realizado confirmado', message: 'O valor passa a contar no gasto do equipamento e no Início.' });
+      close();
+    };
+    return (
+      <Dialog open onClose={close} title="Confirmar custo realizado" subtitle="O orçamento aprovado só vira custo realizado depois de confirmado" actions={<Actions onClose={close} onConfirm={go} label="Confirmar custo realizado" />}>
+        <DevNote note="Conciliação do orçamento aprovado (aprovar não é gastar): o valor vem preenchido com o aprovado; se for mantido, basta confirmar; se mudar (inclusive zero), o motivo é obrigatório. Grava Budget.realized (valor, quem e quando, motivo) e uma linha no histórico da OS (sem repetir o valor, para quem não vê custos). Só quem pode aprovar orçamento. Custos extras continuam sendo lançados como itens, com descrição, e somam ao realizado.">
+          <Stack gap="md">
+            <Grid>
+              <Col span={6}><ReadField label="Orçamento aprovado" value={formatMoney(b.cents)} /></Col>
+              <Col span={6}><ReadField label="Aprovado por" value={b.decidedBy ?? '-'} /></Col>
+              <Col span={12}><ReadField label="Descrição do orçamento" value={b.description} /></Col>
+              <Col span={12}><Input label="Valor realizado (R$)" required inputMode="numeric" autoComplete="off" placeholder="0,00" value={val} onChange={(ev) => setVal(maskMoney(ev.target.value))} error={e.val} /></Col>
+              {differs && <Col span={12}><Textarea label="Motivo da diferença" required rows={3} value={text} onChange={(ev) => setText(ev.target.value)} error={e.reason} /></Col>}
+            </Grid>
+          </Stack>
+        </DevNote>
+      </Dialog>
+    );
+  }
+
   // ── Item de custo (valor obrigatório - RGN003) ──
   if (dlg === 'addcost') {
     const cents = parseCents(val);
@@ -306,7 +342,7 @@ function Dlgs({ order, dlg, setDlg, preset }: { order: WorkOrder; dlg: Dlg; setD
       close();
     };
     return (
-      <Dialog open onClose={close} title="Adicionar item de custo" subtitle="Peça, mão de obra, orçamento de prestador ou outro" actions={<Actions onClose={close} onConfirm={go} label="Adicionar item" />}>
+      <Dialog open onClose={close} title="Adicionar item de custo" subtitle="Lance só os custos extras, além do orçamento aprovado" actions={<Actions onClose={close} onConfirm={go} label="Adicionar item" />}>
         <DevNote note="RF503-RGN003: o valor é obrigatório em cada item (os custos realizados alimentam o gasto acumulado do equipamento, RF304, e o Dashboard). O log da OS não repete o valor, para quem não vê custos.">
           <Grid>
             <Col span={12}><Dropdown label="Tipo" required options={Object.entries(COST_KIND_LABEL).map(([value, label]) => ({ value, label }))} value={sel} onChange={setSel} /></Col>
@@ -581,13 +617,14 @@ function OsScreen() {
   // Valores financeiros (RF503): três etapas distintas, e um valor pode aparecer em mais de uma.
   // Orçado = orçamento do prestador (pendente ou aprovado; o reprovado não conta), sem duplicar o item espelho na lista de custos.
   // Aprovado = orçamento aprovado + itens lançados direto no sistema do assinante (não passam pela aprovação do prestador).
-  // Realizado = itens lançados direto; o orçamento aprovado não vira custo realizado sozinho.
+  // Realizado = itens lançados direto (extras) + o orçamento aprovado depois de CONFIRMADO como realizado (aprovar não é gastar; ver Budget.realized).
   // 💡 Limitação: o modelo não distingue custo previsto de realizado nos itens lançados no sistema, então todo item lançado conta como realizado (a validar).
   const directCosts = order.costs.filter((c) => !(c.kind === 'orcamento' && order.budget));
   const directTotal = directCosts.reduce((n, c) => n + c.cents, 0);
+  const pendingConfirm = unconfirmedBudgetCents(order);
   const budgeted = order.budget ? (order.budget.decision === 'reprovado' ? 0 : order.budget.cents) : 0;
   const approved = (order.budget?.decision === 'aprovado' ? order.budget.cents : 0) + directTotal;
-  const realized = directTotal;
+  const realized = orderRealizedCents(order);
 
   const eqCard = (
           <Card title="Equipamento">
@@ -929,11 +966,22 @@ function OsScreen() {
         <DevNote note="Totais: orçado = orçamento enviado pelo prestador (pendente ou aprovado); aprovado = orçamento aprovado por um usuário do assinante + itens lançados direto no sistema; realizado = itens lançados direto (o orçamento aprovado não vira custo realizado sozinho). 💡 O modelo não distingue previsto de realizado nos itens lançados: pendente de validação. Um orçamento não é custo realizado enquanto não for aprovado. RGN003: os realizados alimentam o gasto do equipamento (RF304) e o Dashboard. Só Administrador e Gestor veem valores (RF304-RGN003).">
           <Grid>
             <Col span={4} fill><KpiCard label="Orçado" value={<KpiMoney cents={budgeted} />} description="Total de orçamentos recebidos" /></Col>
-            <Col span={4} fill><KpiCard label="Aprovado" value={<KpiMoney cents={approved} />} description="Total de custos autorizados" /></Col>
-            <Col span={4} mobileFull fill><KpiCard label="Realizado" value={<KpiMoney cents={realized} />} description="Total de custos registrados" /></Col>
+            <Col span={4} fill><KpiCard label="Aprovado" value={<KpiMoney cents={approved} />} description="Orçamento aprovado e custos extras" /></Col>
+            <Col span={4} mobileFull fill><KpiCard label="Realizado" value={<KpiMoney cents={realized} />} description="Custo confirmado e custos extras" /></Col>
           </Grid>
         </DevNote>
       ) : <Feedback type="info" message="Os valores de custo são visíveis apenas para o Administrador e o Gestor de manutenção" />}
+      {canSeeCosts && pendingConfirm > 0 && (
+        <DevNote note="Há orçamento aprovado ainda não confirmado como custo realizado: o aprovado é só a autorização de gasto. O link abre a confirmação (valor realizado, com motivo se for diferente) e só aparece para quem pode aprovar orçamento. Some depois de confirmar.">
+          <Stack direction="horizontal" align="center" gap="sm" wrap>
+            <Text>{`${formatMoney(pendingConfirm)} do orçamento aprovado ainda não foram confirmados como custo realizado`}</Text>
+            {canApprove && <Button variant="ghost" size="sm" onClick={() => setDlg('confirmcost')}>Confirmar custo realizado</Button>}
+          </Stack>
+        </DevNote>
+      )}
+      {canSeeCosts && order.budget?.realized && (
+        <Text>{`Custo realizado confirmado por ${order.budget.realized.by} em ${formatDate(order.budget.realized.confirmedAt.slice(0, 10))}${order.budget.realized.reason ? `. Motivo da diferença: ${order.budget.realized.reason}` : ''}`}</Text>
+      )}
       <DataTable<CostRow>
         title="Itens de custo" subtitle="Peça, mão de obra, orçamento de prestador e outros" rows={costRows} emptyTitle="Nenhum item de custo" emptyDescription="Adicione os itens à medida que forem realizados"
         actions={canEdit ? <Button size="sm" iconLeft={<IconPlus size={16} />} onClick={() => setDlg('addcost')}>Adicionar item de custo</Button> : undefined}

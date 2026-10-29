@@ -9,7 +9,7 @@ import { Provider, ProviderContact, SPECIALTIES, Technician } from './data';
 import { CheckGroup } from './ListKit';
 import { docKind, formatCpf, isValidCpf, mainContact, providerName } from './prestadores';
 import { nextSeq, updateSubDb, useSubSession } from './store';
-import { Col, Grid, ReadField, goTo, param, setFlash, useRefs } from './ui';
+import { Col, FormSection, Grid, ReadField, goTo, param, setFlash, useRefs } from './ui';
 
 /** Estados: idle · required (salvar vazio) · duplicate (CNPJ/CPF já cadastrado - CTA002) · invalid (CNPJ inválido) */
 const STATES = ['idle', 'required', 'duplicate', 'invalid', 'phoneinvalid'] as const;
@@ -21,6 +21,8 @@ interface Draft {
   /** Só autônomo: e-mail e telefone dos Dados principais; viram o contato principal (fonte única) */
   email: string; phone: string;
   contacts: ProviderContact[]; specialties: string[]; categoryIds: string[]; equipmentTypes: string[]; regions: Region[]; technicians: Technician[];
+  /** Garantia de serviço informada (informativa): 'sim'/'nao' e o prazo em dias após a conclusão do serviço. */
+  serviceWarranty: 'sim' | 'nao'; warrantyDays: string;
 }
 const uid = () => `new-${Math.random().toString(36).slice(2, 8)}`;
 const blankContact = (main = false): ProviderContact => ({ id: uid(), name: '', role: '', phone: '', email: '', main });
@@ -28,7 +30,7 @@ const blankTech = (): Technician => ({ id: uid(), name: '', specialties: [], pho
 const blankRegion = (): Region => ({ id: uid(), city: '', uf: 'SC' });
 const BLANK: Draft = {
   kind: 'empresa', name: '', tradeName: '', doc: '', status: 'ativo', notes: '', email: '', phone: '', contacts: [blankContact(true)],
-  specialties: [], categoryIds: [], equipmentTypes: [], regions: [blankRegion()], technicians: [],
+  specialties: [], categoryIds: [], equipmentTypes: [], regions: [blankRegion()], technicians: [], serviceWarranty: 'nao', warrantyDays: '',
 };
 const toRegion = (s: string): Region => { const i = s.lastIndexOf('/'); return { id: uid(), city: i < 0 ? s : s.slice(0, i), uf: i < 0 ? 'SC' : s.slice(i + 1) }; };
 const fromProvider = (p: Provider): Draft => ({
@@ -37,6 +39,7 @@ const fromProvider = (p: Provider): Draft => ({
   // Autônomo: o principal vem dos Dados principais; aqui ficam só os contatos adicionais
   contacts: p.contacts.filter((c) => p.kind !== 'autonomo' || c !== mainContact(p)).map((c) => ({ ...c, phone: formatPhone(c.phone), main: p.kind === 'autonomo' ? false : c.main })), specialties: [...p.specialties], categoryIds: [...p.categoryIds], equipmentTypes: [...p.equipmentTypes],
   regions: p.regions.length ? p.regions.map(toRegion) : [blankRegion()], technicians: p.technicians.map((t) => ({ ...t, phone: formatPhone(t.phone) })),
+  serviceWarranty: p.serviceWarranty?.has ? 'sim' : 'nao', warrantyDays: p.serviceWarranty?.days ? String(p.serviceWarranty.days) : '',
 });
 
 function PrestadorFormScreen() {
@@ -130,6 +133,7 @@ function PrestadorFormScreen() {
     specialties: !d.specialties.length ? requiredMessage('Especialidades') : undefined,
     categories: !d.categoryIds.length ? requiredMessage('Categorias atendidas') : undefined,
     regions: !d.regions.length ? requiredMessage('Região de atendimento') : undefined,
+    warrantyDays: d.serviceWarranty !== 'sim' ? undefined : !d.warrantyDays.trim() ? requiredMessage('Prazo da garantia') : !(Number(d.warrantyDays) >= 1) ? 'Informe o prazo em dias, com um número maior que zero' : undefined,
   };
   const contactErr = (c: ProviderContact) => ({
     name: req(c.name, 'Nome'), role: req(c.role, 'Função'),
@@ -175,6 +179,7 @@ function PrestadorFormScreen() {
       ],
       specialties: d.specialties, categoryIds: d.categoryIds, equipmentTypes: d.equipmentTypes,
       regions: d.regions.map((r) => `${r.city.trim()}/${r.uf}`),
+      serviceWarranty: d.serviceWarranty === 'sim' ? { has: true, days: Math.floor(Number(d.warrantyDays)) } : { has: false },
       technicians: !company ? [] : d.technicians.map((t, i) => ({ ...t, id: t.id.startsWith('new-') ? `${id}-T${Date.now().toString(36)}${i}` : t.id, name: t.name.trim(), phone: onlyDigits(t.phone), email: t.email.trim() })),
     };
     updateSubDb((db0) => ({ ...db0, providers: editing ? db0.providers.map((p) => (p.id === id ? provider : p)) : [...db0.providers, provider] }));
@@ -218,7 +223,7 @@ function PrestadorFormScreen() {
             </div>
           )}
 
-          <Card className="card-open" title="Dados principais" subtitle="Identificação do prestador">
+          <FormSection className="card-open" title="Dados principais" subtitle="Identificação do prestador">
             <div className="card-body-tight">
               <Grid>
                 <Col span={12}>
@@ -255,15 +260,25 @@ function PrestadorFormScreen() {
                     <Col span={6}><Input label="Telefone/WhatsApp" required type="tel" autoComplete="off" value={formatPhone(d.phone)} onChange={(ev) => set('phone', ev.target.value)} error={show(e.phone)} helperText="Usado para contato e avisos de ordens de serviço pelo WhatsApp" /></Col>
                   </>
                 )}
+                <Col span={6}>
+                  <Stack gap="md">
+                  <DevNote note="Garantia de serviço (informativa): se o prestador oferece garantia sobre o serviço feito e por quantos dias depois da conclusão. A Maglev não controla essa garantia: o dado serve de apoio para quem confere “Relacionado a reparo anterior” na solicitação (aparece como dica junto com o último serviço do equipamento). 💡 Campo aberto em dias; a confirmar com o cliente.">
+                    <RadioButton name="serviceWarranty" label="Oferece garantia de serviço?" orientation="horizontal" value={d.serviceWarranty} options={[{ value: 'sim', label: 'Sim' }, { value: 'nao', label: 'Não' }]} onChange={(v) => set('serviceWarranty', v as 'sim' | 'nao')} />
+                  </DevNote>
+                  {d.serviceWarranty === 'sim' && (
+                    <Input label="Prazo da garantia (dias após a conclusão)" required inputMode="numeric" autoComplete="off" value={d.warrantyDays} onChange={(ev) => set('warrantyDays', ev.target.value.replace(/\D/g, '').slice(0, 4))} error={show(e.warrantyDays)} helperText="Ex.: 90 para 90 dias depois do serviço" />
+                  )}
+                  </Stack>
+                </Col>
                 <Col span={12}>
                   <Textarea optional label="Observações" rows={3} maxLength={200} value={d.notes} onChange={(ev) => set('notes', ev.target.value)} helperText={`${d.notes.length}/200 caracteres`} />
                 </Col>
               </Grid>
             </div>
-          </Card>
+          </FormSection>
 
           <DevNote note="RF702 (🔄 CTA003): o prestador aceita mais de um contato (1..N), com ao menos um principal. O e-mail do contato é usado para enviar o link de acesso às OS (RF102). Nome, função, telefone/WhatsApp e e-mail obrigatórios.">
-            <Card className="card-open" title="Contatos" subtitle="Cadastre os contatos do prestador que poderão receber por e-mail links de acesso às ordens de serviço">
+            <FormSection className="card-open" title="Contatos" subtitle="Cadastre os contatos do prestador que poderão receber por e-mail links de acesso às ordens de serviço">
               <div className="card-body-tight">
                 <Stack gap="lg">
                   {!company && (
@@ -306,11 +321,11 @@ function PrestadorFormScreen() {
                   <Stack direction="horizontal"><Button variant="ghost" size="sm" iconLeft={<IconPlus size={16} />} onClick={() => set('contacts', [...d.contacts, blankContact(company && !d.contacts.length)])}>{company ? 'Adicionar contato' : 'Adicionar contato adicional'}</Button></Stack>
                 </Stack>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
 
           <div id="prestador-atuacao" tabIndex={-1}>
-          <Card className="card-open" title="Atuação" subtitle="Defina os serviços prestados e as regiões atendidas">
+          <FormSection className="card-open" title="Atuação" subtitle="Defina os serviços prestados e as regiões atendidas">
             <div className="card-body-tight">
               <Stack gap="xl">
                 <DevNote note="RF702: especialidades de uma lista fixa no protótipo. 💡 Lista cadastrável - definir se é global (Admin) ou por assinante.">
@@ -348,12 +363,12 @@ function PrestadorFormScreen() {
                 </DevNote>
               </Stack>
             </div>
-          </Card>
+          </FormSection>
           </div>
 
           {company && (
           <DevNote note="RF702-RGN002: um prestador pode ter vários técnicos, de especialidades diferentes (0..N). 💡 RGN003 / P09: a confirmar se o técnico precisa de e-mail/telefone próprio para receber o seu link de acesso - por isso ficam opcionais.">
-            <Card className="card-open" title="Técnicos vinculados" subtitle="Profissionais do prestador que atendem as OS">
+            <FormSection className="card-open" title="Técnicos vinculados" subtitle="Profissionais do prestador que atendem as OS">
               <div className="card-body-tight">
                 <Stack gap="lg">
                   {d.technicians.length === 0 && <p className="page-text">Nenhum técnico vinculado. Adicione se o prestador tiver mais de um profissional</p>}
@@ -379,7 +394,7 @@ function PrestadorFormScreen() {
                   <Stack direction="horizontal"><Button variant="ghost" size="sm" iconLeft={<IconPlus size={16} />} onClick={() => set('technicians', [...d.technicians, blankTech()])}>Adicionar técnico</Button></Stack>
                 </Stack>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
           )}
 

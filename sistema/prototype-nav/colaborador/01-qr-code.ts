@@ -16,6 +16,7 @@ const tokenOf = (id: string) => db.equipments.find((e) => e.id === id)?.qrToken 
 const withOpen = db.equipments.find((e) => db.requests.some((r) => r.equipmentId === e.id && OPEN.has(r.statusId)) && e.statusId !== 'STE-05');
 const withoutOpen = db.equipments.find((e) => e.statusId !== 'STE-05' && !db.requests.some((r) => r.equipmentId === e.id && OPEN.has(r.statusId)));
 const withTips = db.equipments.find((e) => e.statusId !== 'STE-05' && e.troubleshooting.length > 0 && !db.requests.some((r) => r.equipmentId === e.id && OPEN.has(r.statusId))) ?? withoutOpen;
+const withSafety = db.equipments.find((e) => e.safetyNote && e.statusId !== 'STE-05' && !db.requests.some((r) => r.equipmentId === e.id && OPEN.has(r.statusId))) ?? db.equipments.find((e) => e.safetyNote && e.statusId !== 'STE-05');
 const reqBy = (pred: (r: (typeof db.requests)[number]) => boolean) => db.requests.find(pred)?.id ?? db.requests[0].id;
 const awaitingInfo = reqBy((r) => r.statusId === 'STS-03' && !!r.complement && !r.complement.answeredAt);
 const triage = reqBy((r) => r.statusId === 'STS-02');
@@ -36,6 +37,8 @@ export const journeys: Journey[] = [
         id: 'colab-equipamento', label: 'RF001/RF003 - Resumo do equipamento e solicitações abertas', path: `${s}/equipamento.html?${q(withOpen)}`,
         variants: [
           v('colab-eq-noopen', 'Sem solicitações abertas', `equipamento.html?${q(withoutOpen)}`),
+          v('colab-eq-safety', 'Equipamento com orientação de segurança', `equipamento.html?${q(withSafety)}`),
+          { ...v('colab-eq-safety-sol', 'Orientação ao abrir a solicitação', `solicitar.html?${q(withSafety)}`), sub: true },
           v('colab-eq-inactive', 'Equipamento inativo (não abre solicitação)', `equipamento.html?${q(withOpen)}#state=inactive`),
           v('colab-eq-envinactive', 'Ambiente do assinante desativado', `equipamento.html?${q(withOpen)}#state=envinactive`),
           v('colab-eq-search', 'Busca por código do equipamento', `equipamento.html`),

@@ -2,14 +2,14 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { IconAlertTriangle, IconChevronDown, IconCalendarEvent, IconChecks, IconPencil, IconPlayerPause, IconPlayerPlay, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
-import { formatDate, formatNumber } from '../../admin/shared/format';
+import { formatDate, formatNumber, formatPhone, noBreak, onlyDigits } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { CHECKLIST_KIND_LABEL, PlanExecution } from './data';
 import { ResponsiveTable } from './ListKit';
 import { PlanEquipmentsDialog } from './PlanEquipmentPicker';
 import { PlanStatusDialog } from './PlanStatusDialog';
-import { compliance, describeFrequency, executorOf, isLate, isSoon, planUnitIds, statsOf } from './preventivas';
+import { compliance, describeFrequency, executorOf, executorPhone, isLate, isSoon, planUnitIds, statsOf } from './preventivas';
 import { environmentName, unitName, useSubSession } from './store';
 import { Tooltip } from '@maglev/ds';
 import { CellPair, Col, Grid, ReadField, RowAction, RowActions, goTo, param, takeFlash } from './ui';
@@ -84,6 +84,7 @@ function PlanoScreen() {
 
   const paused = plan.status === 'pausado';
   const executor = executorOf(db, plan.executor);
+  const execPhone = executorPhone(db, plan.executor, (s) => can(s));
   const comp = compliance(stats.executions);
   const eqOf = (id: string) => db.equipments.find((e) => e.id === id);
   const equipmentCell = (id: string) => <a className="text-link" href={`equipamento.html?id=${id}`}>{eqOf(id)?.name ?? id}</a>;
@@ -103,10 +104,23 @@ function PlanoScreen() {
     ? <RowActions><RowAction icon={<IconPlayerPlayFilled size={16} />} label="Executar preventiva" target={`${eqOf(ex.equipmentId)?.name ?? ''} em ${formatDate(ex.dueDate)}`} onClick={() => goTo(`execucao-preventiva.html?os=${ex.osId}&from=plano`)} /></RowActions>
     : undefined);
 
+  // Executor (nome + empresa/equipe em tamanho menor) e telefone para ligar; vale também para quem executou no histórico
+  const execInfo = (who?: string) => {
+    const tech = who ?? (plan.executor.kind === 'prestador' ? plan.executor.technician : undefined);
+    const name = tech ?? executor.primary;
+    const company = plan.executor.kind === 'prestador' ? (tech ? executor.primary : 'Prestador externo') : 'Equipe interna';
+    const phone = executorPhone(db, plan.executor, (s) => can(s), tech);
+    return { name, company, phone };
+  };
+  const execCell = (who?: string) => { const i = execInfo(who); return <CellPair primary={i.name} secondary={i.company} />; };
+  const phoneCell = (who?: string) => { const p = execInfo(who).phone; return p ? <a className="text-link" href={`tel:${onlyDigits(p)}`}>{noBreak(formatPhone(p))}</a> : '-'; };
+
   const pendingCols: TableColumn<Row>[] = [
     { key: 'due', label: 'Data prevista', render: (_, r) => formatDate(r.ex.dueDate) },
     { key: 'equipment', label: 'Equipamento', render: (_, r) => equipmentCell(r.ex.equipmentId) },
     { key: 'unit', label: 'Unidade' },
+    { key: 'executor', label: 'Executor', render: () => execCell() },
+    { key: 'phone', label: 'Telefone', render: () => phoneCell() },
     { key: 'situation', label: 'Situação', render: (_, r) => pendingBadge(r.ex) },
     { key: 'os', label: 'OS', render: (_, r) => osLink(r.ex.osId) },
     { key: 'actions', label: 'Ações', sticky: 'right', render: (_, r) => runAction(r.ex) ?? '' },
@@ -116,7 +130,8 @@ function PlanoScreen() {
     { key: 'done', label: 'Data realizada', render: (_, r) => (r.ex.doneAt ? formatDate(r.ex.doneAt) : '-') },
     { key: 'equipment', label: 'Equipamento', render: (_, r) => equipmentCell(r.ex.equipmentId) },
     { key: 'unit', label: 'Unidade' },
-    { key: 'executor', label: 'Executor', render: (_, r) => r.ex.doneBy ?? executor.primary },
+    { key: 'executor', label: 'Executor', render: (_, r) => execCell(r.ex.doneBy) },
+    { key: 'phone', label: 'Telefone', render: (_, r) => phoneCell(r.ex.doneBy) },
     { key: 'result', label: 'Resultado', render: (_, r) => resultBadge(r.ex) },
     { key: 'anomalies', label: 'Anomalias', render: (_, r) => <AnomalyCell text={r.ex.anomalies} /> },
     { key: 'os', label: 'OS', render: (_, r) => osLink(r.ex.osId) },
@@ -137,7 +152,7 @@ function PlanoScreen() {
           id="plan-pending" title="Próximas execuções" subtitle="Execuções previstas e ainda não concluídas" columns={pendingCols} rows={pendingRows}
           emptyTitle={paused ? 'Plano pausado, sem execuções previstas' : 'Nenhuma execução prevista'}
           emptyDescription={paused ? 'Ative o plano para recalcular as próximas execuções' : undefined}
-          card={(r) => ({ id: r.id, title: r.equipment, subtitle: `${formatDate(r.ex.dueDate)} · ${r.unit}`, badge: pendingBadge(r.ex), fields: [{ label: 'OS', value: osLink(r.ex.osId) }], actions: runAction(r.ex) })}
+          card={(r) => ({ id: r.id, title: r.equipment, subtitle: `${formatDate(r.ex.dueDate)} · ${r.unit}`, badge: pendingBadge(r.ex), fields: [{ label: 'Executor', value: execCell() }, { label: 'Telefone', value: phoneCell() }, { label: 'OS', value: osLink(r.ex.osId) }], actions: runAction(r.ex) })}
         />
       </DevNote>
       <DevNote note="RF602 / RF601-RGN005 (recorrência fixa): a execução anterior não concluída até a geração da seguinte fica “Não realizada” e continua contando como não cumprida no cumprimento. Resultado = Concluída / Não realizada. Execuções concluídas na RF603 aparecem aqui e no histórico do equipamento (RF603-RGN003).">
@@ -147,7 +162,7 @@ function PlanoScreen() {
           card={(r) => ({
             id: r.id, title: r.equipment, subtitle: `Prevista para ${formatDate(r.ex.dueDate)} · ${r.unit}`, badge: resultBadge(r.ex),
             fields: [
-              { label: 'Data realizada', value: r.ex.doneAt ? formatDate(r.ex.doneAt) : '-' }, { label: 'Executor', value: r.ex.doneBy ?? executor.primary },
+              { label: 'Data realizada', value: r.ex.doneAt ? formatDate(r.ex.doneAt) : '-' }, { label: 'Executor', value: execCell(r.ex.doneBy) }, { label: 'Telefone', value: phoneCell(r.ex.doneBy) },
               { label: 'Anomalias', value: r.ex.anomalies ?? '-' }, { label: 'OS', value: osLink(r.ex.osId) },
             ],
           })}
@@ -181,7 +196,12 @@ function PlanoScreen() {
               <Grid>
                 <Col span={6}><ReadField label="Tipo de executor" value={plan.executor.kind === 'interno' ? 'Equipe interna' : 'Prestador externo'} /></Col>
                 <Col span={6}><ReadField label={plan.executor.kind === 'interno' ? 'Executor padrão' : 'Prestador padrão'} value={executor.primary} /></Col>
-                {plan.executor.kind === 'prestador' && <Col span={12}><ReadField label="Técnico" value={plan.executor.technician ?? 'Qualquer técnico do prestador'} /></Col>}
+                {plan.executor.kind === 'prestador' && <Col span={6}><ReadField label="Técnico" value={plan.executor.technician ?? 'Qualquer técnico do prestador'} /></Col>}
+                <Col span={6}>
+                  <DevNote note="Telefone do executor para ligar direto do plano (o telefone é o único contato obrigatório do prestador): do técnico, se um técnico foi escolhido, ou do contato principal do prestador; no executor interno, o do usuário. Só aparece para quem pode ver o módulo de origem (Prestadores ou Equipe); sem permissão, mostra “-”. 💡 WhatsApp/e-mail como ação ficam para depois.">
+                    <ReadField label="Telefone" value={execPhone ? <a className="text-link" href={`tel:${onlyDigits(execPhone)}`}>{noBreak(formatPhone(execPhone))}</a> : undefined} />
+                  </DevNote>
+                </Col>
                 {!executor.active && <Col span={12}><Feedback type="warning" message="O executor padrão está inativo. Edite o plano e escolha outro" /></Col>}
               </Grid>
             </div>

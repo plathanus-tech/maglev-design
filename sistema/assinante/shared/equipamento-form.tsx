@@ -8,13 +8,14 @@ import { useHashState } from '../../admin/shared/useHashState';
 import { DateField, INVALID_DATE_MESSAGE } from './date-field';
 import { formatMoney, onlyDigits, requiredMessage } from '../../admin/shared/format';
 import { Equipment, TroubleshootingEntry, dayOnly, hoursAgo, nowLocal } from './data';
-import { nextShortId, updateSubDb, useSubSession } from './store';
-import { Col, Grid, goTo, param, setFlash, useRefs } from './ui';
+import { nextShortId, notify, updateSubDb, useSubSession } from './store';
+import { daysText, warrantyOf } from './warranty';
+import { Col, FormSection, Grid, goTo, param, setFlash, useRefs } from './ui';
 import { TroubleshootingSafety } from './equipamento-lib';
 import { photoSrc } from './photos';
 import './equipamento.css';
 
-/** Estados: idle · required (salvar vazio) · warranty (garantia = Sim sem datas) · troubleshooting (seção 5 preenchida) */
+/** Estados: idle · required (salvar vazio) · warranty (garantia = Sim sem datas) · troubleshooting (seção 6 preenchida) */
 const STATES = ['idle', 'required', 'warranty', 'invaliddate', 'warrantyperiod', 'troubleshooting'] as const;
 type Mode = (typeof STATES)[number];
 
@@ -27,7 +28,7 @@ interface Draft {
   unitId: string; environmentId: string;
   statusId: string; criticalityId: string; acquiredAt: string; valueDigits: string;
   warranty: 'sim' | 'nao'; wStart: string; wEnd: string;
-  photoName: string; labelPhotoName: string; notes: string;
+  photoName: string; labelPhotoName: string; notes: string; safetyNote: string;
   ts: TroubleshootingEntry[];
 }
 
@@ -166,7 +167,7 @@ function EquipamentoFormScreen() {
         unitId: editing.unitId, environmentId: editing.environmentId, statusId: editing.statusId, criticalityId: editing.criticalityId,
         acquiredAt: editing.acquiredAt ?? '', valueDigits: editing.valueCents ? String(editing.valueCents) : '',
         warranty: editing.warranty.has ? 'sim' : 'nao', wStart: editing.warranty.start ?? '', wEnd: editing.warranty.end ?? '',
-        photoName: editing.photoName ?? '', labelPhotoName: editing.labelPhotoName ?? '', notes: editing.notes ?? '', ts: cloneTs(editing.troubleshooting),
+        photoName: editing.photoName ?? '', labelPhotoName: editing.labelPhotoName ?? '', notes: editing.notes ?? '', safetyNote: editing.safetyNote ?? '', ts: cloneTs(editing.troubleshooting),
       };
     }
     const u = param('unit'); const unitId = u && unitIds.includes(u) ? u : '';
@@ -174,7 +175,7 @@ function EquipamentoFormScreen() {
     return {
       name: '', categoryId: '', maker: '', model: '', serial: '', code: '', unitId, environmentId: envOk ? env! : '',
       statusId: eqStatuses.find((s) => refs.base(s.id) === 'concluido')?.id ?? '', criticalityId: '', acquiredAt: '', valueDigits: '',
-      warranty: 'nao', wStart: '', wEnd: '', photoName: '', labelPhotoName: '', notes: '', ts: [],
+      warranty: 'nao', wStart: '', wEnd: '', photoName: '', labelPhotoName: '', notes: '', safetyNote: '', ts: [],
     };
   };
   const [d, setD] = useState<Draft>(initial);
@@ -233,7 +234,10 @@ function EquipamentoFormScreen() {
   const statuses = eqStatuses.map((s) => ({ value: s.id, label: s.name }));
   if (editing && !statuses.some((s) => s.value === editing.statusId)) statuses.push({ value: editing.statusId, label: refs.status(editing.statusId)?.name ?? editing.statusId });
   const criticalities = refs.admin.criticalities.map((c) => ({ value: c.id, label: c.name }));
-  const problemTypes = refs.admin.requestTypes.filter((t) => t.status === 'ativo' || d.ts.some((x) => x.problemId === t.id));
+  // Só os tipos que fazem sentido para a categoria do equipamento (sem categoria no tipo = vale para todas); quem já tem dicas continua aparecendo, para nada ficar escondido
+  const fitsCategory = (t: { categoryIds?: string[] }) => !d.categoryId || !t.categoryIds?.length || t.categoryIds.includes(d.categoryId);
+  const problemTypes = refs.admin.requestTypes.filter((t) => (t.status === 'ativo' && fitsCategory(t)) || d.ts.some((x) => x.problemId === t.id));
+  const hiddenTypes = refs.admin.requestTypes.filter((t) => t.status === 'ativo' && !problemTypes.includes(t)).length;
 
   // ── Validação (RF301-CTA001: nome, categoria, unidade, status e criticidade) ──
   const tipsOf = (problemId: string) => d.ts.find((t) => t.problemId === problemId)?.tips ?? [];
@@ -308,7 +312,7 @@ function EquipamentoFormScreen() {
       unitId: d.unitId, environmentId: d.environmentId, statusId: d.statusId, criticalityId: d.criticalityId,
       acquiredAt: d.acquiredAt || undefined, valueCents: valueCents || undefined,
       warranty: d.warranty === 'sim' ? { has: true, start: d.wStart, end: d.wEnd } : { has: false },
-      photoName: d.photoName || undefined, labelPhotoName: d.labelPhotoName || undefined, notes: d.notes.trim() || undefined,
+      photoName: d.photoName || undefined, labelPhotoName: d.labelPhotoName || undefined, notes: d.notes.trim() || undefined, safetyNote: d.safetyNote.trim() || undefined,
       troubleshooting: d.ts.map((t) => ({ problemId: t.problemId, tips: t.tips.map((x) => ({ id: x.id, text: x.text.trim() })) })).filter((t) => t.tips.length > 0),
       // Downtime (RF304-RGN005): marca quando entra em "Parado" e zera quando sai
       stoppedSince: stopped ? (editing?.stoppedSince ?? hoursAgo(0)) : undefined,
@@ -323,6 +327,10 @@ function EquipamentoFormScreen() {
       const created: Equipment = { id, ...data, code, createdAt: nowLocal(), qrToken: `q${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-4)}` };
       return { ...db0, equipments: [...db0.equipments, created] };
     });
+    const w = warrantyOf(data.warranty);
+    if (w.kind === 'expiring') {
+      notify(db.users.filter((u) => u.status === 'ativo' && (u.profile === 'administrador' || u.profile === 'gestor')).map((u) => u.id), { kind: 'equipamento', title: 'Garantia a vencer', text: `${data.name}: a garantia ${daysText(w.daysLeft ?? 0)}`, href: `equipamento.html?id=${id}` });
+    }
     if (editing) setFlash({ type: 'success', title: 'Equipamento atualizado', message: 'As alterações foram salvas.' });
     else if (returnTo) setFlash({ type: 'success', title: 'Equipamento cadastrado', message: 'O QR Code foi gerado. Ele já está selecionado na solicitação.' });
     else setFlash({ type: 'success', title: 'Equipamento cadastrado', message: intent.current === 'next' ? 'O QR Code foi gerado. Preencha o próximo, que já vem com a mesma unidade e o mesmo ambiente.' : 'O QR Code do equipamento foi gerado e já pode ser impresso.' });
@@ -362,7 +370,7 @@ function EquipamentoFormScreen() {
         )}
 
         <DevNote note="RF301-CTA001: só nome, categoria, unidade, status e criticidade são obrigatórios; os demais campos são opcionais (marcados com “(opcional)”). Equipamento é identificado também pelo código/patrimônio, para localizar sem QR Code (RGN002).">
-          <Card className="card-open" title="1. Identificação" subtitle="Como o equipamento é conhecido na operação">
+          <FormSection className="card-open" title="1. Identificação" subtitle="Como o equipamento é conhecido na operação">
             <div className="card-body-tight">
               <Grid>
                 <Col span={8}><Input label="Nome do equipamento" required autoComplete="off" placeholder="Ex.: Freezer vertical 21" value={d.name} onChange={(e) => set('name', e.target.value)} error={show('name')} /></Col>
@@ -373,10 +381,10 @@ function EquipamentoFormScreen() {
                 <Col span={6}><DevNote note="O código do equipamento é o que vai impresso na etiqueta (abaixo do QR Code) e o que a pessoa digita para localizar o equipamento e abrir a solicitação. Único por equipamento: não aceita código repetido. Em branco, o sistema gera um automaticamente (PAT-0000, em sequência)."><Input label="Código do equipamento" optional autoComplete="off" value={d.code} onChange={(e) => set('code', e.target.value)} error={show('code')} helperText="Impresso na etiqueta e usado para localizar o equipamento. Em branco, o sistema gera um automaticamente" /></DevNote></Col>
               </Grid>
             </div>
-          </Card>
+          </FormSection>
         </DevNote>
 
-        <Card className="card-open" title="2. Localização" subtitle="Onde o equipamento está instalado">
+        <FormSection className="card-open" title="2. Localização" subtitle="Onde o equipamento está instalado">
           <div className="card-body-tight">
             <Grid>
               <Col span={6}>
@@ -389,9 +397,9 @@ function EquipamentoFormScreen() {
               </Col>
             </Grid>
           </div>
-        </Card>
+        </FormSection>
 
-        <Card className="card-open" title="3. Ciclo de vida" subtitle="Situação, importância e garantia do equipamento">
+        <FormSection className="card-open" title="3. Ciclo de vida" subtitle="Situação, importância e garantia do equipamento">
           <div className="card-body-tight">
             <Grid>
               <Col span={6}>
@@ -423,10 +431,10 @@ function EquipamentoFormScreen() {
               )}
             </Grid>
           </div>
-        </Card>
+        </FormSection>
 
         <DevNote note="Upload simulado no protótipo: só o nome do arquivo é guardado. Formatos JPG e PNG; 💡 limite de tamanho a definir (RF301). Observações até 500 caracteres.">
-          <Card className="card-open" title="4. Fotos e observações" subtitle="Adicione fotos e informações complementares sobre o equipamento">
+          <FormSection className="card-open" title="4. Fotos e observações" subtitle="Adicione fotos e informações complementares sobre o equipamento">
             <div className="card-body-tight">
               <Grid>
                 <Col span={6}><PhotoField label="Foto do equipamento" value={d.photoName} onChange={(v) => set('photoName', v)} /></Col>
@@ -439,11 +447,23 @@ function EquipamentoFormScreen() {
                 </Col>
               </Grid>
             </div>
-          </Card>
+          </FormSection>
+        </DevNote>
+
+        <DevNote note="💡 Orientação de segurança (a confirmar com o cliente): texto livre e opcional, escrito por quem gerencia a manutenção, com o que fazer em caso de risco com ESTE equipamento (gás, eletricidade, óleo quente…). Aparece para quem abre a solicitação (portal e QR Code) assim que escolhe o equipamento, na tela de dicas e no detalhe do equipamento. O sistema só exibe a orientação: ela não substitui o procedimento interno de emergência nem aciona ninguém sozinha.">
+          <FormSection className="card-open" title={<>5. Orientação de segurança <span className="title-optional">(opcional)</span></>} subtitle="O que a pessoa deve fazer em caso de risco com este equipamento, mostrado ao abrir uma solicitação">
+            <div className="card-body-tight">
+              <Textarea
+                label="Orientação de segurança" optional rows={3} maxLength={NOTES_MAX} value={d.safetyNote} onChange={(e) => set('safetyNote', e.target.value)}
+                placeholder="Ex.: Em caso de cheiro de gás, feche o registro, ventile o ambiente e avise o gerente de plantão"
+                helperText={`${d.safetyNote.length}/${NOTES_MAX} caracteres`}
+              />
+            </div>
+          </FormSection>
         </DevNote>
 
         <DevNote note="RF301-RGN006 / RGN009 (v0.4): troubleshooting é opcional e cadastrado por problema (tipo de solicitação, Admin RF403), com dicas da mais simples à mais complexa. Só quem tem permissão “Editar” em Equipamentos chega a esta tela - Solicitante e Executor nunca cadastram, por envolver segurança (eletricidade, gás). Sem arrastar: reordene com Subir/Descer. 💡 Imagem opcional por dica fica para depois.">
-          <Card className="card-open" title={<>5. Troubleshooting <span className="title-optional">(opcional)</span></>} subtitle="Dicas para o solicitante tentar resolver o problema antes de abrir uma solicitação">
+          <FormSection className="card-open" title={<>6. Troubleshooting <span className="title-optional">(opcional)</span></>} subtitle="Dicas para o solicitante tentar resolver o problema antes de abrir uma solicitação">
             <div className="card-body-tight">
               <Stack gap="lg">
                 <TroubleshootingSafety />
@@ -462,6 +482,7 @@ function EquipamentoFormScreen() {
                     {copyOptions.length > 0 && <p className="field-note">Substitui as dicas atuais pelas do equipamento escolhido</p>}
                   </Stack>
                 </DevNote>
+                {hiddenTypes > 0 && <p className="field-note">Mostramos os tipos de solicitação que se aplicam à categoria do equipamento</p>}
                 <Accordion
                   allowMultiple headingLevel={3}
                   defaultOpenIndex={mode === 'troubleshooting' ? [0, 2] : problemTypes.map((t, i) => (tipsOf(t.id).length ? i : -1)).filter((i) => i >= 0)}
@@ -476,7 +497,7 @@ function EquipamentoFormScreen() {
                 />
               </Stack>
             </div>
-          </Card>
+          </FormSection>
         </DevNote>
 
         <Stack direction="horizontal" justify="start" gap="sm" wrap>

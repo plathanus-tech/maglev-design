@@ -26,12 +26,13 @@ const tokenOf = (raw: string) => /\/q\/([\w-]+)/.exec(raw)?.[1];
  * Atalho ao lado de “Nova solicitação”: ler o QR Code (mobile) ou informar o código do equipamento (desktop e mobile) e cair direto na
  * solicitação dele, com equipamento, unidade e ambiente já preenchidos, sem passar pela busca.
  */
-export function OpenByCode() {
+export function OpenByCode({ controlled, autoScan, withoutQr }: { controlled?: { open: boolean; onClose: () => void }; autoScan?: boolean; withoutQr?: boolean } = {}) {
   const isMobile = useIsMobile();
   const db = useSubDb();
   const refs = useRefs();
   const { unitIds } = useSubSession();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpen] = useState(false);
+  const open = controlled ? controlled.open : openState;
   const [code, setCode] = useState('');
   const [error, setError] = useState<string>();
   const [scanning, setScanning] = useState(false);
@@ -75,7 +76,7 @@ export function OpenByCode() {
     }
   };
   const stopCamera = () => { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setScanning(false); };
-  const close = () => { stopCamera(); setOpen(false); setCode(''); setError(undefined); setScanMsg(undefined); setShowList(false); setActive(-1); };
+  const close = () => { stopCamera(); setOpen(false); controlled?.onClose(); setCode(''); setError(undefined); setScanMsg(undefined); setShowList(false); setActive(-1); };
   useEffect(() => stopCamera, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Localiza o equipamento pelo código digitado ou pelo identificador do QR e abre a solicitação dele. */
@@ -117,14 +118,19 @@ export function OpenByCode() {
     }
   };
 
+  // Aberto pela barra inferior (mobile): já começa lendo o QR Code
+  useEffect(() => { if (open && autoScan && isMobile) void startCamera(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
+      {!controlled && (
       <DevNote note="Atalho para abrir a solicitação de um equipamento pelo código da etiqueta, sem a busca. Botão só com o ícone de QR Code ao lado de “Nova solicitação”, com tooltip: no mobile “Ler QR Code” (usa a câmera onde o navegador permitir e também aceita digitar o código) e no desktop “Informar código” (digitar o código). Enquanto digita, mostra sugestões (código ou nome, até 6, só equipamentos ativos das unidades do usuário), como na busca do solicitante; escolher uma abre a solicitação. Reconhece o código do equipamento (o que está impresso na etiqueta, único por equipamento) ou o link do QR. Equipamento inativo ou código desconhecido mostram o motivo. Só para quem pode cadastrar solicitações.">
         {/* Só o ícone nos dois tamanhos de tela, com o texto da ação no tooltip e como nome acessível (a classe row-menu-btn reaproveita o layout em linha e a área de toque dos botões de ícone do cabeçalho) */}
         <Tooltip content={isMobile ? 'Ler QR Code' : 'Informar código'} placement="bottom">
           <Button variant="secondary" size="md" iconOnly className="row-menu-btn qr-icon-btn" iconLeft={<IconQrcode size={20} />} aria-label={isMobile ? 'Ler QR Code' : 'Informar código'} onClick={() => setOpen(true)} />
         </Tooltip>
       </DevNote>
+      )}
       {open && (
         <Dialog
           open onClose={close} size="sm" title="Abrir solicitação pelo código"
@@ -168,6 +174,7 @@ export function OpenByCode() {
                   document.body,
                 )}
               </div>
+              {withoutQr && <Button variant="ghost" onClick={() => goTo('solicitacao-form.html')}>Abrir sem QR Code</Button>}
             </Stack>
           </form>
         </Dialog>

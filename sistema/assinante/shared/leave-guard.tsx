@@ -7,7 +7,15 @@ import { Button, Dialog } from '@maglev/ds';
  * navegador. Sem alterações a perder, não pergunta nada. `allow()` libera a saída (ex.: depois de salvar).
  * Não há rascunho: os dados não salvos são descartados.
  */
-export function useLeaveGuard(dirty: boolean): { allow: () => void; dialog: ReactNode } {
+export interface LeaveGuardOptions {
+  /** Textos do modal (padrão: "Sair sem salvar?"). */
+  title?: string; subtitle?: string; stayLabel?: string; leaveLabel?: string;
+  /** Saída que não perde nada (ex.: criar a OS depois): botão de saída em primário e os dois botões dividem a largura. */
+  safeExit?: boolean;
+  /** Sem aviso do navegador ao fechar a aba (útil quando nada se perde). */
+  noUnloadWarning?: boolean;
+}
+export function useLeaveGuard(dirty: boolean, opts: LeaveGuardOptions = {}): { allow: () => void; ask: (href: string) => void; dialog: ReactNode } {
   const [target, setTarget] = useState<string | null>(null);
   const allowed = useRef(false);
 
@@ -23,22 +31,24 @@ export function useLeaveGuard(dirty: boolean): { allow: () => void; dialog: Reac
       e.preventDefault();
       setTarget(a.href);
     };
-    window.addEventListener('beforeunload', onBeforeUnload);
+    if (!opts.noUnloadWarning) window.addEventListener('beforeunload', onBeforeUnload);
     document.addEventListener('click', onClick, true);
     return () => { window.removeEventListener('beforeunload', onBeforeUnload); document.removeEventListener('click', onClick, true); };
   }, [dirty]);
 
+  const sz = opts.safeExit ? undefined : 'sm';
   const dialog = target ? (
     <Dialog
-      open onClose={() => setTarget(null)} size="sm" title="Sair sem salvar?" subtitle="Os dados preenchidos que não foram salvos serão descartados"
+      open onClose={() => setTarget(null)} size="sm" className={opts.safeExit ? 'dialog-confirm dialog-actions-fill' : undefined}
+      title={opts.title ?? 'Sair sem salvar?'} subtitle={opts.subtitle ?? 'Os dados preenchidos que não foram salvos serão descartados'}
       actions={(
         <>
-          <Button size="sm" variant="secondary" onClick={() => setTarget(null)}>Continuar preenchendo</Button>
-          <Button size="sm" variant="destructive" onClick={() => { allowed.current = true; window.location.href = target; }}>Sair sem salvar</Button>
+          <Button size={sz} variant="secondary" onClick={() => setTarget(null)}>{opts.stayLabel ?? 'Continuar preenchendo'}</Button>
+          <Button size={sz} variant={opts.safeExit ? 'primary' : 'destructive'} onClick={() => { allowed.current = true; window.location.href = target; }}>{opts.leaveLabel ?? 'Sair sem salvar'}</Button>
         </>
       )}
     />
   ) : null;
 
-  return { allow: () => { allowed.current = true; }, dialog };
+  return { allow: () => { allowed.current = true; }, ask: (href: string) => setTarget(new URL(href, location.href).href), dialog };
 }

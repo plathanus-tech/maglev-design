@@ -3,7 +3,7 @@
  * Tudo deriva de `db.plans` / `db.executions` / `db.orders` e do "hoje" do protótipo (DEMO_NOW).
  */
 import {
-  Executor, FREQUENCY_LABEL, Frequency, Plan, PlanExecution, SubDb, SubUser, WorkOrder, dayOnly, nowLocal,
+  Executor, FREQUENCY_LABEL, Frequency, Plan, PlanExecution, ScreenKey, SubDb, SubUser, WorkOrder, dayOnly, nowLocal,
 } from './data';
 import { logEntry, nextSeq, notify, updateSubDb } from './store';
 
@@ -235,3 +235,15 @@ export function setPlanEquipments(plan: Plan, equipmentIds: string[], me: SubUse
 
 /** Nome do arquivo simulado de uma evidência anexada na execução. */
 export const evidenceFile = (label: string) => `${label.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.${/relat/i.test(label) ? 'pdf' : 'jpg'}`;
+
+/**
+ * Telefone do executor para ligar: do técnico (se o nome informado existe no prestador) ou do contato principal do prestador; no executor interno, o do usuário.
+ * Só quem pode ver o módulo de origem enxerga o número (Prestadores para externos; Equipe para internos); sem permissão devolve `undefined`.
+ */
+export function executorPhone(db: SubDb, ex: Executor, can: (screen: ScreenKey) => boolean, technician?: string): string | undefined {
+  if (ex.kind === 'interno') return can('equipe') ? db.users.find((u) => u.id === ex.userId)?.phone : undefined;
+  if (!can('prestadores')) return undefined;
+  const p = db.providers.find((x) => x.id === ex.providerId);
+  const t = p?.technicians.find((x) => x.name === (technician ?? ex.technician));
+  return t?.phone ?? p?.contacts.find((c) => c.main)?.phone ?? p?.contacts[0]?.phone;
+}

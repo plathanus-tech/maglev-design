@@ -22,3 +22,6 @@
 .ts-primary { width: 100%; }
 .ts-offer > header { align-items: center; padding-block: var(--spacing-md); }
 @media (max-width: 767px) { .ts-offer > header { flex-direction: column; align-items: stretch; } }
+
+/* "Não encontrou o equipamento?": quebra de linha e alinhado ao campo (sem o respiro lateral do botão), para respeitar o padding do card no mobile */
+.register-link { white-space: normal; text-align: start; justify-content: flex-start; max-inline-size: 100%; block-size: auto; min-block-size: 0; padding-inline: 0; }

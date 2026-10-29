@@ -8,7 +8,7 @@ import { useHashState } from './useHashState';
 import { logActivity, nextId, updateDb, useSession } from './store';
 import { AdminUser, AdminUserStatus, RecordStatus } from './data';
 import { CORPORATE_DOMAIN, formatPhone, isCorporateEmail, isValidEmail, isValidPhone, onlyDigits, requiredMessage } from './format';
-import { Col, Grid, ReadField, adminUserStatusBadge, goTo, param, recordStatusBadge, setFlash } from './ui';
+import { Col, FormSection, Grid, ReadField, adminUserStatusBadge, goTo, param, recordStatusBadge, setFlash } from './ui';
 import { todayIso } from './clock';
 
 /** Estados: idle · required · domain (e-mail fora de @maglev.com.br - CTA003) · duplicate (e-mail já cadastrado - CTA002) */
@@ -131,7 +131,7 @@ function UsuarioFormScreen() {
           )}
 
           <DevNote note="CPF não é solicitado: a unicidade do usuário é garantida pelo e-mail corporativo.">
-            <Card className="card-open" title="Dados do usuário">
+            <FormSection className="card-open" title="Dados do usuário">
               <div className="card-body-tight">
                 <Grid>
                   <Col span={12}><Input label="Nome completo" required autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} error={show('name')} /></Col>
@@ -173,13 +173,13 @@ function UsuarioFormScreen() {
                   )}
                 </Grid>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
 
           {editing && self && (
             <>
               <DevNote note="Preferências pessoais, só na edição da própria conta (não há página Meu perfil neste momento): canais de notificação por e-mail e WhatsApp, aplicados com Salvar alterações. O e-mail e o celular usados são os do cadastro acima. Padrão: e-mail ligado e WhatsApp desligado.">
-                <Card className="card-open" title="Preferências de comunicação" subtitle="Escolha por quais canais você deseja receber notificações">
+                <FormSection className="card-open" title="Preferências de comunicação" subtitle="Escolha por quais canais você deseja receber notificações">
                   <div className="card-body-tight">
                     <Stack gap="sm">
                       <Checkbox label="E-mail" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} />
@@ -187,17 +187,17 @@ function UsuarioFormScreen() {
                       {!hasPhone && <p className="field-note">Informe um celular para receber notificações por WhatsApp</p>}
                     </Stack>
                   </div>
-                </Card>
+                </FormSection>
               </DevNote>
 
               <DevNote note="Alterar a própria senha: abre um modal com senha atual, nova senha (política RF002-RGN003) e confirmação. Nenhuma senha, nem mascarada, é exibida na tela.">
-                <Card className="card-open" title="Segurança">
+                <FormSection className="card-open" title="Segurança">
                   <div className="card-body-tight">
                     <Stack direction="horizontal">
                       <Button variant="secondary" size="sm" iconLeft={<IconLock size={16} />} onClick={() => setChangingPassword(true)}>Alterar senha</Button>
                     </Stack>
                   </div>
-                </Card>
+                </FormSection>
               </DevNote>
             </>
           )}

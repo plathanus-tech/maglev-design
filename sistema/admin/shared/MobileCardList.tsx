@@ -13,14 +13,15 @@ export interface MobileCardItem {
   title: ReactNode;
   subtitle?: string;
   badge?: ReactNode;
-  fields: Array<{ label: string; value: ReactNode }>;
+  /** `full`: o campo ocupa a linha inteira do card (ex.: descrição longa), respeitando o padding. */
+  fields: Array<{ label: string; value: ReactNode; full?: boolean }>;
   actions?: ReactNode;
 }
 
 /** Modo de seleção múltipla: cada card ganha um Checkbox, tocar no card marca/desmarca e o rodapé de ações individuais (⋮) some. */
 export interface MobileSelection { selectedIds: Set<string>; onToggle: (id: string) => void; label: (id: string) => string }
 
-export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter }: {
+export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction }: {
   title: string;
   titleHidden?: boolean;
   subtitle?: string;
@@ -37,6 +38,8 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
   selection?: MobileSelection;
   /** Fixo na base da viewport enquanto a lista rola (ex.: CTA de impressão em lote); termina junto da lista, sem cobrir o último card. */
   stickyFooter?: ReactNode;
+  /** Ação ao lado do "Mostrando X–Y de Z" (ex.: "Ver todas"): o texto fica à esquerda e a ação à direita, na mesma linha. */
+  footerAction?: ReactNode;
 }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const from = (page - 1) * pageSize + 1;
@@ -69,7 +72,7 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
           >
             <Grid>
               {it.fields.map((f) => (
-                <Col key={f.label} span={3}>
+                <Col key={f.label} span={3} mobileFull={f.full}>
                   <Stack gap="2xs">
                     <span className="page-label">{f.label}</span>
                     <span className="page-text">{f.value}</span>
@@ -84,7 +87,16 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
         ) : card;
       })}
 
-      {total > 0 && (
+      {total > 0 && footerAction && (
+        <Stack gap="sm">
+          <Stack direction="horizontal" justify="between" align="center" gap="sm">
+            <span className="page-text" aria-live="polite">{`Mostrando ${from}–${to} de ${total}`}</span>
+            {footerAction}
+          </Stack>
+          {pageCount > 1 && <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />}
+        </Stack>
+      )}
+      {total > 0 && !footerAction && (
         <Stack gap="sm" align="center">
           <span className="page-text" aria-live="polite">{`Mostrando ${from}–${to} de ${total}`}</span>
           {pageCount > 1 && <Pagination page={page} pageCount={pageCount} onPageChange={onPageChange} />}

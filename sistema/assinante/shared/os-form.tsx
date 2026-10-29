@@ -8,14 +8,15 @@ import { requiredMessage, formatDate, formatPhone, isValidPhone, onlyDigits } fr
 import { nowLocal } from './data';
 import type { WorkOrder } from './data';
 import { logEntry, nextSeq, notify, unitName, environmentName, updateSubDb, useSubSession, userName } from './store';
-import { Col, Grid, goTo, param, setFlash, useRefs } from './ui';
+import { Col, FormSection, Grid, goTo, param, setFlash, useRefs } from './ui';
+import { useLeaveGuard } from './leave-guard';
 import {
   PlanFields, STO, TODAY, executorOf, executorText, isEditable, notifyAssignees, patchOrder, planChangeLogs, planOf, planProblems, providerLabel,
 } from './os-common';
 import type { PlanValue } from './os-common';
 
 /** Estados: idle (criar/editar) · required (campos obrigatórios) · noorigin (sem solicitação nem OS) · providerfilter (prestador externo selecionado) */
-const STATES = ['idle', 'create', 'edit', 'required', 'noorigin', 'providerfilter'] as const;
+const STATES = ['idle', 'create', 'edit', 'required', 'noorigin', 'providerfilter', 'leave'] as const;
 type Mode = (typeof STATES)[number];
 
 function OsFormScreen() {
@@ -27,6 +28,13 @@ function OsFormScreen() {
   const origin = editing ? db.requests.find((r) => r.id === editing.requestId) : request;
   const eq = db.equipments.find((e) => e.id === (editing?.equipmentId ?? request?.equipmentId));
 
+  // Criando a OS a partir de uma solicitação já aprovada: qualquer saída (breadcrumb, menu, Cancelar) pergunta se é para criar depois
+  const guard = useLeaveGuard(!editing && !!request, {
+    title: 'Criar a OS depois?', subtitle: `A solicitação ${request?.id ?? ''} continua Aprovada e você poderá criar a OS depois`,
+    stayLabel: 'Continuar criando', leaveLabel: 'Criar depois', safeExit: true, noUnloadWarning: true,
+  });
+  // Variante do navegador (#state=leave): abre o modal "Criar a OS depois?" já na entrada
+  useEffect(() => { if (mode === 'leave' && request) guard.ask(`solicitacao.html?id=${request.id}`); }, [mode, request?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [subject, setSubject] = useState(editing?.subject ?? (request ? `${refs.requestType(request.problemId)?.name ?? 'Manutenção'} - ${eq?.name ?? ''}` : ''));
   const [reported, setReported] = useState(editing?.reported ?? request?.description ?? '');
   const [maintTypeId, setMaintTypeId] = useState(editing?.maintTypeId ?? request?.maintTypeId ?? '');
@@ -172,7 +180,7 @@ function OsFormScreen() {
         )}
 
         <DevNote note="RF502-RGN001: toda OS corretiva nasce de uma solicitação aprovada na triagem; sem ?request= nem ?id= esta tela é bloqueada (variante “Sem origem”). Preventivas são geradas pelo plano (RF601).">
-          <Card className="card-open" title="Origem" subtitle="Dados da solicitação e do equipamento de origem">
+          <FormSection className="card-open" title="Origem" subtitle="Dados da solicitação e do equipamento de origem">
             <div className="card-body-tight">
               <Grid>
                 <Col span={6}><DevNote note="Número automático e sequencial por assinante (ex.: OS-000012)."><Input label="Nº da OS" readOnly value={editing?.id ?? 'Gerado ao salvar'} /></DevNote></Col>
@@ -182,10 +190,10 @@ function OsFormScreen() {
                 <Col span={12}><Input label="Equipamento" readOnly value={eq.name} /></Col>
               </Grid>
             </div>
-          </Card>
+          </FormSection>
         </DevNote>
 
-        <Card className="card-open" title="Classificação" subtitle="Defina o serviço e sua prioridade">
+        <FormSection className="card-open" title="Classificação" subtitle="Defina o serviço e sua prioridade">
           <div className="card-body-tight">
             <Grid>
               <Col span={12}><Input label="Assunto" required autoComplete="off" value={subject} onChange={(e) => setSubject(e.target.value)} error={show('subject')} /></Col>
@@ -209,15 +217,15 @@ function OsFormScreen() {
               )}
             </Grid>
           </div>
-        </Card>
+        </FormSection>
 
-        <Card className="card-open" title="Responsável e executor" subtitle="Quem responde pela OS e quem executa o atendimento">
+        <FormSection className="card-open" title="Responsável e executor" subtitle="Quem responde pela OS e quem executa o atendimento">
           <div className="card-body-tight">
             <PlanFields db={db} value={plan} onChange={setPlan} categoryId={eq.categoryId} unitId={eq.unitId} errors={planErrors} currentProviderId={editing?.executor.kind === 'prestador' ? editing.executor.providerId : undefined} />
           </div>
-        </Card>
+        </FormSection>
 
-        <Card className="card-open" title="Prazo, agendamento e contato" subtitle="Data limite, período de atendimento e contato na unidade">
+        <FormSection className="card-open" title="Prazo, agendamento e contato" subtitle="Data limite, período de atendimento e contato na unidade">
           <div className="card-body-tight">
             <Grid>
               <Col span={6}><DatePicker label="Prazo" required value={dueAt} onChange={setDueAt} min={editing ? undefined : TODAY} error={show('dueAt')} helperText="Data limite para conclusão" /></Col>
@@ -245,13 +253,14 @@ function OsFormScreen() {
               <Col span={6}><Input label="Telefone do contato" optional type="tel" placeholder="(00) 00000-0000" value={contactPhone} onChange={(e) => setContactPhone(formatPhone(e.target.value))} error={show('contactPhone')} /></Col>
             </Grid>
           </div>
-        </Card>
+        </FormSection>
 
         <Stack direction="horizontal" justify="start" gap="sm" wrap>
           <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar OS'}</Button>
-          <Button variant="secondary" disabled={saving} onClick={() => goTo(editing ? `os.html?id=${editing.id}` : request ? `solicitacao.html?id=${request.id}` : 'ordens-servico.html')}>Cancelar</Button>
+          <Button variant="secondary" disabled={saving} onClick={() => (!editing && request ? guard.ask(`solicitacao.html?id=${request.id}`) : goTo(editing ? `os.html?id=${editing.id}` : 'ordens-servico.html'))}>Cancelar</Button>
         </Stack>
       </Stack>
+      {guard.dialog}
     </form>,
   );
 }

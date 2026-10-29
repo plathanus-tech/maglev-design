@@ -9,7 +9,7 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { PROFILE_LABEL, PROFILE_OPTIONS, ProfileKey, SUBSCRIBER_ID, SubUser, USER_STATUS, UserStatus, nowLocal } from './data';
 import { updateSubDb, useSubSession } from './store';
 import { activeUnits, useFormFeedback } from './estrutura-utils';
-import { Col, Grid, ReadField, Text, goTo, param, setFlash } from './ui';
+import { Col, FormSection, Grid, ReadField, Text, goTo, param, setFlash } from './ui';
 
 /** Estados: idle · required · duplicate (e-mail já cadastrado) · profiles (modal "Perfis de acesso") */
 const STATES = ['idle', 'required', 'duplicate', 'profiles'] as const;
@@ -143,7 +143,7 @@ function MembroFormScreen() {
           {feedback.node}
 
           <DevNote note="RF204: nome completo, e-mail (único) e perfil obrigatórios. Telefone opcional; sem telefone, a opção de WhatsApp fica desabilitada (v0.3 / FE002). O e-mail não muda depois do cadastro (é o login).">
-            <Card className="card-open" title="Dados do membro">
+            <FormSection className="card-open" title="Dados do membro">
               <div className="card-body-tight">
                 <Grid>
                   <Col span={12}><Input label="Nome completo" required autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} error={show('name')} /></Col>
@@ -186,12 +186,12 @@ function MembroFormScreen() {
                   )}
                 </Grid>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
 
           {needsUnits(profile) ? (
             <DevNote note="RF204-CTA002: o usuário vinculado a unidades só enxerga dados delas. Obrigatório para Solicitante/Gestor da unidade e Executor; Administrador e Gestor de manutenção veem todas as unidades e o campo não aparece. Unidade inativa não é ofertada em novos vínculos (RF202-CTA002).">
-              <Card className="card-open" title="Unidades de acesso" subtitle="O membro só enxerga os dados das unidades selecionadas">
+              <FormSection className="card-open" title="Unidades de acesso" subtitle="O membro só enxerga os dados das unidades selecionadas">
                 <div className="card-body-tight">
                   <div role="group" aria-label="Unidades de acesso"><Stack gap="sm">
                     {unitChoices.map((u, i) => (
@@ -202,14 +202,14 @@ function MembroFormScreen() {
                     ))}
                   </Stack></div>
                 </div>
-              </Card>
+              </FormSection>
             </DevNote>
           ) : profile ? (
             <p className="field-note">{`${PROFILE_LABEL[profile]} vê os dados de todas as unidades, por isso não é preciso escolher unidades`}</p>
           ) : null}
 
           <DevNote note="RF204 v0.3 / RGN006: notificações na plataforma são sempre enviadas; e-mail (padrão ligado) e WhatsApp são opcionais, definidos no convite e editáveis pelo próprio usuário (ZC003). CTA004: quem desativa o e-mail não recebe notificações por e-mail. 💡 WhatsApp depende de FE002 (fora do escopo): aqui só a preferência.">
-            <Card className="card-open" title="Preferências de notificação" subtitle="Por quais canais o membro recebe avisos">
+            <FormSection className="card-open" title="Preferências de notificação" subtitle="Por quais canais o membro recebe avisos">
               <div className="card-body-tight">
                 <Stack gap="sm">
                   <Checkbox label="Na plataforma (sempre ativa)" checked disabled />
@@ -218,18 +218,18 @@ function MembroFormScreen() {
                   {!hasPhone && <p className="field-note">Informe um telefone para receber notificações por WhatsApp</p>}
                 </Stack>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
 
           {editing && self && (
             <DevNote note="Alterar a própria senha: abre um modal com senha atual, nova senha (política RF002-RGN003) e confirmação, igual ao Admin. Nenhuma senha, nem mascarada, é exibida na tela.">
-              <Card className="card-open" title="Segurança">
+              <FormSection className="card-open" title="Segurança">
                 <div className="card-body-tight">
                   <Stack direction="horizontal">
                     <Button variant="secondary" size="sm" iconLeft={<IconLock size={16} />} onClick={() => setChangingPassword(true)}>Alterar senha</Button>
                   </Stack>
                 </div>
-              </Card>
+              </FormSection>
             </DevNote>
           )}
 

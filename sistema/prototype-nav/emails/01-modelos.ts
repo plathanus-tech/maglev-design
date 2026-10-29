@@ -16,6 +16,7 @@ export const journeys: Journey[] = [
       { id: 'email-recuperacao', label: 'Recuperação de senha', path: p('recuperacao-senha') },
       { id: 'email-acao-pendente', label: 'Notificação de ação pendente', path: p('acao-pendente') },
       { id: 'email-preventiva-vencida', label: 'Notificação de preventiva vencida', path: p('preventiva-vencida') },
+      { id: 'email-garantia', label: 'Garantia a vencer', path: p('garantia-vencendo') },
       { id: 'email-inativacao-prevista', label: 'Inativação prevista do ambiente', path: p('inativacao-prevista') },
       { id: 'email-atualizacao', label: 'Notificação de atualização', path: p('atualizacao') },
     ],

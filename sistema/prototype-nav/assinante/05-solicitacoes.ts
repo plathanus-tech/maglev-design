@@ -43,7 +43,7 @@ export const journeys: Journey[] = [
           v('sol-tri-triage2', 'Em triagem (via QR, sem classificação)', 'solicitacao.html?id=SOL-000123'),
           v('sol-tri-awaiting', 'Aguardando informação', 'solicitacao.html?id=SOL-000121'),
           v('sol-tri-answered', 'Resposta do solicitante recebida', 'solicitacao.html?id=SOL-000121#state=answered'),
-          v('sol-tri-approved', 'Aprovada (ainda sem OS)', 'solicitacao.html?id=SOL-000122'),
+          v('sol-tri-approved', 'Aprovada, falta criar a OS (só Criar OS)', 'solicitacao.html?id=SOL-000122'),
           v('sol-tri-converted', 'Convertida em OS', 'solicitacao.html?id=SOL-000125'),
           v('sol-tri-duplicate', 'Recusada como duplicada', 'solicitacao.html?id=SOL-000124'),
           v('sol-tri-rejected', 'Recusada', 'solicitacao.html?id=SOL-000138'),

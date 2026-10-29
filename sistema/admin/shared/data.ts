@@ -158,7 +158,8 @@ export interface Profile { id: string; name: string; description: string; fixed?
 
 // ═══ Configurações (RF401–RF407) ════════════════════════════
 /** `icon`: identificador estável do ícone no catálogo (icon-catalog.ts) - só categorias de equipamento usam; opcional. */
-export interface ConfigItem { id: string; name: string; description: string; status: RecordStatus; links: number; icon?: string }
+/** `categoryIds` (só Tipos de solicitação): categorias de equipamento em que o tipo é oferecido na abertura; vazio ou ausente = todas as categorias. */
+export interface ConfigItem { id: string; name: string; description: string; status: RecordStatus; links: number; icon?: string; categoryIds?: string[] }
 /** Prioridades e criticidades: níveis fixos - só nome, descrição e cor (tipo visual) editáveis. */
 export interface LevelItem { id: string; level: string; name: string; description: string; visual: Visual; links: number }
 
@@ -432,7 +433,11 @@ const REQUEST_TYPES = cfg('TSO', [
   ['Quebra física', 'Peça quebrada, porta, puxador ou vedação danificada', 43],
   ['Outro', 'Problema que não se encaixa nos tipos acima', 31],
   ['Gás', 'Cheiro de gás (substituído por Vazamento)', 12, 'inativo'],
-]);
+]).map((t) => ({
+  ...t,
+  // DADOS DE DEMONSTRAÇÃO: só estes dois são específicos; Vazamento, Elétrica, Ruído, Quebra física, Não liga e Outro valem para todas as categorias (não atrasam emergências)
+  categoryIds: t.name === 'Não refrigera' ? ['CAT-001', 'CAT-005', 'CAT-006', 'CAT-008'] : t.name === 'Não aquece' ? ['CAT-002'] : undefined,
+}));
 const MAINTENANCE_TYPES = cfg('TMA', [
   ['Corretiva não planejada', 'Falha que exige atendimento sem programação prévia', 534],
   ['Corretiva planejada', 'Correção agendada a partir de um problema conhecido', 128],
@@ -563,7 +568,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 15;
+export const DB_VERSION = 16;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.

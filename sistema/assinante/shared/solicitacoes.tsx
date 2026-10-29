@@ -29,7 +29,7 @@ const PERIOD_OPTIONS = [
 ];
 const OPEN = 'aberto';
 /** Filtros por URL (README): `?filter=` → status / atribuição. */
-const URL_STATUS: Record<string, string> = { new: STS.NEW, triage: STS.TRIAGE, converted: STS.CONVERTED, pending: 'pending' };
+const URL_STATUS: Record<string, string> = { new: STS.NEW, unassigned: STS.NEW, triage: STS.TRIAGE, converted: STS.CONVERTED, pending: 'pending' };
 
 const URL_SUB: Record<string, string> = { new: STS.NEW, approved: STS.APPROVED, 'awaiting-info': STS.WAITING };
 
@@ -56,7 +56,7 @@ function SolicitacoesScreen() {
   const [unit, setUnit] = useState(() => (urlUnit && unitIds.includes(urlUnit) ? urlUnit : 'todos'));
   const [equipment, setEquipment] = useState(() => (urlEquipment && db.equipments.some((e) => e.id === urlEquipment && unitIds.includes(e.unitId)) ? urlEquipment : 'todos'));
   const [requester, setRequester] = useState('todos');
-  const [assign, setAssign] = useState(urlFilter === 'assigned-me' ? 'me' : 'todos');
+  const [assign, setAssign] = useState(urlFilter === 'assigned-me' ? 'me' : urlFilter === 'unassigned' ? 'none' : 'todos');
   const [period, setPeriod] = useState('todos');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -105,6 +105,7 @@ function SolicitacoesScreen() {
       if (equipment !== 'todos' && r.equipmentId !== equipment) return false;
       if (requester !== 'todos' && r.requesterName !== requester) return false;
       if (assign === 'me' && r.responsibleId !== user.id) return false;
+      if (assign === 'none' && r.responsibleId) return false;
       if (period === 'custom') {
         const day = r.openedAt.slice(0, 10);
         if (from && day < from) return false;
@@ -133,10 +134,12 @@ function SolicitacoesScreen() {
     </RowActions>
   );
 
+  // Aprovada sem OS: o selo vem acompanhado de "Falta criar a OS", para não parecer que a OS já existe
+  const statusWithNote = (r: Request) => (r.statusId === STS.APPROVED && !r.osId ? <CellPair primary={refs.statusBadge(r.statusId)} secondary="Falta criar a OS" /> : refs.statusBadge(r.statusId));
   const columns: TableColumn<Row>[] = [
     { key: 'v', label: 'Protocolo', render: (_, row) => link(row.v.r.id) },
     { key: 'subject', label: 'Tipo de solicitação / Descrição', render: (_, row) => <CellPair primary={probName(row.v.r)} secondary={row.v.r.description.length > 48 ? `${row.v.r.description.slice(0, 48)}…` : row.v.r.description} /> },
-    { key: 'id', label: 'Status', render: (_, row) => refs.statusBadge(row.v.r.statusId) },
+    { key: 'id', label: 'Status', render: (_, row) => statusWithNote(row.v.r) },
     { key: 'waiting', label: 'Aguardando há', render: (_, row) => waiting(row.v) },
     { key: 'unit', label: 'Unidade', render: (_, row) => unitName(db, row.v.unitId) },
     { key: 'equipment', label: 'Equipamento', render: (_, row) => { const e = equipmentOf(row.v.r.equipmentId); return <CellPair primary={e.name} secondary={e.code} />; } },
@@ -182,6 +185,9 @@ function SolicitacoesScreen() {
       {assign === 'me' && (
         <Feedback type="info" title="Atribuídas a mim" message="Mostrando só as solicitações sob sua responsabilidade (vindo do Início). Remova o filtro para ver todas." dismissible dismissLabel="Remover filtro Atribuídas a mim" onDismiss={() => setAssign('todos')} />
       )}
+      {assign === 'none' && (
+        <Feedback type="info" title="Novas sem responsável" message="Mostrando as solicitações novas que ninguém assumiu ainda (vindo do Início). Remova o filtro para ver todas." dismissible dismissLabel="Remover filtro Novas sem responsável" onDismiss={() => { setAssign('todos'); setStatus(OPEN); }} />
+      )}
       {filtersActive && (
         <Stack direction="horizontal" justify="start"><Button variant="ghost" size="sm" onClick={clearFilters}>Limpar filtros</Button></Stack>
       )}
@@ -224,7 +230,7 @@ function SolicitacoesScreen() {
               items={pageViews.map((v) => {
                 const e = equipmentOf(v.r.equipmentId);
                 return {
-                  id: v.r.id, title: link(v.r.id), subtitle: probName(v.r), badge: refs.statusBadge(v.r.statusId),
+                  id: v.r.id, title: link(v.r.id), subtitle: probName(v.r), badge: statusWithNote(v.r),
                   fields: fieldsFor([
                     { label: 'Unidade', value: unitName(db, v.unitId) },
                     { label: 'Equipamento', value: e.name },

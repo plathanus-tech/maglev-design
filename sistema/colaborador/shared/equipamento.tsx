@@ -10,6 +10,7 @@ import { useSubDb } from '../../assinante/shared/store';
 import { useDb as useAdminDb } from '../../admin/shared/store';
 import { goTo, param } from '../../assinante/shared/ui';
 import { OpenRequestCard } from './open-request-card';
+import { SafetyGuidance } from '../../assinante/shared/equipamento-lib';
 import { EquipmentSearch } from './busca-equipamento';
 import { equipmentFromLink, linkToRequest, openRequestsOf, simpleStatus, useBlockedReason, useRefs } from './lib';
 
@@ -95,6 +96,12 @@ function EquipamentoColaboradorScreen() {
           </DevNote>
         )}
       </div>
+
+      {eq.safetyNote && (
+        <DevNote note="💡 Orientação de segurança cadastrada no equipamento (texto livre, opcional, a confirmar com o cliente): aparece já ao ler o QR Code, antes de qualquer outra informação, e de novo ao abrir a solicitação. Só orienta; não substitui o procedimento interno de emergência.">
+          <SafetyGuidance note={eq.safetyNote} />
+        </DevNote>
+      )}
 
       <DevNote note="Colaborador RF001-FLU002 / RGN002 / CTA002: resumo do equipamento sem login. 💡 A confirmar quais dados o solicitante não autenticado pode ver (sugestão: categoria, fabricante, modelo). Valor, custos e histórico completo nunca aparecem aqui.">
         <Card title="Resumo do equipamento" actions={refs.statusBadge(blocked === 'inactive' ? 'STE-05' : eq.statusId)}>

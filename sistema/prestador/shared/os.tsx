@@ -13,8 +13,8 @@ import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/Exter
 import { COST_KIND_LABEL, CostKind, WorkOrder, nowLocal } from '../../assinante/shared/data';
 import { CopyCode } from '../../assinante/shared/copy-code';
 import { ShareButton } from '../../assinante/shared/share-button';
-import { AttachmentsField, AttachmentsStack, AttachmentsView, namesOf, Picked } from '../../assinante/shared/attachments';
-import { AttachmentField, STO, applyOrderConclusion, dueCell, overdueDays, parseCents, patchOrder } from '../../assinante/shared/os-common';
+import { AttachmentsField, AttachmentsStack, AttachmentsView, EvidenceGallery, namesOf, Picked, rememberPicked } from '../../assinante/shared/attachments';
+import { AttachmentField, STO, applyOrderConclusion, dueCell, hoursText, overdueDays, parseCents, patchOrder, totalHours } from '../../assinante/shared/os-common';
 import { getSubDb, notify } from '../../assinante/shared/store';
 import { goTo, param, useRefs } from '../../assinante/shared/ui';
 import { AddressLink, BlockedAccess, dueInfo, linkTo, unitAddress, useProviderLink } from './lib';
@@ -475,7 +475,12 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
   const toLines = (t: string) => t.split('\n').map((l) => l.trim()).filter(Boolean);
   const [solution, setSolution] = useState(order.solution ?? '');
   const [activities, setActivities] = useState(savedActivities.join('\n'));
-  const [hours, setHours] = useState(order.workedHours ? String(order.workedHours).replace('.', ',') : '');
+  // Horas por visita: lança-se na visita em que o prestador chegou (a mais recente com chegada); só dá para lançar de novo em outra visita, e o total acumula
+  const [hours, setHours] = useState('');
+  const currentVisit = [...order.visits].reverse().find((v) => !!v.arrivedAt);
+  const visitLocked = !!currentVisit?.hours;
+  const hoursTotal = totalHours(order);
+  const visitsWithHours = order.visits.filter((v) => v.hours);
   const [notes, setNotes] = useState('');
   const [tried, setTried] = useState(false);
   useEffect(() => { setSolution(order.solution ?? ''); }, [order.solution]);
@@ -490,8 +495,10 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
     if (hoursError || (hours.trim() && (!Number.isFinite(hoursNum) || (hoursNum ?? 0) <= 0))) return;
     const lines = toLines(activities);
     const activitiesChanged = lines.join('\n') !== savedActivities.join('\n');
-    patchOrder(order.id, actorName, (o) => ({ ...o, solution: solution.trim() || o.solution, workedHours: hoursNum ?? o.workedHours, ...(activitiesChanged ? { activityList: lines } : {}) }),
-      ['Registrou a execução', ...(activitiesChanged ? [lines.length ? `Atividades realizadas: ${lines.join('; ')}` : 'Removeu as atividades realizadas'] : []), ...(hoursNum ? [`Horas trabalhadas: ${String(hoursNum).replace('.', ',')} h`] : []), ...(notes.trim() ? [`Observação: ${notes.trim()}`] : [])]);
+    const newVisits = (o: WorkOrder) => (hoursNum && currentVisit && !currentVisit.hours ? o.visits.map((v) => (v.id === currentVisit.id ? { ...v, hours: hoursNum } : v)) : o.visits);
+    const nextTotal = totalHours({ visits: newVisits(order), workedHours: order.workedHours });
+    patchOrder(order.id, actorName, (o) => ({ ...o, solution: solution.trim() || o.solution, visits: newVisits(o), workedHours: totalHours({ visits: newVisits(o), workedHours: o.workedHours }), ...(activitiesChanged ? { activityList: lines } : {}) }),
+      ['Registrou a execução', ...(activitiesChanged ? [lines.length ? `Atividades realizadas: ${lines.join('; ')}` : 'Removeu as atividades realizadas'] : []), ...(hoursNum && currentVisit && !currentVisit.hours ? [`Horas trabalhadas na visita de ${formatDate(currentVisit.date)}: ${hoursText(hoursNum)} (total na OS: ${hoursText(nextTotal)})`] : []), ...(notes.trim() ? [`Observação: ${notes.trim()}`] : [])]);
     setNotes('');
     toast.show({ type: 'success', title: 'Execução salva', message: 'Os registros ficaram no histórico da OS e do equipamento.' });
   };
@@ -508,7 +515,7 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
             {order.solution && <ReadField label="Solução aplicada" value={<span className="ext-pre">{order.solution}</span>} />}
             {savedActivities.length > 0 && <ReadField label="Atividades realizadas" value={<span className="ext-pre">{savedActivities.join('\n')}</span>} />}
             {previousFiles.length > 0 && <ReadField label="Fotos e anexos" value={<AttachmentsStack names={previousFiles.map((f) => f.name)} label="execução" />} />}
-            {validation && order.workedHours ? <ReadField label="Horas trabalhadas" value={String(order.workedHours).replace('.', ',')} /> : null}
+            {hoursTotal > 0 ? <ReadField label="Horas trabalhadas" value={visitsWithHours.length > 1 ? `${hoursText(hoursTotal)} no total (${visitsWithHours.map((v) => `${formatDate(v.date)}: ${hoursText(v.hours!)}`).join('; ')})` : hoursText(hoursTotal)} /> : null}
             {previousCosts.length > 0 && <ReadField label="Materiais e custos" value={<span className="ext-pre">{previousCosts.map((c) => `${c.description} · ${formatMoney(c.cents)}`).join('\n')}</span>} />}
           </>
         ) : (<>
@@ -532,7 +539,15 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
         </Stack>
 
         <Textarea label="Observações" optional rows={3} disabled={!enabled} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        <Input label="Horas trabalhadas" optional inputMode="decimal" placeholder="Ex.: 2,5" disabled={!enabled} value={hours} onChange={(e) => setHours(e.target.value)} error={hoursError} />
+        <DevNote note="Horas trabalhadas são lançadas POR VISITA: o campo vale para a visita em que o prestador chegou e, depois de salvas, ficam travadas; só é possível lançar de novo em outra visita (nova chegada), e o total da OS é a soma das visitas. Não há valor-hora: as horas são informativas e não viram custo (a confirmar se também devem poder ser lançadas no diagnóstico, para quando não houver execução).">
+          {visitLocked ? (
+            <ReadField label="Horas trabalhadas" value={<span className="ext-pre">{`Visita de ${formatDate(currentVisit!.date)}: ${hoursText(currentVisit!.hours!)}${visitsWithHours.length > 1 ? `\nTotal na OS: ${hoursText(hoursTotal)} (${visitsWithHours.map((v) => `${formatDate(v.date)}: ${hoursText(v.hours!)}`).join('; ')})` : ''}\nPara lançar mais horas, é preciso uma nova visita`}</span>} />
+          ) : (
+            <Stack gap="xs">
+              <Input label="Horas trabalhadas nesta visita" optional inputMode="decimal" placeholder="Ex.: 2,5" disabled={!enabled || !currentVisit} value={hours} onChange={(e) => setHours(e.target.value)} error={hoursError} helperText={!currentVisit ? 'Registre a chegada em uma visita para lançar as horas' : visitsWithHours.length ? `Total já lançado na OS: ${hoursText(hoursTotal)}. As horas desta visita se somam a ele` : 'As horas valem para esta visita; para lançar mais depois, será preciso uma nova visita'} />
+            </Stack>
+          )}
+        </DevNote>
         <div className="ext-actions"><Button disabled={!enabled} onClick={save}>Salvar execução</Button></div>
         </>)}
       </Stack></div>
@@ -631,8 +646,9 @@ function CostDialog({ order, actorName, onClose }: DlgProps) {
 function FileDialog({ order, actorName, onClose }: DlgProps) {
   const toast = useToast();
   const [kind, setKind] = useState('antes');
-  const [file, setFile] = useState('');
+  const [picked, setPicked] = useState<Picked | undefined>();
   const [tried, setTried] = useState(false);
+  const file = picked?.name ?? '';
   const go = () => {
     setTried(true);
     if (!file) return;
@@ -645,8 +661,14 @@ function FileDialog({ order, actorName, onClose }: DlgProps) {
   return (
     <Dialog open onClose={onClose} title="Adicionar foto ou anexo" actions={<Footer onClose={onClose} onConfirm={go} label="Adicionar" />}>
       <Stack gap="md">
-        <Dropdown label="Tipo" required options={Object.entries(FOTO_LABEL).map(([value, label]) => ({ value, label }))} value={kind} onChange={setKind} />
-        <AttachmentField label="Arquivo" required value={file} onChange={setFile} error={tried && !file ? requiredMessage('Arquivo') : undefined} />
+        <Dropdown label="Tipo" required options={Object.entries(FOTO_LABEL).map(([value, label]) => ({ value, label }))} value={kind} onChange={(v) => { setKind(v); if (v !== 'anexo' && picked && /\.pdf$/i.test(picked.name)) setPicked(undefined); }} />
+        <Stack gap="xs">
+          <EvidenceGallery
+            label="Arquivo" single report={kind === 'anexo'} items={picked ? [picked] : []}
+            onAdd={(p) => { if (p[0]) { rememberPicked(p[0]); setPicked(p[0]); } }} onRemove={() => setPicked(undefined)}
+          />
+          {tried && !file && <span className="ev-error" role="alert">{requiredMessage('Arquivo')}</span>}
+        </Stack>
       </Stack>
     </Dialog>
   );
@@ -654,19 +676,14 @@ function FileDialog({ order, actorName, onClose }: DlgProps) {
 
 function ConcludeDialog({ order, actorName, onClose }: DlgProps) {
   const toast = useToast();
-  const [text, setText] = useState(order.solution ?? '');
-  const [tried, setTried] = useState(false);
   const go = () => {
-    setTried(true);
-    if (!text.trim()) return;
-    applyOrderConclusion(db0(), order, text, actorName);
+    applyOrderConclusion(db0(), order, order.solution ?? '', actorName);
     toast.show({ type: 'success', title: 'Conclusão indicada', message: 'O cliente foi avisado para validar o atendimento.' });
     onClose();
   };
+  // A solução aplicada já foi escrita e salva na tela (o botão só libera com ela): aqui é só a confirmação, sem pedir de novo
   return (
-    <Dialog open onClose={onClose} title="Indicar a conclusão" subtitle="O cliente vai confirmar se o problema foi resolvido" actions={<Footer onClose={onClose} onConfirm={go} label="Indicar conclusão" />}>
-      <Textarea label="Solução aplicada" required rows={4} value={text} onChange={(e) => setText(e.target.value)} error={tried && !text.trim() ? requiredMessage('Solução aplicada') : undefined} />
-    </Dialog>
+    <Dialog open onClose={onClose} size="sm" className="dialog-confirm" title="Indicar a conclusão?" subtitle="O cliente será avisado para confirmar se o problema foi resolvido. A solução aplicada registrada será enviada junto" actions={<Footer onClose={onClose} onConfirm={go} label="Indicar conclusão" />} />
   );
 }
 

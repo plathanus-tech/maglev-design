@@ -5,10 +5,11 @@ import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/Exter
 import { ReadField } from '../../admin/shared/ui';
 import { param } from '../../assinante/shared/ui';
 import { seed } from '../../assinante/shared/data';
+import { expiringWarranties } from '../../assinante/shared/warranty';
 import logoLight from '../../../public/maglev-logo.svg';
 import {
   CONVITE_VARS, NOVA_OS_VARS, OS_NOTIFICATION_VARS, RECUPERACAO_CODE_VAR, RECUPERACAO_VARS, TemplateId,
-  budgetApprovalNotification, conviteSubject, suspensionNoticeNotification, novaOsSubject, osUpdateNotification, preventiveOverdueNotification, recuperacaoSubject,
+  budgetApprovalNotification, conviteSubject, suspensionNoticeNotification, warrantyExpiringNotification, novaOsSubject, osUpdateNotification, preventiveOverdueNotification, recuperacaoSubject,
   renderConviteEmail, renderNovaOsEmail, renderOsNotification, renderRecuperacaoEmail,
 } from './templates';
 
@@ -35,6 +36,12 @@ const atualizacao = { recipientName: 'Fernanda', osNumber: 'OS-000011', ...ofOs(
 
 const vencida = { recipientName: 'Larissa', osNumber: 'OS-000048', ...ofOs('OS-000048'), plan: 'Preventiva mensal das câmaras frias', dueDate: '03/10/2026', overdueDays: 2, responsible: 'Larissa Teixeira' };
 
+// Garantia a vencer: equipamento real dos dados de demonstração (mesmo registro das telas e do botão do e-mail)
+const expiringEq = expiringWarranties(demoDb)[0];
+const garantia = {
+  recipientName: 'Larissa', equipment: expiringEq?.e.name ?? 'Equipamento', code: expiringEq?.e.code ?? '', unit: demoDb.units.find((u) => u.id === expiringEq?.e.unitId)?.name ?? '',
+  endDate: (expiringEq?.w.end ?? '').split('-').reverse().join('/'), daysLeft: expiringEq?.w.daysLeft ?? 30,
+};
 const inativacao = { recipientName: 'Larissa', company: 'Cantina Dona Rosa', deadline: '02/11/2026', daysLeft: 7 };
 
 const TEMPLATES: Meta[] = [
@@ -67,6 +74,11 @@ const TEMPLATES: Meta[] = [
     id: 'preventiva-vencida', label: 'Notificação de preventiva vencida', subject: preventiveOverdueNotification(vencida).subject, to: 'Responsável e gestores do assinante',
     note: 'Mesma base das demais notificações de OS, com o atraso em destaque (etiqueta de erro, como no produto). O botão leva à OS preventiva na Área do assinante, respeitando o perfil do destinatário.',
     html: (vars) => renderOsNotification(preventiveOverdueNotification(vencida), vars ? OS_NOTIFICATION_VARS : { ctaUrl: abs('/assinante/screens/os.html?id=OS-000048'), logoUrl: logoUrl() }),
+  },
+  {
+    id: 'garantia-vencendo', label: 'Garantia a vencer', subject: warrantyExpiringNotification(garantia).subject, to: 'Administradores e gestores do assinante',
+    note: 'Aviso 30 dias antes do fim da garantia do equipamento (💡 a confirmar com o cliente). Mesma base das demais notificações, com o prazo restante em destaque; o botão leva ao equipamento. Em operação, sai por processo agendado; a mesma informação aparece na central de notificações e como selo discreto no equipamento.',
+    html: (vars) => renderOsNotification(warrantyExpiringNotification(garantia), vars ? OS_NOTIFICATION_VARS : { ctaUrl: abs(`/assinante/screens/equipamento.html?id=${expiringEq?.e.id ?? ''}`), logoUrl: logoUrl() }),
   },
   {
     id: 'inativacao-prevista', label: 'Inativação prevista do ambiente', subject: suspensionNoticeNotification(inativacao).subject, to: 'Administradores e gestores do assinante',

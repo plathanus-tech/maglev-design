@@ -214,3 +214,10 @@ button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(
 .eq-kpis > * > div > div > div:first-child { align-items: flex-start; min-height: calc(var(--font-size-md) * var(--line-height-snug) * 2); }
 /* Valor monetário abreviado: mesmo token dos demais valores (Heading/5) quando o card tem largura para ele; senão, um degrau abaixo (Heading/6) */
 @container eqkpi (min-width: 17rem) { .kpi-money-sm { font: var(--text-heading-5); letter-spacing: var(--text-heading-5-tracking); } }
+
+/* Mobile: indicadores do equipamento também em duas colunas; se sobrar um, ocupa a linha toda */
+@media (max-width: 767px) {
+  .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
+  .eq-kpis > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .kpi-money-sm { font-size: var(--font-size-2xl); }
+}

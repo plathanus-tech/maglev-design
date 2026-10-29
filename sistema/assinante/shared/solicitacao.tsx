@@ -1,4 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { PreviousServiceNotice, warrantyLine } from './warranty-ui';
+import { warrantyOf } from './warranty';
 import { IconCircleCheck, IconExternalLink, IconPhoto } from '@tabler/icons-react';
 import { Badge, Button, Card, Dialog, Dropdown, Feedback, Stack, Tab, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
@@ -103,7 +105,8 @@ function SolicitacaoScreen() {
   const eq = equipmentOf(db, req.equipmentId)!;
   const base = refs.base(req.statusId);
   const canTriage = can('solicitacoes', 'triar');
-  const editable = canTriage && [STS.NEW, STS.TRIAGE, STS.WAITING, STS.APPROVED].includes(req.statusId as never);
+  // Aprovada já é uma decisão tomada: a classificação fica só leitura e o próximo passo é criar a OS (sem complementar, concluir ou rejeitar)
+  const editable = canTriage && [STS.NEW, STS.TRIAGE, STS.WAITING].includes(req.statusId as never);
   const problem = refs.requestType(req.problemId)?.name ?? '-';
   const suggestion = suggestedPriority(db, req, PRIORITY_MATRIX);
   const criticality = refs.criticality(eq.criticalityId);
@@ -140,6 +143,8 @@ function SolicitacaoScreen() {
     priorityChange: priorityChanged ? { suggestedId: suggestion, reason: priorityReason.trim() } : undefined,
   };
 
+  // Aprovada e ainda sem OS: a aprovação está registrada e falta criar a OS (o botão principal passa a ser Criar OS, sem registrar outra aprovação)
+  const approvedPending = req.statusId === STS.APPROVED && !req.osId;
   const approve = () => {
     setTried(true);
     if (invalid) {
@@ -165,6 +170,7 @@ function SolicitacaoScreen() {
   const headerActions = (
     <>
       {req.osId && <Button onClick={() => goTo(`os.html?id=${req.osId}`)}>Ver OS {req.osId}</Button>}
+      {approvedPending && canTriage && <Button onClick={() => goTo(`os-form.html?request=${req.id}`)}>Criar OS</Button>}
       {req.duplicateOf && <Button variant="secondary" onClick={() => goTo(`solicitacao.html?id=${req.duplicateOf}`)}>Ver protocolo original</Button>}
     </>
   );
@@ -216,7 +222,7 @@ function SolicitacaoScreen() {
           badge={refs.statusBadge(req.statusId)}
           subtitle={`${problem} · ${eq.name}`}
           breadcrumb={[{ label: 'Solicitações', href: 'solicitacoes.html' }, { label: req.id }]}
-          actions={req.osId || req.duplicateOf ? headerActions : undefined}
+          actions={req.osId || req.duplicateOf || (approvedPending && canTriage) ? headerActions : undefined}
           iconActions={<ShareButton kind="solicitacao" id={req.id} />}
         />
 
@@ -268,6 +274,13 @@ function SolicitacaoScreen() {
                       <Col span={6}><ReadField label="Canal de abertura" value={req.channel === 'QR' ? 'QR Code' : 'Portal'} /></Col>
                       <Col span={6}><ReadField label="Relacionado a reparo anterior" value={req.previousRepair.related ? 'Sim' : 'Não'} /></Col>
                       {req.previousRepair.related && <Col span={12}><ReadField label="Observação do reparo anterior" value={req.previousRepair.note} /></Col>}
+                      {req.previousRepair.related && (
+                        <Col span={12}>
+                          <DevNote note="Dica de apoio quando o solicitante marca “Relacionado a reparo anterior”: o último serviço concluído no equipamento, quem executou, há quantos dias e se está dentro da garantia de serviço informada no cadastro do prestador. Só informa: decidir se é o MESMO problema do serviço anterior continua sendo de quem lê a solicitação (essa checagem de escopo não é automática). Em desenvolvimento a busca usa o histórico real de OS do equipamento.">
+                            <PreviousServiceNotice db={db} equipmentId={req.equipmentId} />
+                          </DevNote>
+                        </Col>
+                      )}
                       <Col span={12}><ReadField label="Fotos" value={photos} /></Col>
                     </Grid>
                   </div>
@@ -317,6 +330,7 @@ function SolicitacaoScreen() {
                     <ReadField label="Status" value={refs.statusBadge(eq.statusId)} />
                     <ReadField label="Unidade" value={unitName(db, unitId)} />
                     <ReadField label="Ambiente" value={env} />
+                    <div className="sol-eq-wide"><ReadField label="Garantia" value={<span className={warrantyOf(eq.warranty).kind === 'expiring' ? `warranty-expiring${warrantyOf(eq.warranty).urgent ? ' is-urgent' : ''}` : undefined}>{warrantyLine(eq.warranty)}</span>} /></div>
                   </div>
                 </div>
               </Card>
@@ -397,14 +411,19 @@ function SolicitacaoScreen() {
                 <DevNote note="RF402-FLU004 / FLU005 / CTA001: tipo de manutenção, prioridade, grupo responsável e responsável são obrigatórios para criar a OS (grupo: 💡 P05 a confirmar, não há cadastro de grupos previsto no contrato). Tipos de manutenção ativos do Admin (RF404), exceto Preventiva, atribuída pelos planos. Observações internas não são visíveis ao solicitante. As quatro decisões ficam no rodapé deste card: Aprovar e criar OS (principal; valida os campos, grava a classificação, passa a Aprovada e abre RF502 pré-preenchida), Solicitar complementação, Concluir sem OS e Rejeitar (cada uma pede o texto em modal e fica no histórico, CTA002). Fluxo de emergência sem triagem: FE004, fora do escopo.">
                   <Card
                     className="card-open" title="Classificação e encaminhamento"
-                    subtitle={editable ? 'Classifique e escolha o encaminhamento' : 'Classificação registrada na triagem'}
+                    subtitle={editable ? 'Classifique e escolha o encaminhamento' : approvedPending ? 'Classificação registrada na aprovação' : 'Classificação registrada na triagem'}
                     footer={editable ? (
+                      <Stack gap="sm">
+                        <p className="field-note">Aprovar registra a aprovação agora e abre a criação da OS. Se você sair sem criar a OS, a solicitação continua Aprovada e a OS pode ser criada depois</p>
                       <div className="sol-actions">
                         <Button onClick={approve}>Aprovar e criar OS</Button>
                         <Button variant="secondary" onClick={() => setDialog('complement')}>Solicitar complementação</Button>
                         {canConclude(req, base) && <Button variant="secondary" onClick={() => setDialog('close')}>Concluir sem OS</Button>}
                         <Button variant="ghost" className="sol-reject" onClick={() => setDialog('reject')}>Rejeitar</Button>
                       </div>
+                      </Stack>
+                    ) : approvedPending && canTriage ? (
+                      <div className="sol-actions"><Button onClick={() => goTo(`os-form.html?request=${req.id}`)}>Criar OS</Button></div>
                     ) : undefined}
                   >
                     <div className="card-body-tight">
@@ -431,6 +450,11 @@ function SolicitacaoScreen() {
                         </Stack>
                       ) : (
                         <Stack gap="md">
+                          {approvedPending && (
+                            <DevNote note="Estado Aprovada sem OS (existe de propósito: a aprovação e a criação da OS são passos separados, porque a OS pede executor, prazo e agenda). Aprovada é uma decisão tomada: a classificação aparece só para leitura e as outras decisões (complementar, concluir sem OS, rejeitar) saem; o próximo passo é Criar OS, que não registra uma segunda aprovação.">
+                              <Feedback type="info" title="Aprovada, falta criar a OS" message="A aprovação já está registrada, mas a OS ainda não foi criada. Use Criar OS para continuar" />
+                            </DevNote>
+                          )}
                           <ReadField label="Tipo de manutenção" value={refs.maintType(req.maintTypeId)?.name} />
                           <ReadField label="Prioridade" value={req.priorityId ? refs.priorityBadge(req.priorityId) : undefined} />
                           {req.priorityChange && <ReadField label="Prioridade sugerida" value={refs.priorityBadge(req.priorityChange.suggestedId)} />}

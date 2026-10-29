@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { serviceWarrantyText } from './warranty';
 import { IconCircleCheck, IconCircleOff, IconClipboardList, IconClock, IconPencil, IconReportMoney } from '@tabler/icons-react';
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
@@ -119,6 +120,7 @@ function PrestadorScreen() {
             <Col span={6}><ReadField label="Tipo" value={PROVIDER_KIND_LABEL[p.kind]} /></Col>
             <Col span={6}><ReadField label="Responsável" value={main ? `${main.name} · ${main.role}` : undefined} /></Col>
             <Col span={6}><ReadField label="Contato" value={main ? `${formatPhone(main.phone)} · ${main.email}` : undefined} /></Col>
+            <Col span={12}><ReadField label="Garantia de serviço" value={serviceWarrantyText(p)} /></Col>
             <Col span={12}><ReadField label="Observações" value={p.notes} /></Col>
           </Grid>
         </div>

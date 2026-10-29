@@ -4,6 +4,7 @@ import {
 } from '@tabler/icons-react';
 import { Accordion, Badge, Button, Card, Dialog, EmptyState, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
+import { warrantyBadge as warrantyBadgeOf } from './warranty-ui';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
 import { formatDate, formatDateTime, formatMoney } from '../../admin/shared/format';
@@ -90,10 +91,7 @@ function EquipamentoScreen() {
   ];
   const today = dayOnly(0);
   const w = eq.warranty;
-  const warrantyBadge = !w.has ? <Badge status="neutral" dot>Sem garantia</Badge>
-    : w.end && w.end < today ? <Badge status="warning" dot>Garantia expirada</Badge>
-    : w.start && w.start > today ? <Badge status="neutral" dot>Garantia ainda não iniciada</Badge>
-    : <Badge status="success" dot>Em garantia</Badge>;
+  const warrantyBadge = warrantyBadgeOf(w);
   const ratio = eq.valueCents ? (data.spent / eq.valueCents) * 100 : 0;
   const category = refs.category(eq.categoryId)?.name;
   const place = [unitName(db, eq.unitId), eq.environmentId ? environmentName(db, eq.environmentId) : ''].filter(Boolean).join(' · ');
@@ -166,6 +164,7 @@ function EquipamentoScreen() {
               <Col span={6}><ReadField label="Código interno / patrimônio" value={eq.code} /></Col>
               <Col span={6}><ReadField label="Cadastrado em" value={formatDate(eq.createdAt)} /></Col>
               {eq.notes && <Col span={12}><ReadField label="Observações" value={eq.notes} /></Col>}
+              {eq.safetyNote && <Col span={12}><ReadField label="Orientação de segurança" value={eq.safetyNote} /></Col>}
             </Grid>
             <div className="eq-photos-row">
               {photoThumb('Foto do equipamento', eq.photoName)}
@@ -182,7 +181,7 @@ function EquipamentoScreen() {
                <Col span={6}><ReadField label="Criticidade" value={refs.criticalityBadge(eq.criticalityId)} /></Col>
                <Col span={6}><ReadField label="Data de instalação" value={eq.acquiredAt ? formatDate(eq.acquiredAt) : undefined} /></Col>
                {canSeeCosts && <Col span={6}><ReadField label="Valor de aquisição" value={eq.valueCents ? formatMoney(eq.valueCents) : undefined} /></Col>}
-               <Col span={w.has ? 4 : 12}><ReadField label="Garantia" value={warrantyBadge} /></Col>
+               <Col span={w.has ? 4 : 12}><DevNote note="Garantia do equipamento: Sem garantia · Ainda não iniciada · Em garantia · Vence em N dias (atenção, 30 dias antes do fim) · Expirada. 💡 30 dias é uma sugestão (tempo para marcar algo antes de vencer): a confirmar com o cliente. O aviso aparece como selo discreto na lista de equipamentos, neste selo, no bloco do equipamento da solicitação, na central de notificações e por e-mail para administradores e gestores (em operação, por processo agendado; no protótipo há uma notificação de demonstração e o aviso também sai ao salvar o equipamento). Não há regra automática de direcionamento nem de custo: a garantia é informativa para quem decide o executor (próprio ou prestador)."><ReadField label="Garantia" value={warrantyBadge} /></DevNote></Col>
                {w.has && <Col span={4}><ReadField label="Início da garantia" value={w.start ? formatDate(w.start) : undefined} /></Col>}
                {w.has && <Col span={4}><ReadField label="Fim da garantia" value={w.end ? formatDate(w.end) : undefined} /></Col>}
              </Grid>

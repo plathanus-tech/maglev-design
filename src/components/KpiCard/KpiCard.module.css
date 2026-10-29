@@ -157,3 +157,9 @@
 .valueTone-error   { color: var(--color-status-error-fg); }
 .valueTone-warning { color: var(--color-status-warning-fg); }
 .valueTone-info    { color: var(--color-status-info-fg); }
+
+/* Mobile: indicador compacto (mesmo tamanho dos indicadores de desempenho do Início) para caber em duas colunas */
+@media (max-width: 767px) {
+  .body { padding: var(--spacing-md); gap: var(--spacing-xs); }
+  .value { font-size: var(--font-size-2xl); }
+}

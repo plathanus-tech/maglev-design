@@ -7,9 +7,11 @@
  * Tipos e carga inicial seguem a Especificação Funcional (v0.4) - frente "Área do Assinante".
  */
 import { RecordStatus, Subscriber, seed as adminSeed, subscriberUsers } from '../../admin/shared/data';
+import { daysText, expiringWarranties } from './warranty';
+import { alertText, attendanceAlerts } from './os-alerts';
 import { clockNow } from '../../admin/shared/clock';
 
-export const DB_VERSION = 30;
+export const DB_VERSION = 36;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
@@ -106,6 +108,8 @@ export interface Equipment {
   valueCents?: number;
   warranty: { has: boolean; start?: string; end?: string };
   notes?: string;
+  /** Orientação de segurança (opcional): o que fazer em caso de risco com este equipamento (gás, eletricidade…). Aparece na abertura da solicitação e no detalhe do equipamento. */
+  safetyNote?: string;
   /** Nome do arquivo das fotos (upload simulado no protótipo - RF301): do equipamento e da etiqueta/placa. */
   photoName?: string; labelPhotoName?: string;
   createdAt: string;
@@ -157,7 +161,7 @@ export interface Request {
 }
 
 // ═══ Ordens de serviço (RF501-RF503) ════════════════════════════════
-export interface Visit { id: string; date: string; from: string; to: string; technician: string; arrivedAt?: string; note?: string }
+export interface Visit { id: string; date: string; from: string; to: string; technician: string; arrivedAt?: string; note?: string; /** Horas trabalhadas NESTA visita (informadas pelo prestador); o total da OS é a soma das visitas. */ hours?: number }
 export type CostKind = 'peca' | 'mao-de-obra' | 'orcamento' | 'outro';
 export const COST_KIND_LABEL: Record<CostKind, string> = { peca: 'Peça / material', 'mao-de-obra': 'Mão de obra', orcamento: 'Orçamento de prestador', outro: 'Outro' };
 export interface CostItem { id: string; kind: CostKind; description: string; cents: number; attachment?: string; /** Vários anexos (fotos e PDFs); `attachment` é o formato antigo, de um só. */ attachments?: string[] }
@@ -165,6 +169,8 @@ export interface CostItem { id: string; kind: CostKind; description: string; cen
 export interface Budget {
   cents: number; description: string; attachment: string; attachments?: string[]; registeredAt: string; by: string;
   decision?: 'aprovado' | 'reprovado'; decidedAt?: string; decidedBy?: string; justification?: string;
+  /** Custo realizado confirmado a partir do orçamento aprovado (aprovar não é gastar): valor, quem confirmou e, se diferente do aprovado, o motivo. */
+  realized?: { cents: number; confirmedAt: string; by: string; reason?: string };
 }
 export type Executor = { kind: 'interno'; userId: string } | { kind: 'prestador'; providerId: string; technician?: string };
 /** Checklist e leituras da execução da preventiva (RF603). */
@@ -259,6 +265,8 @@ export interface Provider {
   equipmentTypes: string[];
   regions: string[];
   technicians: Technician[];
+  /** Garantia de serviço oferecida pelo prestador (informativa): se oferece e por quantos dias após a conclusão do serviço. */
+  serviceWarranty?: { has: boolean; days?: number };
 }
 export const SPECIALTIES = ['Refrigeração', 'Elétrica', 'Cocção', 'Gás', 'Exaustão', 'Climatização', 'Hidráulica', 'Lavagem', 'Geral'];
 
@@ -402,13 +410,23 @@ export function seed(): SubDb {
       name: `${name} ${pad(counter[key], 2)}`, categoryId, maker, model, serial: `${maker.slice(0, 2).toUpperCase()}${pad(480_000 + n * 977, 6)}`,
       code, unitId: u.id, environmentId: envOf(u.id, envName).id,
       statusId: 'STE-01', criticalityId, acquiredAt: acquired, valueCents: value,
-      warranty: inWarranty ? { has: true, start: dayOnly(120), end: dayOnly(-245) } : { has: false },
+      warranty: inWarranty ? { has: true, start: dayOnly(120), end: n % 15 === 1 ? dayOnly(-(9 + (n % 4) * 7)) : dayOnly(-245) } : { has: false },
       createdAt: daysAgo(190 + (n % 40), 10),
       qrToken: `q${(n * 2654435761 % 4294967296).toString(36)}${pad(n, 2)}`,
       troubleshooting: entries.map(([problemId, tips]) => ({ problemId, tips: tips.map((text, k) => ({ id: `TIP-${n}-${problemId}-${k}`, text })) })),
     });
     n++;
   }
+  // Garantia nos equipamentos de solicitações em aberto (para ver o destaque na triagem): Fritadeira 01 vence em 22 dias (SOL-000119, com dica de serviço anterior), Câmara fria 01 em 11 (SOL-000120) e Forno combinado 01 segue em garantia (SOL-000122)
+  const setWarranty = (id: string, endsInDays: number) => { const e = equipments.find((x) => x.id === id); if (e) e.warranty = { has: true, start: dayOnly(120), end: dayOnly(-endsInDays) }; };
+  setWarranty('EQP-0016', 22); setWarranty('EQP-0020', 11); setWarranty('EQP-0025', 200);
+  // Orientação de segurança de demonstração nos equipamentos a gás e de maior risco elétrico
+  const SAFETY: Record<string, string> = {
+    'Fogão industrial': 'Em caso de cheiro de gás: não acenda nem apague luzes, feche o registro do gás, ventile o ambiente, afaste as pessoas e avise o gerente de plantão antes de abrir a solicitação.',
+    'Forno combinado': 'Em caso de cheiro de queimado, fumaça ou faísca: desligue o equipamento no disjuntor, não use água e avise o gerente de plantão antes de abrir a solicitação.',
+    Fritadeira: 'Em caso de óleo muito quente, vazamento ou fumaça: desligue o equipamento, não mova a cuba e avise o gerente de plantão antes de abrir a solicitação.',
+  };
+  for (const e of equipments) { const k = Object.keys(SAFETY).find((n) => e.name.startsWith(n)); if (k) e.safetyNote = SAFETY[k]; }
   const eq = (unitIdx: number, name: string) => equipments.find((e) => e.unitId === activeUnits[unitIdx].id && e.name.startsWith(name))
     ?? equipments.find((e) => e.name.startsWith(name))!;
   const setStatus = (e: Equipment, statusId: string, stoppedHours?: number) => { e.statusId = statusId; if (stoppedHours !== undefined) e.stoppedSince = hoursAgo(stoppedHours); };
@@ -428,6 +446,9 @@ export function seed(): SubDb {
     mk('PRE-005', 'Lava Forte Assistência Técnica Ltda', 'Lava Forte', '56789012000134', ['Lavagem', 'Hidráulica'], ['CAT-004'], ['Florianópolis/SC'], ['Osvaldo Brito', 'Gerente', '48991230005', 'osvaldo@lavaforte.com.br'], [['Nilson Ferraz', 'Lavagem']]),
     mk('PRE-006', 'José Almeida', undefined, '12345678909', ['Geral', 'Refrigeração'], ['CAT-001', 'CAT-008'], ['Florianópolis/SC'], ['José Almeida', 'Profissional autônomo', '48991230006', 'jose.almeida@gmail.com'], [], { kind: 'autonomo', status: 'inativo', notes: 'Inativo a pedido do prestador' }),
   ];
+  // Garantia de serviço (informativa): prazo em dias após a conclusão; um prestador sem garantia e um sem informação para mostrar os três casos
+  const SERVICE_WARRANTY: Record<string, Provider['serviceWarranty']> = { 'PRE-001': { has: true, days: 90 }, 'PRE-002': { has: true, days: 30 }, 'PRE-003': { has: false }, 'PRE-004': { has: true, days: 60 } };
+  providers.forEach((p) => { if (SERVICE_WARRANTY[p.id]) p.serviceWarranty = SERVICE_WARRANTY[p.id]; });
 
   // ── Solicitações e OS ──
   const requests: Request[] = [];
@@ -585,7 +606,7 @@ export function seed(): SubDb {
     [eq(3, 'Coifa'), 'Troca do motor da coifa', 'STO-02', 'PRI-3', -3, { kind: 'prestador', providerId: 'PRE-004', technician: 'Glauber Lemos' }, gestor.id],
     [eq(1, 'Chapa'), 'Chapa não aquece por igual', 'STO-01', 'PRI-3', -6, { kind: 'interno', userId: exec.id }, admin.id],
     [eq(2, 'Fogão industrial'), 'Queimador com chama amarela', 'STO-05', 'PRI-3', -1, { kind: 'prestador', providerId: 'PRE-002', technician: 'Cláudio Neves' }, gestor.id],
-    [eq(4, 'Ar-condicionado'), 'Ar-condicionado pingando no salão', 'STO-06', 'PRI-4', -9, { kind: 'prestador', providerId: 'PRE-001' }, admin.id],
+    [eq(4, 'Ar-condicionado'), 'Ar-condicionado pingando no salão', 'STO-06', 'PRI-4', -2, { kind: 'prestador', providerId: 'PRE-001' }, admin.id],
     [eq(0, 'Mesa refrigerada'), 'Porta da mesa refrigerada não veda', 'STO-02', 'PRI-4', 4, { kind: 'interno', userId: exec.id }, gestor.id],
   ];
   osAbertas.forEach(([e, subject, statusId, priorityId, due, executor, resp], i) => {
@@ -777,6 +798,8 @@ export function seed(): SubDb {
       note(u.id, 4, 'preventiva', 'Preventiva vencida', 'Preventiva mensal das câmaras frias está atrasada', 'planos.html', daysAgo(1, 7));
       note(u.id, 5, 'os', 'OS aguardando validação', `${osFreezer.id}: aguardando a confirmação do solicitante`, `os.html?id=${osFreezer.id}`, daysAgo(3, 12), true);
       const reinc = eq(2, 'Fritadeira');
+      const expiring = expiringWarranties({ equipments } as SubDb)[0];
+      if (expiring) note(u.id, 7, 'equipamento', 'Garantia a vencer', `${expiring.e.name} (${expiring.e.code}): a garantia ${daysText(expiring.w.daysLeft ?? 0)}`, `equipamento.html?id=${expiring.e.id}`, hoursAgo(5));
       note(u.id, 6, 'equipamento', 'Falhas recorrentes em equipamento', `${reinc.name}: ${RECURRENCE_N} corretivas nos últimos ${RECURRENCE_DAYS} dias`, `equipamento.html?id=${reinc.id}`, daysAgo(16, 12));
     }
     if (u.profile === 'solicitante') {
@@ -795,6 +818,19 @@ export function seed(): SubDb {
     [eq(2, 'Fritadeira'), 'Troca da resistência da fritadeira', 64, 35_000, 'PRE-002'],
   ];
   fritExtra.forEach((x, k) => addDone(x, 100 + k));
+
+  // Prestador que não compareceu: visita agendada para ontem sem registro de chegada (aviso ao gestor, junto com a OS do ar-condicionado, que está sem agendamento e com prazo em 2 dias)
+  const eqNs = eq(1, 'Lava-louças');
+  const rNs = addRequest(eqNs, { problemId: 'TSO-007', description: 'Vazamento na lava-louças', statusId: 'STS-05', openedAt: daysAgo(5, 9), statusChangedAt: daysAgo(4, 9), responsibleId: gestor.id, maintTypeId: 'TMA-001', priorityId: 'PRI-3', requesterName: solicit.name });
+  const oNs = addOrder(eqNs, { subject: 'Vazamento na lava-louças', statusId: 'STO-06', createdAt: daysAgo(4, 9), dueAt: dayOnly(-3), priorityId: 'PRI-3', executor: { kind: 'prestador', providerId: 'PRE-005', technician: 'Nilson Ferraz' }, responsibleId: gestor.id, requestId: rNs.id, reported: 'Vazamento na lava-louças', files: [] });
+  oNs.schedule = { date: dayOnly(1), from: '09:00', to: '11:00' };
+  rNs.osId = oNs.id;
+
+  // Alertas de atendimento do prestador (sem agendamento a 2 dias do prazo / não compareceu): avisam Administrador e Gestor
+  attendanceAlerts({ orders }).forEach((a, k) => {
+    const t = alertText(a);
+    users.filter((u) => u.status === 'ativo' && (u.profile === 'administrador' || u.profile === 'gestor')).forEach((u) => note(u.id, 20 + k, 'os', t.title, t.text, `os.html?id=${a.order.id}`, a.kind === 'nao-compareceu' ? hoursAgo(3) : hoursAgo(8)));
+  });
 
   // Possíveis duplicadas (RF402): outras solicitações ABERTAS para a Fritadeira 01 (a mesma da SOL-000119), para exibir a seção preenchida
   addRequest(fritadeira, {
@@ -817,5 +853,17 @@ export function seed(): SubDb {
   // Mock visual do Histórico de manutenções: uma OS concluída do Forno combinado 01 com foto registrada na manutenção (as demais ficam sem foto)
   const fornoId = equipments.find((e) => e.name === 'Forno combinado 01')?.id;
   orders.filter((o) => o.equipmentId === fornoId && o.subject === 'Descalcificação do forno combinado').forEach((o) => { o.files.push({ id: 'F1', name: 'forno2.webp', kind: 'foto', at: daysAgo(25, 11), by: 'Chama Viva' }); });
+  // Orçamentos aprovados de OS já concluídas: custo realizado confirmado no valor aprovado (histórico de demonstração). As OS em andamento ficam pendentes de confirmação, para mostrar o aviso
+  orders.forEach((o) => { if (o.budget?.decision === 'aprovado' && o.statusId === 'STO-08' && !o.budget.realized) o.budget.realized = { cents: o.budget.cents, confirmedAt: o.budget.decidedAt ?? o.createdAt, by: o.budget.decidedBy ?? '-' }; });
   return { version: DB_VERSION, subscriberId: SUBSCRIBER_ID, users, units, environments, equipments, requests, orders, providers, plans, executions, notifications };
 }
+
+/**
+ * Custo realizado de uma OS, a mesma regra em todas as telas: itens lançados direto (extras) + o orçamento aprovado **depois de confirmado como realizado**.
+ * O item "espelho" do orçamento na lista de custos não conta sozinho (aprovar não é gastar); OS antigas sem orçamento mantêm os itens como estão.
+ */
+export const orderRealizedCents = (o: Pick<WorkOrder, 'costs' | 'budget'>) => (
+  o.costs.filter((c) => !(c.kind === 'orcamento' && o.budget)).reduce((n, c) => n + c.cents, 0) + (o.budget?.decision === 'aprovado' ? o.budget.realized?.cents ?? 0 : 0)
+);
+/** Orçamento aprovado ainda não confirmado como realizado (em centavos); 0 quando não há pendência. */
+export const unconfirmedBudgetCents = (o: Pick<WorkOrder, 'budget'>) => (o.budget?.decision === 'aprovado' && !o.budget.realized ? o.budget.cents : 0);

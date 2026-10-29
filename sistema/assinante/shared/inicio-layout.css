@@ -199,3 +199,63 @@ section.ag2-att:hover { border-color: var(--color-gray-300); box-shadow: var(--s
   .ag2-eq-card > div { flex: 1; display: flex; flex-direction: column; }
   .ag2-eq-card .donut-wrap { flex: 1; justify-content: space-evenly; }
 }
+
+/* ── Mobile (padrão atual; a variante v1 mantém os cartões completos): cartões compactos em duas colunas e blocos recolhíveis ── */
+.ag2-kpis[hidden], .ag2-perf-row[hidden] { display: none; }
+.ag-agenda .ag-card > header p { white-space: pre-line; }
+@media (max-width: 767px) {
+  .ag-cards.is-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
+  .ag-cards.is-compact-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  /* compacto: título menor, indicador principal e secundários pequenos sempre visíveis */
+  .ag-card.is-compact > header h3 { font-size: var(--font-size-base); }
+  .ag-card.is-compact .ag-hero .ag-value { font-size: var(--font-size-2xl); }
+  /* ícone fora do fluxo do cabeçalho: a altura do título (1 ou 2 linhas) é que define a distância até o valor principal, igual nos 3 cartões (12px) */
+  .ag-card.is-compact > header { position: relative; padding-inline-end: calc(var(--spacing-md) + var(--spacing-xl) + var(--spacing-sm)); }
+  .ag-card.is-compact > header > div:last-child { position: absolute; inset-block-start: var(--spacing-md); inset-inline-end: var(--spacing-md); }
+  .ag-card.is-compact .ag-items { gap: var(--spacing-xs); margin-block-start: calc(var(--spacing-xs) * -2); }
+  .ag-card.is-compact .ag-divider { margin-block-start: var(--spacing-xs); }
+  .ag-card.is-compact .ag-secondary { gap: var(--spacing-xs); }
+  .ag-card.is-compact .ag-secondary .action-link, .ag-card.is-compact .ag-secondary .ag-value { font-size: var(--font-size-sm); }
+  /* agenda: título junto do subtítulo e ícone junto da seta */
+  .ag-agenda .ag-card.is-compact-agenda > header { row-gap: var(--spacing-2xs); }
+  .ag-agenda .ag-card.is-compact-agenda > header > div:last-child { grid-row: 1 / span 2; align-self: start; }
+  .ag-agenda .ag-card.is-compact-agenda .ag-actions { gap: var(--spacing-xs); }
+  /* pontos de atenção e desempenho em duas colunas */
+  .ag2-kpis.is-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
+  .ag2-kpis.is-compact-grid .ag2-att-link { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "v i" "l l"; gap: var(--spacing-2xs) var(--spacing-sm); }
+  .ag2-kpis.is-compact-grid .ag2-att-value { grid-area: v; }
+  .ag2-kpis.is-compact-grid .ag2-att-label { grid-area: l; }
+  .ag2-kpis.is-compact-grid .ag2-att-link .ag-kpi-icon { grid-area: i; }
+  .ag2-perf-row.is-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
+  .ag2-perf-row.is-compact-grid > .dev-anchor:last-child { grid-column: 1 / -1; }
+  .ag2-perf-row--nocost.is-compact-grid > .dev-anchor:first-child { grid-column: 1 / -1; }
+  .ag2-perf-row.is-compact-grid .ag2-stat-value { font-size: var(--font-size-2xl); }
+  /* bloco recolhido: sem corpo vazio */
+  .is-collapsed div:empty { display: none; }
+}
+
+/* Agenda: segunda linha com a unidade e o telefone do executor (a altura do item continua a mesma) */
+.ag-body { display: flex; flex-direction: column; justify-content: center; min-width: 0; gap: 0; }
+.ag-sub { display: flex; gap: var(--spacing-sm); font-size: var(--font-size-sm); line-height: var(--line-height-snug); color: var(--color-text-tertiary); min-width: 0; white-space: nowrap; }
+.ag-sub-unit { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ag-sub-phone { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.ag-sub:empty { display: none; }
+.ag-event.is-past .ag-sub { opacity: 0.8; }
+.ag-phone { flex-shrink: 0; font-size: var(--font-size-sm); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
+.ag-event.is-past .ag-phone { opacity: 0.8; }
+
+
+/* ── Faixa de ações e cartão em destaque (referência do cliente): só tokens de status ── */
+/* modo claro: o fundo de atenção é um tom mais claro (mistura do token com a superfície); no escuro segue o token */
+.ag-banner { --ag-attn-bg: color-mix(in srgb, var(--color-status-warning-bg) 45%, var(--color-bg-surface)); background: var(--ag-attn-bg); border-color: var(--color-status-warning-fg); }
+.ag-banner-in { padding: var(--spacing-md) var(--spacing-lg); }
+.ag-banner-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; inline-size: var(--spacing-2xl); block-size: var(--spacing-2xl); border-radius: var(--radius-full); background: var(--color-status-warning-fg); color: var(--color-bg-surface); }
+.ag-banner-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); color: var(--color-text-primary); line-height: var(--line-height-snug); }
+.ag-banner-sub { font-size: var(--font-size-md); color: var(--color-text-secondary); }
+.ag-rq-head { display: flex; align-items: center; gap: var(--spacing-sm); }
+.ag-top { scroll-margin-block-start: var(--spacing-3xl); }
+/* só um cartão em destaque: borda e fundo de atenção; o título leva o contador vermelho */
+.ag-card.is-focus { border: var(--border-width-medium) solid var(--color-status-warning-fg); background: color-mix(in srgb, var(--color-status-warning-bg) 45%, var(--color-bg-surface)); }
+:root[data-theme="dark"] .ag-banner, :root[data-theme="dark"] .ag-card.is-focus { background: var(--color-status-warning-bg); }
+.ag-card.is-focus > header h3 { display: flex; align-items: center; gap: var(--spacing-xs); flex-wrap: wrap; }
+@media (max-width: 767px) { .ag-banner-in > button { inline-size: 100%; } }

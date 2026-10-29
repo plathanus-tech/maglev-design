@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import {
-  Badge, Button, Dialog, Dropdown, Input, RadioButton, Stack, Table, TableColumn, Textarea, useToast,
+  Badge, Button, Dialog, Dropdown, Input, MultiSelect, RadioButton, Stack, Table, TableColumn, Textarea, useToast,
 } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
@@ -102,9 +102,11 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
     toast.show({ type: 'success', title: on ? 'Registro ativado' : 'Registro inativado', message: on ? `“${item.name}” volta a ser oferecido nas telas de cadastro.` : `“${item.name}” deixa de ser oferecido em novos cadastros, mas continua nos registros antigos.` });
   };
 
+  const categoriesText = (r: ConfigItem) => (r.categoryIds?.length ? r.categoryIds.map((id) => db.categories.find((c) => c.id === id)?.name ?? id).join(', ') : 'Todas');
   const columns: TableColumn<SimpleRow>[] = [
     { key: 'name', label: 'Nome', render: (v, r) => (dbKey === 'categories' ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={r.icon} /><span>{String(v)}</span></Stack> : String(v)) },
     { key: 'description', label: 'Descrição', render: (v) => (v ? String(v) : '-') },
+    ...(dbKey === 'requestTypes' ? [{ key: 'categoryIds', label: 'Categorias', render: (_: unknown, r: SimpleRow) => categoriesText(r) }] : []),
     { key: 'links', label: `Vínculos (${meta.linkLabel})`, align: 'right' },
     { key: 'status', label: 'Status', render: (v) => recordStatusBadge(v as RecordStatus) },
     {
@@ -140,7 +142,7 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
             items={pageRows.map((r) => ({
               id: r.id, title: dbKey === 'categories' ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={r.icon} /><span>{r.name}</span></Stack> : r.name, subtitle: r.description || undefined,
               badge: recordStatusBadge(r.status),
-              fields: fieldsFor([{ label: `Vínculos (${meta.linkLabel})`, value: r.links }]),
+              fields: fieldsFor([...(dbKey === 'requestTypes' ? [{ label: 'Categorias', value: categoriesText(r) }] : []), { label: `Vínculos (${meta.linkLabel})`, value: r.links }]),
               actions: (
                 <RowActions>
                   {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => setPending({ kind: 'form', item: r })} />}
@@ -166,6 +168,7 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
           singular={meta.singular}
           linkLabel={meta.linkLabel}
           withIcon={dbKey === 'categories'}
+          categoryOptions={dbKey === 'requestTypes' ? db.categories.filter((c) => c.status === 'ativo' || pending.item?.categoryIds?.includes(c.id)).map((c) => ({ value: c.id, label: c.name })) : undefined}
           item={pending.item}
           initialTried={pending.tried}
           draft={pending.draft}
@@ -209,21 +212,22 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
   );
 }
 
-function SimpleForm({ singular, linkLabel, withIcon, item, others, initialTried, draft, onClose, onSave }: {
-  singular: string; linkLabel: string; withIcon?: boolean; item: ConfigItem | null; others: ConfigItem[]; initialTried?: boolean; draft?: Partial<ConfigItem>;
-  onClose: () => void; onSave: (d: Pick<ConfigItem, 'name' | 'description' | 'status' | 'icon'>) => void;
+function SimpleForm({ singular, linkLabel, withIcon, categoryOptions, item, others, initialTried, draft, onClose, onSave }: {
+  singular: string; linkLabel: string; withIcon?: boolean; /** Só Tipos de solicitação: categorias disponíveis para vincular. */ categoryOptions?: Array<{ value: string; label: string }>; item: ConfigItem | null; others: ConfigItem[]; initialTried?: boolean; draft?: Partial<ConfigItem>;
+  onClose: () => void; onSave: (d: Pick<ConfigItem, 'name' | 'description' | 'status' | 'icon'> & { categoryIds?: string[] }) => void;
 }) {
   const scope = useScopeLine(item?.links, linkLabel, singular);
   const [name, setName] = useState(draft?.name ?? item?.name ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
   const [status, setStatus] = useState<RecordStatus>(item?.status ?? 'ativo');
   const [icon, setIcon] = useState<string | undefined>(item?.icon);
+  const [categoryIds, setCategoryIds] = useState<string[]>(item?.categoryIds ?? []);
   const [tried, setTried] = useState(!!initialTried);
   const dup = others.some((o) => normalize(o.name) === normalize(name));
   const nameError = !tried ? undefined : !name.trim() ? requiredMessage('Nome') : dup ? `Já existe ${singular === 'categoria' ? 'uma categoria' : `um ${singular}`} com este nome` : undefined;
   // Mudou o Status de um registro existente: depois de Salvar, pede confirmação (o modal de edição dá lugar ao de confirmação)
   const [confirming, setConfirming] = useState(false);
-  const commit = () => onSave({ name: name.trim(), description: description.trim(), status, icon: withIcon ? icon : undefined });
+  const commit = () => onSave({ name: name.trim(), description: description.trim(), status, icon: withIcon ? icon : undefined, ...(categoryOptions ? { categoryIds: categoryIds.length ? categoryIds : undefined } : {}) });
   const save = () => {
     setTried(true);
     if (!name.trim() || dup) return;
@@ -256,6 +260,14 @@ function SimpleForm({ singular, linkLabel, withIcon, item, others, initialTried,
           </DevNote>
         )}
         <Textarea optional label="Descrição" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        {categoryOptions && (
+          <DevNote note="Categorias em que o tipo é oferecido na Nova solicitação (portal e QR Code): com um equipamento escolhido, aparecem os tipos sem categoria (valem para todas) e os que incluem a categoria dele. Sem categoria marcada = todas. Tipos de emergência (Vazamento, Elétrica) e Outro ficam sem categoria, para estarem sempre disponíveis. Só categorias ativas; uma categoria já vinculada e depois inativada continua aparecendo aqui.">
+            <Stack gap="xs">
+              <MultiSelect optional label="Categorias" placeholder="Todas as categorias" removeLabel={(l) => `Remover categoria ${l}`} options={categoryOptions} value={categoryIds} onChange={setCategoryIds} />
+              <p className="field-note">Sem categoria marcada, o tipo é oferecido para todos os equipamentos</p>
+            </Stack>
+          </DevNote>
+        )}
         {item && <RadioButton name="cfg-status" label="Status" orientation="horizontal" options={[{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }]} value={status} onChange={(v) => setStatus(v as RecordStatus)} />}
       </Stack>
     </Dialog>

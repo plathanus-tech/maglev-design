@@ -10,7 +10,7 @@ import { TroubleshootingRun } from './data';
  * RowAction, setFlash/takeFlash…) é reutilizado - as mesmas decisões de design - e reexportado daqui.
  */
 export {
-  CellPair, Col, Grid, ReadField, RowAction, RowActions, SectionLabel, TableToolbar, Text,
+  CellPair, Col, FormSection, Grid, ReadField, RowAction, RowActions, SectionLabel, TableToolbar, Text,
   goTo, param, setFlash, takeFlash, recordStatusBadge, statusBadgeOf, visualBadgeOf, levelBadgeOf,
 } from '../../admin/shared/ui';
 

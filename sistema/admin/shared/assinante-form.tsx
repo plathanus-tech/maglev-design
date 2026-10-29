@@ -10,7 +10,7 @@ import {
   UFS, formatCep, formatCnpj, formatPhone, isValidCnpj, isValidEmail, isValidPhone, onlyDigits, requiredMessage,
 } from './format';
 import { lookupCep } from './cep';
-import { Col, Grid, ReadField, goTo, param, setFlash } from './ui';
+import { Col, FormSection, Grid, ReadField, goTo, param, setFlash } from './ui';
 import { todayIso } from './clock';
 
 /** Estados: idle · required (salvar vazio) · cnpjinvalid · cnpjduplicate (CTA001) */
@@ -190,7 +190,7 @@ function AssinanteFormScreen() {
           )}
 
           <DevNote note="RF202-RGN005: dados sensíveis (CNPJ, razão social, nome, endereço e inscrições) só são alterados pelo Admin Maglev; o assinante edita apenas os contatos. Os dados servem também para a emissão manual da nota fiscal, fora da plataforma (RGN007).">
-            <Card className="card-open" title="Dados da empresa" subtitle="Informações cadastrais e fiscais do assinante">
+            <FormSection className="card-open" title="Dados da empresa" subtitle="Informações cadastrais e fiscais do assinante">
               <div className="card-body-tight">
                 <Grid>
                   <Col span={12}><Input label="Nome fantasia" required value={d.tradeName} onChange={(e) => set('tradeName', e.target.value)} error={errors.tradeName} /></Col>
@@ -210,11 +210,11 @@ function AssinanteFormScreen() {
                   <Col span={6}><Input optional label="Inscrição municipal" inputMode="numeric" value={d.cityReg} onChange={(e) => set('cityReg', e.target.value)} /></Col>
                 </Grid>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
 
           <DevNote note="Ao completar o CEP (8 dígitos), logradouro, bairro, cidade e estado são preenchidos automaticamente e continuam editáveis; número e complemento são digitados pelo usuário. A consulta usa o ViaCEP (gratuito, sem chave); CEP inexistente ou serviço fora do ar mostra aviso e o endereço é preenchido manualmente. Em produção, avaliar um serviço contratado/SLA.">
-          <Card className="card-open" title="Endereço da matriz" subtitle="Endereço principal da empresa">
+          <FormSection className="card-open" title="Endereço da matriz" subtitle="Endereço principal da empresa">
             <div className="card-body-tight">
               <Grid>
                 <Col span={4}><Input label="CEP" required inputMode="numeric" autoComplete="postal-code" placeholder="00000-000" value={formatCep(d.address.cep)} onChange={(e) => onCep(e.target.value)} error={errors.cep ?? cepMsg} /></Col>
@@ -226,10 +226,10 @@ function AssinanteFormScreen() {
                 <Col span={6}><Dropdown label="Estado" required options={UFS.map((u) => ({ value: u, label: u }))} value={d.address.uf} onChange={(v) => setAddr('uf', v)} error={errors.uf} /></Col>
               </Grid>
             </div>
-          </Card>
+          </FormSection>
           </DevNote>
 
-          <Card className="card-open" title="Contratação">
+          <FormSection className="card-open" title="Contratação">
             <div className="card-body-tight">
               <Grid>
                 <Col span={editing ? 4 : 6}>
@@ -255,10 +255,10 @@ function AssinanteFormScreen() {
                 )}
               </Grid>
             </div>
-          </Card>
+          </FormSection>
 
           {editing ? (
-            <Card className="card-open" title="Administrador do assinante" subtitle="Recebeu o convite de primeiro acesso. Depois do cadastro, os usuários são gerenciados pelo próprio assinante">
+            <FormSection className="card-open" title="Administrador do assinante" subtitle="Recebeu o convite de primeiro acesso. Depois do cadastro, os usuários são gerenciados pelo próprio assinante">
               <div className="card-body-tight">
                 <Grid>
                   <Col span={12}><ReadField label="Nome" value={d.admin.name} /></Col>
@@ -266,10 +266,10 @@ function AssinanteFormScreen() {
                   <Col span={6}><ReadField label="Telefone" value={formatPhone(d.admin.phone)} /></Col>
                 </Grid>
               </div>
-            </Card>
+            </FormSection>
           ) : (
             <DevNote note="Ao salvar, o sistema cria o ambiente do assinante e envia o convite de primeiro acesso a este administrador (FLU004 / CTA002 → Assinante RF003). 💡 Sugestão RGN004: e-mail único na plataforma.">
-              <Card className="card-open" title="Administrador do assinante" subtitle="Administrador principal que receberá o primeiro acesso ao ambiente">
+              <FormSection className="card-open" title="Administrador do assinante" subtitle="Administrador principal que receberá o primeiro acesso ao ambiente">
                 <div className="card-body-tight">
                   <Grid>
                     <Col span={12}><Input label="Nome" required autoComplete="off" value={d.admin.name} onChange={(e) => setAdmin('name', e.target.value)} error={errors.adminName} /></Col>
@@ -277,12 +277,12 @@ function AssinanteFormScreen() {
                     <Col span={6}><Input label="Telefone" required type="tel" autoComplete="off" value={formatPhone(d.admin.phone)} onChange={(e) => setAdmin('phone', e.target.value)} error={errors.adminPhone} /></Col>
                   </Grid>
                 </div>
-              </Card>
+              </FormSection>
             </DevNote>
           )}
 
           <DevNote note="Contatos por área (1..N), inclusive pessoas sem acesso ao sistema - “para saber com quem falar” (CTA005). Área, nome e e-mail obrigatórios; telefone opcional (💡 a confirmar). Contatos alterados pelo assinante aparecem atualizados aqui (CTA004).">
-            <Card className="card-open" title="Contatos" subtitle="Pessoas de referência para contato em diferentes áreas do assinante">
+            <FormSection className="card-open" title="Contatos" subtitle="Pessoas de referência para contato em diferentes áreas do assinante">
               <div className="card-body-tight">
                 <Stack gap="lg">
                   {d.contacts.map((c, i) => {
@@ -311,7 +311,7 @@ function AssinanteFormScreen() {
                   </Stack>
                 </Stack>
               </div>
-            </Card>
+            </FormSection>
           </DevNote>
 
           <Stack direction="horizontal" justify="start" gap="sm" wrap>

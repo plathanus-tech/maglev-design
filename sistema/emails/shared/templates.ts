@@ -4,7 +4,7 @@ import { C, FONT, SummaryRow, button, codeBox, emailLayout, esc, heading, note, 
  * Templates dos e-mails transacionais da Maglev (complemento à Especificação; nenhum é disparado no protótipo).
  * Cada template recebe os dados e os links por parâmetro; nada sensível vai no e-mail além do que o destinatário já pode ver.
  */
-export type TemplateId = 'nova-os' | 'convite' | 'recuperacao-senha' | 'acao-pendente' | 'atualizacao' | 'preventiva-vencida' | 'inativacao-prevista';
+export type TemplateId = 'nova-os' | 'convite' | 'recuperacao-senha' | 'acao-pendente' | 'atualizacao' | 'preventiva-vencida' | 'inativacao-prevista' | 'garantia-vencendo';
 
 // ─── Nova OS atribuída (Prestador) ───
 export interface NovaOsEmailData {
@@ -195,4 +195,21 @@ export const suspensionNoticeNotification = (d: SuspensionNoticeData): OsNotific
   ctaLabel: 'Falar com o suporte',
   subject: `Seu acesso à Maglev será inativado em ${d.deadline}`,
   preheader: `Regularize a pendência da empresa ${d.company} até ${d.deadline} para manter o acesso.`,
+});
+
+/** Exemplo 5 · aviso de garantia a vencer (30 dias antes, 💡 a confirmar): vai para administradores e gestores do assinante. Mesmo modelo das notificações, com o prazo em destaque */
+export interface WarrantyExpiringData { recipientName: string; equipment: string; code: string; unit: string; endDate: string; daysLeft: number }
+export const warrantyExpiringNotification = (d: WarrantyExpiringData): OsNotificationData => ({
+  recipientName: d.recipientName, title: 'A garantia de um equipamento está para vencer',
+  message: 'A garantia do equipamento abaixo termina em breve. Se houver algo para resolver, vale marcar antes do vencimento.',
+  summary: [
+    { label: 'Equipamento', value: `<strong>${esc(d.equipment)}</strong>` },
+    { label: 'Código', value: esc(d.code) },
+    { label: 'Unidade', value: esc(d.unit) },
+    { label: 'Fim da garantia', value: esc(d.endDate) },
+    { label: 'Prazo restante', value: pill(`${d.daysLeft} ${d.daysLeft === 1 ? 'dia' : 'dias'}`, 'warning') },
+  ],
+  ctaLabel: 'Ver equipamento',
+  subject: `Garantia a vencer em ${d.daysLeft} ${d.daysLeft === 1 ? 'dia' : 'dias'}: ${d.equipment}`,
+  preheader: `A garantia de ${d.equipment} termina em ${d.endDate}.`,
 });

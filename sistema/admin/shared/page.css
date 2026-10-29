@@ -38,6 +38,8 @@
 
 .app-shell.is-mobile { flex-direction: column; }
 .app-topbar { position: sticky; top: 0; z-index: var(--z-sticky); }
+/* Mobile: o ícone do menu hambúrguer alinha com a borda esquerda do conteúdo (gutter da página); o botão tem ~10px de respiro interno */
+.app-shell.is-mobile .app-topbar > header { padding-inline-start: calc(var(--spacing-md) - var(--spacing-sm) - var(--spacing-2xs)); }
 .app-drawer-backdrop { position: fixed; inset: 0; z-index: var(--z-sticky); background: var(--color-overlay); }
 /* Menu mobile: drawer só com os links, ocupa toda a altura abaixo do header */
 .app-menu-panel { position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; overflow-y: auto; z-index: var(--z-overlay); box-shadow: var(--shadow-xl); }
@@ -63,6 +65,15 @@
   .grid > .span-9 { grid-column: span 9; }
 }
 /* Código de verificação: 6 dígitos lado a lado */
+/* Mobile: indicadores (KpiCard) em duas colunas quando couber; se sobrar um, ele ocupa a linha toda */
+@media (max-width: 479px) {
+  .grid > :has(.kpi-card) { grid-column: span 2; }
+  .grid > :has(.kpi-card):last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (min-width: 480px) and (max-width: 767px) {
+  .grid > :has(.kpi-card) { grid-column: span 4; }
+  .grid > :has(.kpi-card):last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 .grid.grid-compact { gap: var(--spacing-md); }   /* barra de busca + filtros + colunas: 16px entre controles */
 .grid.grid-otp { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--spacing-sm); }
 .grid.grid-otp > * { grid-column: span 1; }
@@ -365,6 +376,8 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 
 /* Modais de confirmação (ativar/inativar, excluir, exclusão bloqueada): 460px (= 28,75rem) no desktop, entre os tamanhos sm e md do DS */
 .dialog-confirm.dialog-confirm { max-width: 28.75rem; }
+/* Modal com os botões do rodapé dividindo a largura toda (ex.: Criar a OS depois?) */
+.dialog-actions-fill > div:last-child > button { flex: 1 1 0; }
 
 /* Ação de linha indisponível (RowAction com unavailableReason): cor de desabilitado, sem hover, ainda focável para mostrar o motivo */
 .btn-unavailable, .btn-unavailable:hover:not(:disabled) { color: var(--color-text-disabled); background: transparent; cursor: not-allowed; }
@@ -413,3 +426,12 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 /* Sino de notificações do Admin: contador sobre o canto do botão */
 .bell-anchor { position: relative; display: inline-flex; }
 .bell-count { position: absolute; top: calc(var(--spacing-xs) * -1); right: calc(var(--spacing-xs) * -1); pointer-events: none; }
+
+/* ── Formulários longos no mobile: cards viram seções recolhíveis (sem barra de ação fixa: a pessoa percorre os campos até o fim) ── */
+@media (max-width: 767px) {
+  .fs-card > header { cursor: pointer; }
+  .fs-card.is-collapsed > :last-child { display: none; }
+  /* mesmo espaço entre cards que as listas de cards do mobile (--spacing-md); o padrão do formulário no desktop segue --spacing-xl */
+  /* o Stack aplica o gap inline, por isso !important */
+  form.form-page > div:first-child { gap: var(--spacing-md) !important; }
+}

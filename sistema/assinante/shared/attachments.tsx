@@ -16,7 +16,7 @@ const ACCEPT_REPORT = [...ACCEPT_IMG, 'application/pdf'];
  * (clique amplia, remoção individual) e "Adicionar foto" como último item da grade, que aceita várias de uma vez.
  * Cada arquivo é validado separadamente; os inválidos não afetam os já anexados.
  */
-export function EvidenceGallery({ label, items, onAdd, onRemove, report }: { label: string; items: Picked[]; onAdd: (p: Picked[]) => void; onRemove: (i: number) => void; report?: boolean }) {
+export function EvidenceGallery({ label, items, onAdd, onRemove, report, single }: { label: string; items: Picked[]; onAdd: (p: Picked[]) => void; onRemove: (i: number) => void; report?: boolean; /** Só um arquivo: com um escolhido some o "Adicionar"; remover (x) volta à área de envio. */ single?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [view, setView] = useState<number | null>(null);
@@ -51,13 +51,13 @@ export function EvidenceGallery({ label, items, onAdd, onRemove, report }: { lab
               <button type="button" className="ev-remove" onClick={() => onRemove(i)} aria-label={`Remover ${noun}: ${it.name}`}><IconX size={14} aria-hidden="true" /></button>
             </li>
           ))}
-          <li className="ev-item">
+          {!(single && items.length >= 1) && <li className="ev-item">
             <button type="button" className="ev-add" disabled={loading} onClick={() => inputRef.current?.click()}>
               <IconPhotoPlus size={24} aria-hidden="true" />
               <span>{loading ? 'Enviando...' : `Adicionar ${noun}`}</span>
             </button>
-            <input ref={inputRef} type="file" multiple accept={allowed.join(',')} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => { receive([...(e.target.files ?? [])]); e.target.value = ''; }} />
-          </li>
+            <input ref={inputRef} type="file" multiple={!single} accept={allowed.join(',')} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => { receive([...(e.target.files ?? [])].slice(0, single ? 1 : undefined)); e.target.value = ''; }} />
+          </li>}
         </ul>
       )}
       {error && <span className="ev-error" role="alert">{error}</span>}
@@ -96,6 +96,8 @@ export function EvidenceGalleryView({ items, label, compact }: { items: Picked[]
 /** Miniaturas escolhidas nesta sessão (nome → URL local): o cadastro guarda só os nomes; os de demonstração vêm de photos.ts. */
 const previews = new Map<string, string>();
 export const previewOf = (name: string) => previews.get(name) ?? photoSrc(name);
+/** Guarda a miniatura/arquivo escolhido nesta sessão para quem salva só o nome (ver `previewOf`). */
+export const rememberPicked = (x: Picked) => { if (x.url) previews.set(x.name, x.url); if (x.fileUrl) fileUrls.set(x.name, x.fileUrl); };
 /** URL do arquivo para abrir em nova aba: o escolhido nesta sessão ou, nos anexos de demonstração (sem arquivo real), um PDF ilustrativo. */
 const fileUrls = new Map<string, string>();
 const fileUrlOf = (name: string) => fileUrls.get(name) ?? (isPdf(name) ? demoPdf : undefined);

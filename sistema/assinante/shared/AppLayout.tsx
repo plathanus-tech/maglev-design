@@ -20,6 +20,7 @@ import { GlobalSearch, HelpButton } from './GlobalSearch';
 import '../../admin/shared/nav-sync';
 import './assinante.css';
 import { SuspensionNotice } from './SuspensionNotice';
+import { BottomNav, bottomNavActions, bottomNavHidden } from './BottomNav';
 
 /** O cabeçalho de página e a montagem do app são os mesmos do Admin (mesmas decisões de design). */
 export { PageHeader, mountApp };
@@ -131,7 +132,8 @@ function NotificationBell() {
  */
 function AppLayoutInner({ active, screen, children, layout = 'default' }: { active: string; screen: ScreenKey; children: ReactNode; /** `focused` = Padrão B (wizard): sem sidebar, conteúdo centralizado em largura confortável. Os formulários convencionais (Padrão A) usam o `default`. */ layout?: 'default' | 'focused' }) {
   const isMobile = useIsMobile();
-  const { user, can } = useSubSession();
+  const { user, can, company } = useSubSession();
+  const companyName = company.tradeName || company.legalName;
   const [open, setOpen] = useState(() => { try { return localStorage.getItem(SIDEBAR_KEY) !== '0'; } catch { return true; } });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -204,9 +206,12 @@ function AppLayoutInner({ active, screen, children, layout = 'default' }: { acti
     );
   }
 
+  // Mobile: barra inferior com as criações (só fora de formulários)
+  const navItems = isMobile && !bottomNavHidden() ? bottomNavActions(can as never) : [];
+
   if (isMobile) {
     return (
-      <div className="app-shell is-mobile">
+      <div className={`app-shell is-mobile${navItems.length ? ' has-bottomnav' : ''}`}>
         {drawerOpen && <div className="app-drawer-backdrop" onClick={closeDrawer} aria-hidden="true" />}
         <div className="app-topbar" ref={topbarRef}>
           <AppHeader
@@ -218,10 +223,13 @@ function AppLayoutInner({ active, screen, children, layout = 'default' }: { acti
                   aria-label={drawerOpen ? 'Fechar menu' : 'Abrir menu'} aria-expanded={drawerOpen} aria-controls={DRAWER_ID}
                   onClick={() => (drawerOpen ? closeDrawer() : setDrawerOpen(true))}
                 />
-                <a className="logo-link" href="inicio.html" aria-label="Ir para o início">
-                  <img className="logo-light" src={logoLight} alt="" />
-                  <img className="logo-dark" src={logoDark} alt="" aria-hidden="true" />
-                </a>
+                <span className="app-brand-stack">
+                  <a className="logo-link" href="inicio.html" aria-label="Ir para o início">
+                    <img className="logo-light" src={logoLight} alt="" />
+                    <img className="logo-dark" src={logoDark} alt="" aria-hidden="true" />
+                  </a>
+                  <span className="app-company" title={companyName}>{companyName}</span>
+                </span>
               </>
             )}
             actions={account(true)}
@@ -235,6 +243,7 @@ function AppLayoutInner({ active, screen, children, layout = 'default' }: { acti
           )}
         </div>
         <main className="app-main">{content}</main>
+        <BottomNav items={navItems} />
       </div>
     );
   }
@@ -244,7 +253,7 @@ function AppLayoutInner({ active, screen, children, layout = 'default' }: { acti
       <div className="app-sidebar">{sidebar(open, toggleSidebar)}</div>
       <div className="app-column">
         <div className="app-topbar-desktop">
-          <AppHeader align="start" logo={<span aria-hidden="true" />} actions={account(false)} />
+          <AppHeader align="start" logo={<span className="app-company" title={companyName}>{companyName}</span>} actions={account(false)} />
         </div>
         <main className="app-main">{content}</main>
       </div>

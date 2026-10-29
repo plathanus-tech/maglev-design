@@ -1,6 +1,8 @@
-import { MouseEvent, ReactElement, ReactNode } from 'react';
-import { IconAlertTriangle, IconCircle, IconCircleCheck, IconCircleX, IconInfoCircle } from '@tabler/icons-react';
-import { Badge, Button, Stack, Tooltip } from '@maglev/ds';
+import { ComponentProps, MouseEvent, ReactElement, ReactNode, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { IconAlertTriangle, IconChevronDown, IconChevronUp, IconCircle, IconCircleCheck, IconCircleX, IconInfoCircle } from '@tabler/icons-react';
+import { Badge, Button, Card, Stack, Tooltip } from '@maglev/ds';
+import { useIsMobile } from './useMediaQuery';
 import {
   ADMIN_USER_STATUS, AdminUserStatus, RECORD_STATUS_LABEL, RecordStatus, SUBSCRIBER_STATUS_BADGE, SUBSCRIBER_STATUS_LABEL, SubscriberStatus, Visual, visualBadge,
 } from './data';
@@ -143,3 +145,43 @@ export const takeFlash = (): Flash | null => {
     return JSON.parse(raw) as Flash;
   } catch { return null; }
 };
+
+/**
+ * Card de seção de formulário longo. No desktop é só o Card; no mobile (< 768px) vira uma seção recolhível (accordion): tocar no cabeçalho
+ * ou na seta abre/fecha, todas começam abertas e ao tentar salvar todas abrem (os erros ficam visíveis e o foco no primeiro campo inválido funciona).
+ */
+export function FormSection({ actions, className, children, ...rest }: ComponentProps<typeof Card>) {
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const form = ref.current?.closest('form');
+    if (!form || !isMobile) return undefined;
+    const openAll = () => flushSync(() => setOpen(true));
+    form.addEventListener('submit', openAll, true);
+    return () => form.removeEventListener('submit', openAll, true);
+  }, [isMobile]);
+
+  if (!isMobile) return <Card {...rest} className={className} actions={actions}>{children}</Card>;
+  const toggle = (e: MouseEvent) => {
+    const t = e.target as HTMLElement;
+    if (t.closest('header') && !t.closest('a, input, select, textarea, [role="combobox"]')) setOpen((v) => !v);
+  };
+  return (
+    // o clique no cabeçalho (inclusive na seta) abre/fecha a seção
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+    <div ref={ref} onClick={toggle}>
+      <Card
+        {...rest} className={`${className ?? ''} fs-card${open ? '' : ' is-collapsed'}`}
+        actions={(
+          <>
+            {actions}
+            <Button variant="ghost" size="sm" iconOnly iconLeft={open ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />} aria-label={open ? 'Recolher seção' : 'Expandir seção'} aria-expanded={open} />
+          </>
+        )}
+      >
+        {children}
+      </Card>
+    </div>
+  );
+}

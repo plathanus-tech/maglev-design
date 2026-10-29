@@ -6,6 +6,7 @@ import {
 } from '@tabler/icons-react';
 import { Button, Card, Checkbox, Dialog, EmptyState, Feedback, Input, KpiCard, Pagination, Stack, Tab, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
+import { WarrantyFlag } from './warranty-ui';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
@@ -26,6 +27,9 @@ import {
 import './equipamento.css';
 
 /** Estados: idle · hierarchical (aba Hierárquica) · expanded (árvore toda aberta) · noresults · inactivate · qr */
+/** Última aba aberta (Hierárquica ou Lista): ao voltar do detalhe do equipamento pelo breadcrumb, a lista reabre nela. */
+const TAB_KEY = 'maglev.sub.equipamentos.tab';
+const savedTab = () => { try { return sessionStorage.getItem(TAB_KEY); } catch { return null; } };
 const STATES = ['idle', 'hierarchical', 'expanded', 'list', 'noresults', 'inactivate', 'qr'] as const;
 type Mode = (typeof STATES)[number];
 
@@ -273,7 +277,7 @@ function EquipamentosScreen() {
 
   const nextCell = (date?: string) => (date ? <span className={isOverdue(date) ? 'eq-overdue' : undefined}>{formatDate(date)}{isOverdue(date) ? ' · vencida' : ''}</span> : '-');
   const columns: TableColumn<Row>[] = [
-    { key: 'name', label: 'Equipamento', sortable: true, render: (_, r) => <CellPair primary={<a className="text-link" href={`equipamento.html?id=${r.id}`}>{r.name}</a>} secondary={r.code || r.id} /> },
+    { key: 'name', label: 'Equipamento', sortable: true, render: (_, r) => <CellPair primary={<><a className="text-link" href={`equipamento.html?id=${r.id}`}>{r.name}</a><WarrantyFlag warranty={r.equipment.warranty} /></>} secondary={r.code || r.id} /> },
     { key: 'categoryName', label: 'Categoria', render: (v, r) => <WithIcon e={r.equipment}>{String(v)}</WithIcon> },
     { key: 'unitName', label: 'Unidade' },
     { key: 'envName', label: 'Ambiente' },
@@ -496,9 +500,9 @@ function EquipamentosScreen() {
           )}
         />
 
-        <DevNote note="RF302/RF303: os mesmos cards de resumo nas duas abas. Total de equipamentos não conta equipamentos inativos; Parados = status do tipo visual Crítico e Com alerta/falha = tipo Atenção (RF407). Gasto com manutenção = custos realizados das OS movimentadas nos últimos 30 dias (💡 data de referência a confirmar) e só aparece para Administrador e Gestor (RF304-RGN003). Sem exportar (FE010).">
+        <DevNote note="RF302/RF303: os mesmos cards de resumo nas duas abas. Equipamentos ativos = todos os que não estão inativos; Parados = status do tipo visual Crítico e Com alerta/falha = tipo Atenção (RF407). Gasto com manutenção = custos realizados das OS movimentadas nos últimos 30 dias (💡 data de referência a confirmar) e só aparece para Administrador e Gestor (RF304-RGN003). Sem exportar (FE010).">
           <div className="eq-kpis">
-            <KpiCard tone="neutral" label="Total de equipamentos" value={formatNumber(kpis.total)} icon={<IconMicrowave size={20} />} />
+            <KpiCard tone="neutral" label="Equipamentos ativos" value={formatNumber(kpis.total)} icon={<IconMicrowave size={20} />} />
             <KpiCard tone="error" label="Parados" value={formatNumber(kpis.stopped)} icon={<IconPlayerStop size={20} />} href="equipamentos.html?filter=stopped" />
             <KpiCard tone="warning" label="Com alerta ou falha" value={formatNumber(kpis.alert)} icon={<IconAlertTriangle size={20} />} href="equipamentos.html?filter=alert" />
             <KpiCard tone="info" label="OS abertas vinculadas" value={formatNumber(kpis.openOrders)} icon={<IconClipboardList size={20} />} href={can('os') ? 'ordens-servico.html?filter=active' : undefined} />
@@ -508,7 +512,8 @@ function EquipamentosScreen() {
 
         <DevNote note="Duas visões do mesmo cadastro: Hierárquica (RF302 - Unidade → Ambiente → Equipamento, com totalizadores que somam o que há abaixo e paginação no nível de unidade) e Lista (RF303 - tabela plana, com botão “Exibição” para escolher e ordenar colunas; a visão Hierárquica tem estrutura de colunas fixa). Busca e filtros são compartilhados entre as abas.">
           <Tab
-            aria-label="Visões de equipamentos" defaultIndex={(mode === 'idle' && !param('filter')) || mode === 'hierarchical' || mode === 'expanded' || mode === 'inactivate' ? 0 : 1}
+            aria-label="Visões de equipamentos" onChange={(i) => { try { sessionStorage.setItem(TAB_KEY, i === 1 ? 'lista' : 'hierarquica'); } catch { /* sem storage */ } }}
+            defaultIndex={(mode === 'idle' && !param('filter')) ? (savedTab() === 'lista' ? 1 : 0) : mode === 'hierarchical' || mode === 'expanded' || mode === 'inactivate' ? 0 : 1}
             tabs={[
               { label: 'Hierárquica', content: treeView },
               { label: 'Lista', content: listView },
