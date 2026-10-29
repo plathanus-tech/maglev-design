@@ -76,6 +76,7 @@ export function regularize(actorId: string, subscriber: Subscriber) {
 
 /**
  * Registra o acesso (login) e detecta os eventos da política: novo dispositivo e tentativas de senha falhas antes do acesso.
+ * “Novo dispositivo” = o usuário não tem esse dispositivo como confiável (reconhecido pelo administrador). Em desenvolvimento a confiança também depende do IP: IP diferente do reconhecido alerta de novo.
  * “Contexto inesperado” (rede/região) depende de dados do servidor e não é detectado no protótipo. Devolve os alertas gerados.
  */
 export function recordAccess(user: AdminUser, failedAttempts = 0): AccessAlert[] {
@@ -83,9 +84,10 @@ export function recordAccess(user: AdminUser, failedAttempts = 0): AccessAlert[]
   const device = deviceLabel();
   const now = clockNow();
   const alerts: AccessAlert[] = [];
-  if (!db.accessSessions.some((x) => x.userId === user.id && x.device === device)) alerts.push('novo-dispositivo');
+  const trusted = db.accessSessions.some((x) => x.userId === user.id && x.device === device && x.trusted);
+  if (!trusted) alerts.push('novo-dispositivo');
   if (failedAttempts >= ACCESS_POLICY.failedAttempts) alerts.push('tentativas-falhas');
-  const entry = { id: `ACS-${Date.now()}`, userId: user.id, at: now.toISOString(), device, alerts, status: 'ativa' as const };
+  const entry = { id: `ACS-${Date.now()}`, userId: user.id, at: now.toISOString(), device, alerts, status: 'ativa' as const, ...(trusted ? { trusted: true } : {}) };
   updateDb((d) => ({ ...d, accessSessions: [...d.accessSessions.map((x) => (x.userId === user.id && x.status === 'ativa' ? { ...x, status: 'expirada' as const } : x)), entry] }));
   return alerts;
 }
@@ -95,15 +97,19 @@ export function endSession(actorId: string, session: AccessSession, passwordRese
   const target = getDb().adminUsers.find((u) => u.id === session.userId);
   updateDb((d) => ({
     ...d,
-    accessSessions: d.accessSessions.map((x) => (x.id === session.id ? { ...x, status: 'encerrada' as const, endedAt: clockIso(), endedBy: actorId, passwordReset, reviewed: true } : x)),
+    // Encerrar a sessão retira a confiança do dispositivo: o próximo login dele alerta de novo
+    accessSessions: d.accessSessions.map((x) => (x.userId === session.userId && x.device === session.device ? { ...x, trusted: false } : x)).map((x) => (x.id === session.id ? { ...x, status: 'encerrada' as const, endedAt: clockIso(), endedBy: actorId, passwordReset, reviewed: true } : x)),
     adminUsers: passwordReset ? d.adminUsers.map((u) => (u.id === session.userId ? { ...u, mustReset: true } : u)) : d.adminUsers,
   }));
   logActivity(actorId, 'Usuários', 'edicao', `Encerrou a sessão de ${target?.name ?? 'um usuário'}${passwordReset ? ' e pediu nova senha' : ''}`);
 }
 
-/** O administrador viu o alerta: some da notificação. */
+/** O administrador reconheceu o acesso: o alerta some da notificação e o dispositivo passa a ser confiável para esse usuário (não alerta mais). */
 export function markAccessReviewed(id: string) {
-  updateDb((d) => ({ ...d, accessSessions: d.accessSessions.map((x) => (x.id === id ? { ...x, reviewed: true } : x)) }));
+  updateDb((d) => {
+    const s = d.accessSessions.find((x) => x.id === id);
+    return { ...d, accessSessions: d.accessSessions.map((x) => (x.id === id || (s && x.userId === s.userId && x.device === s.device) ? { ...x, trusted: true, ...(x.id === id ? { reviewed: true } : {}) } : x)) };
+  });
 }
 
 export function resetDb() {

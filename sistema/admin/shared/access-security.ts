@@ -32,10 +32,10 @@ export function seedAccessSessions(users: AdminUser[]): AccessSession[] {
   const iso = (day: number, h: number, m: number) => new Date(Date.UTC(2026, 9, day, h + 3, m)).toISOString();
   users.filter((u) => u.status === 'ativo').forEach((u, i) => {
     const device = DEVICES[i % DEVICES.length];
-    [20, 22, 24].forEach((day, k) => out.push({ id: `ACS-${u.id}-${k + 1}`, userId: u.id, at: iso(day - (i % 2), 8 + ((i + k) % 3), 10 + k * 13), device, alerts: [], status: 'expirada' }));
+    [20, 22, 24].forEach((day, k) => out.push({ id: `ACS-${u.id}-${k + 1}`, userId: u.id, at: iso(day - (i % 2), 8 + ((i + k) % 3), 10 + k * 13), device, alerts: [], status: 'expirada', trusted: true }));
   });
   const put = (userId: string, s: Omit<AccessSession, 'id' | 'userId'>) => out.push({ id: `ACS-${userId}-A`, userId, ...s });
-  put('USR-0001', { at: iso(26, 8, 12), device: 'Chrome · Windows', alerts: [], status: 'ativa' });
+  put('USR-0001', { at: iso(26, 8, 12), device: 'Chrome · Windows', alerts: [], status: 'ativa', trusted: true });
   put('USR-0003', { at: iso(25, 9, 40), device: 'Safari · iPhone', alerts: ['novo-dispositivo'], status: 'ativa' });
   put('USR-0005', { at: iso(26, 2, 14), device: 'Chrome · Android', region: 'Região diferente do habitual', alerts: ['contexto-inesperado'], status: 'ativa' });
   put('USR-0006', { at: iso(25, 21, 30), device: 'Firefox · Linux', alerts: ['tentativas-falhas', 'novo-dispositivo'], status: 'ativa' });

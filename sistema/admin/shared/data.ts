@@ -122,6 +122,8 @@ export interface AccessSession {
   id: string; userId: string; at: string; device: string; /** Só aproximada (ex.: “Região diferente do habitual”); sem geolocalização precisa. */ region?: string;
   alerts: AccessAlert[]; status: 'ativa' | 'encerrada' | 'expirada';
   endedAt?: string; endedBy?: string; /** Foi pedido nova senha ao encerrar. */ passwordReset?: boolean; reviewed?: boolean;
+  /** Dispositivo confiável: o administrador reconheceu o acesso; logins seguintes do usuário nele não alertam como “novo dispositivo”. Encerrar a sessão retira a confiança. */
+  trusted?: boolean;
 }
 export interface AdminUser { id: string; name: string; email: string; phone: string; profileId: string; status: AdminUserStatus; createdAt: string;
   /** Data de entrada: dia em que a pessoa concluiu o primeiro acesso (ISO `YYYY-MM-DD`). Sem valor enquanto o convite está pendente. */
@@ -568,7 +570,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 18;
+export const DB_VERSION = 19;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.

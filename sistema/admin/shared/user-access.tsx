@@ -43,7 +43,7 @@ export function useAccessResponse(user: AdminUser | undefined) {
   const actions = (s: AccessSession) => (
     <RowActions>
       {canRespond && s.alerts.length > 0 && !s.reviewed && s.status === 'ativa' && (
-        <RowAction icon={<IconCheck size={16} />} label="Reconhecer acesso" target={formatDateTime(s.at)} onClick={() => { markAccessReviewed(s.id); toast.show({ type: 'success', title: 'Acesso reconhecido', message: 'O alerta deixou de aparecer nas notificações.' }); }} />
+        <RowAction icon={<IconCheck size={16} />} label="Reconhecer acesso: este dispositivo não alertará mais" target={formatDateTime(s.at)} onClick={() => { markAccessReviewed(s.id); toast.show({ type: 'success', title: 'Acesso reconhecido', message: 'O alerta saiu das notificações e este dispositivo não alertará mais para este usuário.' }); }} />
       )}
       {canRespond && s.status === 'ativa' && (
         <RowAction icon={<IconLogout size={16} />} label="Encerrar sessão" target={formatDateTime(s.at)} onClick={() => { setResetPwd(s.alerts.length > 0); setEnding(s); }} />
@@ -87,6 +87,6 @@ export function useAccessResponse(user: AdminUser | undefined) {
   return {
     sessions, banner, dialog, actions, alertBadges, describe, title,
     /** Nota para desenvolvimento da tabela do histórico (acessos e alertas). */
-    note: `Histórico de ações + acessos (complemento aos controles de sessão da auditoria): cada login é uma linha do tipo “Acesso”, com dispositivo (lido do navegador) e, se houver, uma região aproximada; não há geolocalização precisa nem monitoramento contínuo. Alertas: novo dispositivo, contexto inesperado (região ou rede diferente do habitual; depende de dados do servidor) e tentativas de senha falhas antes do acesso. Respostas na coluna Ações: Reconhecer acesso e Encerrar sessão (com opção de exigir nova senha), só para quem pode ativar/inativar usuários e nunca na própria conta; cada ação fica no histórico de ações de quem a fez.`,
+    note: `Histórico de ações + acessos (complemento aos controles de sessão da auditoria): cada login é uma linha do tipo “Acesso”, com dispositivo (lido do navegador) e, se houver, uma região aproximada; não há geolocalização precisa nem monitoramento contínuo. Alertas: novo dispositivo, contexto inesperado (região ou rede diferente do habitual; depende de dados do servidor) e tentativas de senha falhas antes do acesso. Dispositivo confiável: Reconhecer acesso torna o dispositivo confiável para aquele usuário e ele não alerta mais (o tooltip diz isso); DESENVOLVIMENTO: a confiança deve considerar também o IP, e um IP diferente do reconhecido volta a alertar (o IP não aparece na interface, só alimenta o alerta). Encerrar a sessão retira a confiança, então o próximo login desse dispositivo notifica de novo. Respostas na coluna Ações: Reconhecer acesso e Encerrar sessão (com opção de exigir nova senha), só para quem pode ativar/inativar usuários e nunca na própria conta; cada ação fica no histórico de ações de quem a fez.`,
   };
 }
