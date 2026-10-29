@@ -233,7 +233,7 @@ function MembroFormScreen() {
             </DevNote>
           )}
 
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Enviar convite'}</Button>
             <Button variant="secondary" disabled={saving} onClick={() => goTo('equipe.html')}>Cancelar</Button>
           </Stack>

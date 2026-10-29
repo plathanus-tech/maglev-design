@@ -398,7 +398,7 @@ function PrestadorFormScreen() {
           </DevNote>
           )}
 
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar prestador'}</Button>
             <Button variant="secondary" onClick={cancel} disabled={saving}>Cancelar</Button>
           </Stack>

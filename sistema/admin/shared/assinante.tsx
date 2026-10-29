@@ -16,7 +16,7 @@ import {
 } from './data';
 import { daysText, daysUntil, formatCep, formatCnpj, formatDate, formatDateTime, formatNumber, formatPhone, noBreak, sinceParts } from './format';
 import { KpiMoney } from './kpi-value';
-import { Col, Grid, ReadField, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
+import { Col, Grid, ReadField, goTo, param, onboardingBadge, subscriberStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · deactivate / activate (RF204 aberto a partir do detalhe) · equipamentos (abre a aba Equipamentos) */
 const STATES = ['idle', 'deactivate', 'activate', 'equipamentos', 'overdue'] as const;
@@ -176,6 +176,7 @@ function AssinanteScreen() {
                       <Col span={6}><ReadField label="Unidades contratadas" value={s.contractedUnits} /></Col>
                       <Col span={6}><ReadField label="Cliente desde" value={`${since.date} · ${since.tenure}`} /></Col>
                       <Col span={6}><ReadField label="Status" value={subscriberStatusBadge(s.status)} /></Col>
+                      <Col span={6}><ReadField label="Implantação" value={onboardingBadge(s.onboarding)} /></Col>
                       {inactive && (
                         <Col span={12}>
                           <DevNote note="RF204-FLU003 / CTA003: toda ativação/inativação fica registrada com data, usuário e motivo; aqui aparece o motivo da última inativação. O histórico completo não é exibido nesta tela.">

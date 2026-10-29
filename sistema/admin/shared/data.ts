@@ -24,6 +24,23 @@ export const RECORD_STATUS_LABEL: Record<RecordStatus, string> = { ativo: 'Ativo
 
 // ═══ Assinantes (RF201–RF204) ════════════════════════════════════════
 export type SubscriberStatus = 'ativo' | 'inadimplente' | 'inativo';
+/**
+ * Implantação do assinante: em que etapa está a entrada dele na plataforma. As etapas seguem o que o cliente descreveu (cadastrar dados mestres e unidades,
+ * mapear ativos, afixar as etiquetas de QR, vinculá-las aos equipamentos por leitura e validar a cobertura antes da ativação final), em rótulos curtos,
+ * mais "Não iniciada" e "Concluída". 💡 A confirmar com o cliente e o time de implantação. Informativa: não bloqueia nem libera nada no sistema.
+ */
+export type OnboardingStage = 'nao-iniciada' | 'dados-mestres' | 'mapeamento' | 'etiquetas' | 'vinculo' | 'validacao' | 'concluida';
+export const ONBOARDING_STAGES: Array<{ value: OnboardingStage; label: string; badge: BadgeStatus }> = [
+  { value: 'nao-iniciada', label: 'Não iniciada', badge: 'neutral' },
+  { value: 'dados-mestres', label: 'Dados mestres e unidades', badge: 'info' },
+  { value: 'mapeamento', label: 'Mapeamento de ativos', badge: 'info' },
+  { value: 'etiquetas', label: 'Etiquetas de QR afixadas', badge: 'info' },
+  { value: 'vinculo', label: 'Vínculo por leitura', badge: 'info' },
+  { value: 'validacao', label: 'Validação de cobertura', badge: 'info' },
+  { value: 'concluida', label: 'Concluída', badge: 'success' },
+];
+export const onboardingLabel = (s: OnboardingStage) => ONBOARDING_STAGES.find((o) => o.value === s)?.label ?? s;
+
 export const SUBSCRIBER_STATUS_LABEL: Record<SubscriberStatus, string> = { ativo: 'Ativo', inadimplente: 'Inadimplente', inativo: 'Inativo' };
 export const SUBSCRIBER_STATUS_BADGE: Record<SubscriberStatus, BadgeStatus> = { ativo: 'success', inadimplente: 'warning', inativo: 'neutral' };
 
@@ -65,6 +82,8 @@ export interface Subscriber {
   contractedUnits: string;
   contacts: Contact[];
   plan: string;
+  /** Etapa da implantação (informativa). */
+  onboarding: OnboardingStage;
   status: SubscriberStatus;
   admin: { name: string; email: string; phone: string };
   /** Data de cadastro (ISO) - "cliente desde". */
@@ -295,6 +314,8 @@ function buildSubscribers(): Subscriber[] {
       contractedUnits: String(units + (i % 4 === 0 ? 1 : 0)),
       contacts,
       plan: PLANS[i % 7 === 0 ? 3 : i % 5 === 0 ? 2 : i % 3 === 0 ? 1 : 0],
+      // DEMONSTRAÇÃO: quanto mais recente o cliente, mais cedo na implantação
+      onboarding: (monthsAgo <= 1 ? (i % 2 ? 'nao-iniciada' : 'dados-mestres') : monthsAgo <= 2 ? 'mapeamento' : monthsAgo <= 3 ? 'etiquetas' : monthsAgo <= 4 ? 'vinculo' : monthsAgo <= 5 ? 'validacao' : 'concluida') as OnboardingStage,
       status,
       admin: { name: p(0), email: `${slug(p(0))}@${domain}`, phone: phone(1) },
       since,
@@ -570,7 +591,7 @@ export interface Db {
  */
 export const KPI_HISTORY = { activeWeekAgo: 125, overdueWeekAgo: 5, spent7dCents: 4_832_000 };
 
-export const DB_VERSION = 19;
+export const DB_VERSION = 21;
 
 /**
  * DADOS DE DEMONSTRAÇÃO - histórico de ações de cada usuário do Admin, depois do próprio cadastro.

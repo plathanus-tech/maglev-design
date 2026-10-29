@@ -589,7 +589,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
           )}
 
           <div className={external ? 'ext-actions' : undefined}>
-            <Stack direction="horizontal" justify="start" gap="sm" wrap>
+            <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
               <Button type="submit">Revisar solicitação</Button>
               <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
             </Stack>

@@ -155,7 +155,7 @@ function PerfilFormScreen() {
           </DevNote>
 
           {!fixed && (
-            <Stack direction="horizontal" justify="start" gap="sm" wrap>
+            <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
               <Button type="submit">{editing ? 'Salvar alterações' : 'Cadastrar perfil'}</Button>
               <Button variant="secondary" onClick={() => goTo('perfis.html')}>Cancelar</Button>
             </Stack>

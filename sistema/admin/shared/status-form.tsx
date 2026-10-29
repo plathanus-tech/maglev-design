@@ -151,7 +151,7 @@ function StatusFormScreen() {
               onConfirm={() => { setConfirming(false); commit(); }}
             />
           )}
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : item ? 'Salvar alterações' : 'Cadastrar status'}</Button>
             <Button variant="secondary" disabled={saving} onClick={() => goTo(LIST)}>Cancelar</Button>
           </Stack>

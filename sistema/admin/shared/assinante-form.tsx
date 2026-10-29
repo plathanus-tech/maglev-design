@@ -1,11 +1,13 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import { Button, Card, Dropdown, Feedback, Input, RadioButton, Stack } from '@maglev/ds';
+import { Button, Card, Dropdown, Feedback, Input, RadioButton, Stack, Textarea } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { useHashState } from './useHashState';
 import { getDb, logActivity, nextId, useSession, updateDb } from './store';
-import { CONTACT_AREAS, Contact, ContactArea, PLANS, Subscriber, SubscriberStatus, subscriberName } from './data';
+import { CONTACT_AREAS, Contact, ContactArea, INACTIVATION_REASONS, InactivationReason, ONBOARDING_STAGES, PLANS, Subscriber, subscriberName } from './data';
+import { EnvironmentDialog } from './EnvironmentDialog';
+import { OverdueDialog } from './OverdueDialog';
 import {
   UFS, formatCep, formatCnpj, formatPhone, isValidCnpj, isValidEmail, isValidPhone, onlyDigits, requiredMessage,
 } from './format';
@@ -17,18 +19,19 @@ import { todayIso } from './clock';
 const STATES = ['idle', 'required', 'cnpjinvalid', 'cnpjduplicate'] as const;
 type Mode = (typeof STATES)[number];
 
-type Draft = Pick<Subscriber, 'cnpj' | 'legalName' | 'tradeName' | 'stateReg' | 'cityReg' | 'address' | 'contractedUnits' | 'contacts' | 'plan' | 'status' | 'admin'>;
+type Draft = Pick<Subscriber, 'cnpj' | 'legalName' | 'tradeName' | 'stateReg' | 'cityReg' | 'address' | 'contractedUnits' | 'contacts' | 'plan' | 'onboarding' | 'status' | 'admin'>;
 
 const blankContact = (area: ContactArea = 'responsavel'): Contact => ({ id: `new-${Math.random().toString(36).slice(2, 8)}`, area, name: '', email: '', phone: '' });
 const BLANK: Draft = {
   cnpj: '', legalName: '', tradeName: '', stateReg: '', cityReg: '',
   address: { cep: '', street: '', number: '', complement: '', district: '', city: '', uf: '' },
-  contractedUnits: '', contacts: [blankContact()], plan: '', status: 'ativo',
+  contractedUnits: '', contacts: [blankContact()], plan: '', onboarding: 'nao-iniciada', status: 'ativo',
   admin: { name: '', email: '', phone: '' },
 };
 const STATUS_OPTIONS = [
   { value: 'ativo', label: 'Ativo' },
   { value: 'inadimplente', label: 'Inadimplente' },
+  { value: 'inativo', label: 'Inativo' },
 ];
 
 function AssinanteFormScreen() {
@@ -39,6 +42,11 @@ function AssinanteFormScreen() {
   const [d, setD] = useState<Draft>(() => (editing ? structuredClone(editing) : structuredClone(BLANK)));
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Mudou o status (Ativo · Inadimplente · Inativo): ao salvar, o modal de confirmação correspondente abre e só depois os dados são gravados
+  const [statusDialog, setStatusDialog] = useState(false);
+  // Motivo da inativação: pedido aqui mesmo quando se escolhe Inativo; o modal de confirmação depois só mostra o impacto
+  const [reason, setReason] = useState<InactivationReason | ''>('');
+  const [otherReason, setOtherReason] = useState('');
   // Aviso no topo: só após tentar salvar com campos obrigatórios vazios ou com mais de um erro; some ao editar qualquer campo
   const [banner, setBanner] = useState<'required' | 'multiple' | null>(null);
   const [submitTick, setSubmitTick] = useState(0);
@@ -79,6 +87,8 @@ function AssinanteFormScreen() {
   // ── validação (CTA001: CNPJ inválido ou já cadastrado não salva) ──
   const duplicate = !editing && db.subscribers.some((s) => s.cnpj === onlyDigits(d.cnpj));
   const req = (v: string, field: string) => (tried && !v.trim() ? requiredMessage(field) : undefined);
+  // Inativando um assinante que não está inativo: pede o motivo no próprio formulário
+  const inactivating = !!editing && editing.status !== 'inativo' && d.status === 'inativo';
   const errors = {
     cnpj: editing ? undefined
       : req(d.cnpj, 'CNPJ') ?? (tried && !isValidCnpj(d.cnpj) ? 'Informe um CNPJ válido' : undefined)
@@ -92,6 +102,8 @@ function AssinanteFormScreen() {
     city: req(d.address.city, 'Cidade'),
     uf: req(d.address.uf, 'UF'),
     plan: req(d.plan, 'Plano / contratação'),
+    reason: inactivating ? req(reason, 'Motivo') : undefined,
+    otherReason: inactivating && reason === 'outro' ? req(otherReason, 'Descreva o motivo') : undefined,
     adminName: editing ? undefined : req(d.admin.name, 'Nome do administrador'),
     adminEmail: editing ? undefined : req(d.admin.email, 'E-mail do administrador') ?? (tried && !isValidEmail(d.admin.email) ? 'Informe um e-mail válido' : undefined),
     adminPhone: editing ? undefined : req(d.admin.phone, 'Telefone do administrador') ?? (tried && !isValidPhone(d.admin.phone) ? 'Informe um telefone válido' : undefined),
@@ -124,7 +136,8 @@ function AssinanteFormScreen() {
       && d.contacts.every((c) => filled(c.name) && isValidEmail(c.email) && (!c.phone || isValidPhone(c.phone)));
     const company = editing ? true : isValidCnpj(d.cnpj) && !duplicate;
     const admin = editing ? true : filled(d.admin.name) && isValidEmail(d.admin.email) && isValidPhone(d.admin.phone);
-    return base && company && admin;
+    const why = !inactivating || (!!reason && (reason !== 'outro' || filled(otherReason)));
+    return base && company && admin && why;
   };
 
   const onSubmit = (e: FormEvent) => {
@@ -133,11 +146,17 @@ function AssinanteFormScreen() {
     setBanner(null);
     setSubmitTick((n) => n + 1);
     if (!validNow()) return;
+    if (editing && d.status !== editing.status) { setStatusDialog(true); return; }
+    persist();
+  };
+
+  const persist = () => {
     setSaving(true);
     const clean: Draft = { ...d, cnpj: onlyDigits(d.cnpj), address: { ...d.address, cep: onlyDigits(d.address.cep) }, admin: { ...d.admin, phone: onlyDigits(d.admin.phone) }, contacts: d.contacts.map((c) => ({ ...c, phone: onlyDigits(c.phone) })) };
     let id = editing?.id;
     updateDb((db0) => {
-      if (editing) return { ...db0, subscribers: db0.subscribers.map((s) => (s.id === editing.id ? { ...s, ...clean } : s)) };
+      // O status (e prazo/histórico de ambiente) é aplicado pelo modal de confirmação, não por este merge
+      if (editing) return { ...db0, subscribers: db0.subscribers.map((s) => (s.id === editing.id ? { ...s, ...clean, status: s.status, envHistory: s.envHistory, overdueSince: s.overdueSince, suspendAt: s.suspendAt } : s)) };
       id = nextId('ASS', db0.subscribers.map((s) => s.id));
       const created: Subscriber = {
         ...clean, id, since: todayIso(), units: 0, equipments: 0, maintenanceCents: 0, requests30d: 0, envHistory: [],
@@ -147,7 +166,6 @@ function AssinanteFormScreen() {
     const subName = subscriberName(clean);
     if (!editing) logActivity(me.id, 'Assinantes', 'cadastro', `Cadastrou o assinante ${subName}`);
     else {
-      if (clean.status !== editing.status) logActivity(me.id, 'Assinantes', 'edicao', `Alterou o status do assinante ${subName} para ${STATUS_OPTIONS.find((o) => o.value === clean.status)?.label ?? clean.status}`);
       logActivity(me.id, 'Assinantes', 'edicao', `Editou os dados do assinante ${subName}`);
     }
     setFlash(editing
@@ -232,26 +250,43 @@ function AssinanteFormScreen() {
           <FormSection className="card-open" title="Contratação">
             <div className="card-body-tight">
               <Grid>
-                <Col span={editing ? 4 : 6}>
+                <Col span={4}>
                   <DevNote note="Campo informativo (P01): não há cobrança nem pagamento na plataforma (RGN002). Alterações de plano são feitas pelo suporte neste cadastro (RGN003). Planos com limites são FE012 (fora do escopo).">
                     <Dropdown label="Plano / contratação" required options={PLANS.map((p) => ({ value: p, label: p }))} value={d.plan} onChange={(v) => set('plan', v)} error={errors.plan} />
                   </DevNote>
                 </Col>
-                <Col span={editing ? 4 : 6}>
+                <Col span={4}>
                   <DevNote note="💡 Citada pela cliente em 28/09 - a confirmar se é informativa ou se limita o cadastro de unidades (FE012). No protótipo, informativa e opcional.">
                     <Input optional label="Unidades contratadas" inputMode="numeric" value={d.contractedUnits} onChange={(e) => set('contractedUnits', onlyDigits(e.target.value))} />
                   </DevNote>
                 </Col>
+                <Col span={4}>
+                  <DevNote note="Implantação (FE013, incluída a pedido): etapa em que o assinante está na entrada dele na plataforma, mostrada também na listagem. 💡 Etapas do que o cliente descreveu (dados mestres e unidades, mapeamento de ativos, etiquetas de QR afixadas, vínculo por leitura, validação de cobertura antes da ativação final), mais Não iniciada e Concluída; a confirmar com o cliente e o time de implantação. Informativa: não bloqueia nem libera nada. Novo assinante começa em Não iniciada.">
+                    <Dropdown label="Implantação" required options={ONBOARDING_STAGES.map((o) => ({ value: o.value, label: o.label }))} value={d.onboarding} onChange={(v) => set('onboarding', v as Subscriber['onboarding'])} />
+                  </DevNote>
+                </Col>
                 {editing && (
-                  <Col span={editing ? 4 : 6}>
-                    {d.status === 'inativo' ? (
-                      <ReadField label="Status do assinante" value="Inativo - use “Ativar ambiente” no detalhe" />
-                    ) : (
-                      <DevNote note="O status não é editado aqui: Ativo ⇄ Inadimplente muda pelas ações do detalhe do assinante (“Marcar como inadimplente” / “Marcar como ativo”), que abrem o prazo de regularização e avisam os gestores (RF201-RGN002). Inativo é “Inativar ambiente” (RF204).">
-                        <ReadField label="Status do assinante" value={STATUS_OPTIONS.find((o) => o.value === d.status)?.label} />
-                      </DevNote>
-                    )}
+                  <Col span={12}>
+                    <DevNote note="Status do assinante (RF201-RGN002 / RF204), na segunda linha: Ativo · Inadimplente · Inativo. Ao salvar com o status alterado abre o modal de confirmação correspondente (inadimplente: prazo de regularização e aviso aos gestores; inativo: impacto e motivo obrigatório; de volta a ativo: ativar/regularizar), e só depois os dados são gravados; cancelar o modal não salva nada. Quem está Inativo só volta para Ativo (sai o Inadimplente da lista). A inativação continua manual: sem cobrança nem automação.">
+                      <RadioButton
+                        name="subscriber-status" label="Status do assinante" orientation="horizontal"
+                        options={editing.status === 'inativo' ? STATUS_OPTIONS.filter((o) => o.value !== 'inadimplente') : STATUS_OPTIONS}
+                        value={d.status} onChange={(v) => set('status', v as Subscriber['status'])}
+                      />
+                    </DevNote>
                   </Col>
+                )}
+                {inactivating && (
+                  <>
+                    <Col span={6}>
+                      <DevNote note="O motivo da inativação é escolhido aqui, no próprio formulário, assim que se marca Inativo (obrigatório; fica no histórico do ambiente). O modal de confirmação ao salvar só mostra o impacto, sem pedir o motivo de novo.">
+                        <Dropdown label="Motivo da inativação" required options={INACTIVATION_REASONS} value={reason} onChange={(v) => setReason(v as InactivationReason)} error={errors.reason} />
+                      </DevNote>
+                    </Col>
+                    {reason === 'outro' && (
+                      <Col span={12}><Textarea label="Descreva o motivo" required rows={3} value={otherReason} onChange={(e) => setOtherReason(e.target.value)} error={errors.otherReason} /></Col>
+                    )}
+                  </>
                 )}
               </Grid>
             </div>
@@ -314,7 +349,7 @@ function AssinanteFormScreen() {
             </FormSection>
           </DevNote>
 
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             {editing ? (
               <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
             ) : (
@@ -326,6 +361,9 @@ function AssinanteFormScreen() {
           </Stack>
         </Stack>
       </form>
+      {statusDialog && editing && (editing.status === 'inativo' || d.status === 'inativo'
+        ? <EnvironmentDialog subscriber={editing} onClose={() => setStatusDialog(false)} onConfirmed={persist} presetReason={inactivating && reason ? { reason, other: otherReason } : undefined} />
+        : <OverdueDialog subscriber={editing} onClose={() => setStatusDialog(false)} onConfirmed={persist} />)}
     </AppLayout>
   );
 }

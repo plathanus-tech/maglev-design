@@ -17,7 +17,7 @@ import { KPI_HISTORY, PLANS, Subscriber, activeUsersCount, subscriberName } from
 import { ExportButton } from './ExportButton';
 import { KpiMoney } from './kpi-value';
 import { formatCnpj, formatDate, formatMoney, formatMoneyCompact, formatNumber, formatSince, noBreak, onlyDigits, tenureMonths } from './format';
-import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, subscriberStatusBadge, takeFlash } from './ui';
+import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, onboardingBadge, subscriberStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · overdue (filtro Inadimplente) · noresults (busca sem resultados) · deactivate (RF204 pela listagem) */
 const STATES = ['idle', 'overdue', 'noresults', 'deactivate', 'columns'] as const;
@@ -132,6 +132,7 @@ function AssinantesScreen() {
     { key: 'cnpj', label: 'CNPJ', render: (v) => noBreak(formatCnpj(String(v))) },
     { key: 'plan', label: 'Plano contratado' },
     { key: 'status', label: 'Status', render: (v) => subscriberStatusBadge(v as Subscriber['status']) },
+    { key: 'onboarding', label: 'Implantação', render: (v) => onboardingBadge(v as Subscriber['onboarding']) },
     {
       key: 'since', label: 'Cliente desde',
       render: (v) => <CellPair primary={formatDate(String(v))} secondary={tenureMonths(String(v))} />,
@@ -231,6 +232,7 @@ function AssinantesScreen() {
                 fields: fieldsFor([
                   { label: 'CNPJ', value: formatCnpj(s.cnpj) },
                   { label: 'Plano contratado', value: s.plan },
+                  { label: 'Implantação', value: onboardingBadge(s.onboarding) },
                   { label: 'Cliente desde', value: formatSince(s.since) },
                   { label: 'Unidades', value: s.units },
                   { label: 'Usuários ativos', value: s.activeUsers },

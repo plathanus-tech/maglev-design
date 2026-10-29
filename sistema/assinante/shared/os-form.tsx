@@ -255,7 +255,7 @@ function OsFormScreen() {
           </div>
         </FormSection>
 
-        <Stack direction="horizontal" justify="start" gap="sm" wrap>
+        <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
           <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Criar OS'}</Button>
           <Button variant="secondary" disabled={saving} onClick={() => (!editing && request ? guard.ask(`solicitacao.html?id=${request.id}`) : goTo(editing ? `os.html?id=${editing.id}` : 'ordens-servico.html'))}>Cancelar</Button>
         </Stack>

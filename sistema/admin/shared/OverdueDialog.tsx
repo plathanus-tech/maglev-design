@@ -54,7 +54,7 @@ export function ImpactSection({ title, items, preserved }: { title: string; item
  * Status manual do assinante (RF201-RGN002): marcar como Inadimplente (abre o prazo de regularização antes de inativar o
  * ambiente e avisa os gestores) ou voltar para Ativo. Não há cobrança nem automação: a inativação continua sendo manual (RF204).
  */
-export function OverdueDialog({ subscriber, onClose }: { subscriber: Subscriber | null; onClose: () => void }) {
+export function OverdueDialog({ subscriber, onClose, onConfirmed }: { subscriber: Subscriber | null; onClose: () => void; /** Chamado depois de aplicar a mudança (ex.: o formulário de edição salva os dados). */ onConfirmed?: () => void }) {
   const toast = useToast();
   const { db, user: me } = useSession();
   if (!subscriber) return null;
@@ -70,6 +70,7 @@ export function OverdueDialog({ subscriber, onClose }: { subscriber: Subscriber 
       const at = markOverdue(me.id, subscriber);
       toast.show({ type: 'success', title: 'Assinante marcado como inadimplente', message: `Os gestores foram avisados por e-mail e na plataforma. Prazo para regularizar: até ${formatDate(at)}.` });
     }
+    onConfirmed?.();
     onClose();
   };
 

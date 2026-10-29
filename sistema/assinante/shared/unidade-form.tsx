@@ -161,7 +161,7 @@ function UnidadeFormScreen() {
             </>
           )}
 
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             {!readOnly && <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar unidade'}</Button>}
             <Button variant="secondary" disabled={saving} onClick={() => goTo('unidades.html')}>Cancelar</Button>
           </Stack>

@@ -129,7 +129,7 @@ function ConfigFormScreen({ kind }: { kind: Kind }) {
               onConfirm={() => { setConfirming(false); commit(); }}
             />
           )}
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : `Cadastrar ${meta.noun}`}</Button>
             <Button variant="secondary" disabled={saving} onClick={() => goTo(meta.list)}>Cancelar</Button>
           </Stack>

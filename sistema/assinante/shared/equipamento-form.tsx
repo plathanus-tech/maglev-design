@@ -500,7 +500,7 @@ function EquipamentoFormScreen() {
           </FormSection>
         </DevNote>
 
-        <Stack direction="horizontal" justify="start" gap="sm" wrap>
+        <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
           <Button type="submit" disabled={saving} onClick={() => { intent.current = 'save'; }}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Salvar'}</Button>
           {!editing && !returnTo && (
             <DevNote note="RF301-FLU003 / CTA003: salva e abre um novo formulário mantendo unidade e ambiente, para agilizar o mapeamento de uma cozinha.">

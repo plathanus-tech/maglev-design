@@ -202,7 +202,7 @@ function UsuarioFormScreen() {
             </>
           )}
 
-          <Stack direction="horizontal" justify="start" gap="sm" wrap>
+          <Stack direction="horizontal" justify="start" gap="sm" wrap className="form-actions">
             <Button type="submit" disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar usuário'}</Button>
             <Button variant="secondary" disabled={saving} onClick={() => goTo(editing ? `usuario.html?id=${editing.id}` : 'usuarios.html')}>Cancelar</Button>
           </Stack>

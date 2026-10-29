@@ -13,11 +13,17 @@ import { requiredMessage } from './format';
  * Inativar: confirmação + motivo; bloqueia usuários e QR Codes; notifica os Administradores do Admin.
  * Ativar: confirmação; o ambiente volta com todos os dados.
  */
-export function EnvironmentDialog({ subscriber, onClose }: { subscriber: Subscriber | null; onClose: () => void }) {
+export function EnvironmentDialog({ subscriber, onClose, onConfirmed, presetReason }: {
+  subscriber: Subscriber | null; onClose: () => void;
+  /** Chamado depois de aplicar a mudança (ex.: o formulário de edição salva os dados). */ onConfirmed?: () => void;
+  /** Motivo já escolhido no formulário de edição: o modal só mostra o impacto e não pergunta de novo. */ presetReason?: { reason: InactivationReason; other: string };
+}) {
   const toast = useToast();
   const { db } = useSession();
-  const [reason, setReason] = useState<InactivationReason | ''>('');
-  const [other, setOther] = useState('');
+  const [typedReason, setReason] = useState<InactivationReason | ''>('');
+  const [typedOther, setOther] = useState('');
+  const reason = presetReason?.reason ?? typedReason;
+  const other = presetReason?.other ?? typedOther;
   const [tried, setTried] = useState(false);
   useEffect(() => { setReason(''); setOther(''); setTried(false); }, [subscriber?.id]);
   if (!subscriber) return null;
@@ -46,6 +52,7 @@ export function EnvironmentDialog({ subscriber, onClose }: { subscriber: Subscri
     toast.show(deactivate
       ? { type: 'success', title: 'Ambiente inativado', message: 'Usuários e QR Codes do assinante foram bloqueados. Os administradores da plataforma foram notificados.' }
       : { type: 'success', title: 'Ambiente ativado', message: 'O acesso do assinante voltou a funcionar com todos os dados preservados.' });
+    onConfirmed?.();
     onClose();
   };
 
@@ -90,16 +97,20 @@ export function EnvironmentDialog({ subscriber, onClose }: { subscriber: Subscri
               />
             );
           })()}
-          <Dropdown
-            label="Motivo"
-            required
-            options={INACTIVATION_REASONS}
-            value={reason}
-            onChange={(v) => setReason(v as InactivationReason)}
-            error={reasonError}
-          />
-          {reason === 'outro' && (
-            <Textarea label="Descreva o motivo" required rows={3} value={other} onChange={(e) => setOther(e.target.value)} error={otherError} />
+          {!presetReason && (
+            <>
+              <Dropdown
+                label="Motivo"
+                required
+                options={INACTIVATION_REASONS}
+                value={reason}
+                onChange={(v) => setReason(v as InactivationReason)}
+                error={reasonError}
+              />
+              {reason === 'outro' && (
+                <Textarea label="Descreva o motivo" required rows={3} value={other} onChange={(e) => setOther(e.target.value)} error={otherError} />
+              )}
+            </>
           )}
         </Stack>
       ) : (

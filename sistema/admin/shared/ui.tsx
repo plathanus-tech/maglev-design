@@ -4,7 +4,7 @@ import { IconAlertTriangle, IconChevronDown, IconChevronUp, IconCircle, IconCirc
 import { Badge, Button, Card, Stack, Tooltip } from '@maglev/ds';
 import { useIsMobile } from './useMediaQuery';
 import {
-  ADMIN_USER_STATUS, AdminUserStatus, RECORD_STATUS_LABEL, RecordStatus, SUBSCRIBER_STATUS_BADGE, SUBSCRIBER_STATUS_LABEL, SubscriberStatus, Visual, visualBadge,
+  ADMIN_USER_STATUS, AdminUserStatus, RECORD_STATUS_LABEL, RecordStatus, SUBSCRIBER_STATUS_BADGE, SUBSCRIBER_STATUS_LABEL, SubscriberStatus, Visual, visualBadge, ONBOARDING_STAGES, OnboardingStage,
 } from './data';
 
 /**
@@ -14,6 +14,8 @@ import {
  */
 
 export const subscriberStatusBadge = (s: SubscriberStatus) => <Badge status={SUBSCRIBER_STATUS_BADGE[s]} dot>{SUBSCRIBER_STATUS_LABEL[s]}</Badge>;
+/** Etapa de implantação do assinante. */
+export const onboardingBadge = (s: OnboardingStage) => { const o = ONBOARDING_STAGES.find((x) => x.value === s) ?? ONBOARDING_STAGES[0]; return <Badge status={o.badge} dot>{o.label}</Badge>; };
 export const recordStatusBadge = (s: RecordStatus) => <Badge status={s === 'ativo' ? 'success' : 'neutral'} dot>{RECORD_STATUS_LABEL[s]}</Badge>;
 /** Estado de acesso do usuário do Admin: Convite pendente · Ativo · Inativo. */
 export const adminUserStatusBadge = (s: AdminUserStatus) => <Badge status={ADMIN_USER_STATUS[s].badge} dot>{ADMIN_USER_STATUS[s].label}</Badge>;

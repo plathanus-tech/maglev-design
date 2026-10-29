@@ -444,3 +444,9 @@ section.contact-card { border: none; background: var(--color-gray-50); }
 
 /* Modal de sessão já ativa: o painel fica atrás, bem desfocado */
 div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(--spacing-xs))); }
+
+/* Mobile: os botões do fim dos formulários (Salvar/Cadastrar e Cancelar) ocupam toda a largura, empilhados com a ação principal em cima; a navegação do wizard (Voltar/Continuar) não entra */
+@media (max-width: 767px) {
+  .form-actions { flex-direction: column !important; align-items: stretch !important; }
+  .form-actions button { width: 100%; }
+}
