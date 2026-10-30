@@ -7,16 +7,18 @@ import { goTo, setFlash } from './ui';
 /**
  * Nova solicitação (RF404), pelo portal, com usuário logado. O formulário é o mesmo da abertura pelo QR Code do
  * colaborador (`solicitacao-form-core.tsx`): aqui ele só entra na casca com sidebar e leva à triagem/lista ao enviar.
+ * Com `advanced`: obrigatórios no topo e, no fim, o bloco opcional "Detalhes adicionais" (o QR Code do colaborador segue sem ele até ser aprovado).
  */
 function SolicitacaoFormScreen() {
   const { user, can, unitIds } = useSubSession();
   return (
     <SolicitacaoFormCore
+      advanced
       shell={(content) => <AppLayout active="solicitacoes" screen="solicitacoes">{content}</AppLayout>}
       header={(
         <PageHeader
           title="Nova solicitação"
-          subtitle="Descreva o problema identificado no equipamento"
+          subtitle="Preencha o essencial para enviar. No fim do formulário há detalhes opcionais para casos mais complexos"
           breadcrumb={[{ label: 'Solicitações', href: 'solicitacoes.html' }, { label: 'Nova solicitação' }]}
         />
       )}

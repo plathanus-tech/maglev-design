@@ -44,7 +44,8 @@
   transition: transform var(--transition-normal);
   color: var(--color-text-tertiary);
 }
-.open .chevron { transform: rotate(180deg); }
+/* filho direto: um Accordion dentro do painel de outro não herda o estado aberto do pai */
+.open > .heading .chevron { transform: rotate(180deg); }
 
 /* Fechado: visibility:hidden tira o conteúdo da ordem de tabulação e dos leitores de tela */
 .panel {
@@ -53,7 +54,7 @@
   visibility: hidden;
   transition: grid-template-rows var(--transition-normal), visibility 0s linear var(--transition-normal);
 }
-.open .panel {
+.open > .panel {
   grid-template-rows: 1fr;
   visibility: visible;
   transition-delay: 0s;

@@ -1,0 +1,11 @@
+/* Detalhes adicionais em leitura (revisão e detalhe da solicitação): grupos por categoria separados por uma linha sutil, para varrer a leitura */
+.det-read { display: flex; flex-direction: column; }
+.det-read-group { padding-block: var(--spacing-md); }
+.det-read-group:first-child { padding-block-start: 0; }
+.det-read-group:last-child { padding-block-end: 0; }
+/* mesmo tom das divisórias das categorias no preenchimento */
+.det-read-group + .det-read-group { border-block-start: var(--border-width-thin) solid color-mix(in srgb, var(--color-border-subtle), var(--color-border-default) 15%); }
+
+/* Aviso de risco de segurança na linha das listas (só ícone, em tom crítico) */
+.risk-flag { display: inline-flex; align-items: center; color: var(--color-status-error-fg); }
+.risk-flag:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }

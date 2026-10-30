@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconClipboardList, IconClockHour4, IconEye, IconInbox, IconListCheck, IconPlus, IconSearch } from '@tabler/icons-react';
 import { Button, Feedback, Input, KpiCard, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -14,6 +15,7 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { requestsVisible, unitIdOfEquipment, unitName, userName, useSubSession } from './store';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, takeFlash, useRefs } from './ui';
 import { OpenByCode } from './open-by-code';
+import { SafetyRiskFlag } from './solicitacao-details';
 import { ConcludeDialog, STS, canConclude, hoursSince, isOpenBase } from './solicitacoes-shared';
 
 /** Estados: idle · noresults (busca sem resultado) · conclude (RF401-FLU006: abre "Concluir sem OS" da primeira solicitação elegível) */
@@ -40,7 +42,7 @@ function SolicitacoesScreen() {
   const toast = useToast();
   const isMobile = useIsMobile();
   const refs = useRefs();
-  const { db, user, can, unitIds } = useSubSession();
+  const { db, user, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
 
   const urlFilter = param('filter') ?? '';
@@ -123,21 +125,25 @@ function SolicitacoesScreen() {
 
   const waiting = (v: View) => (isOpenBase(v.base) ? openedAgo(hoursSince(v.r.statusChangedAt)) : '-');
   const link = (id: string) => <a className="text-link" href={`solicitacao.html?id=${id}`}>{noBreak(id)}</a>;
+  // Protocolo com o aviso de risco de segurança informado (só ícone; não muda a ordem nem a prioridade)
+  const withRisk = (r: Request) => (r.details ? <Stack direction="horizontal" gap="xs" align="center">{link(r.id)}<SafetyRiskFlag details={r.details} /></Stack> : link(r.id));
   const osLink = (id?: string) => (id ? <a className="text-link" href={`os.html?id=${id}`}>{noBreak(id)}</a> : '-');
 
-  const actions = (v: View) => (
+  const actions = (v: View) => {
+    const items: RowMenuItem[] = [];
+    if (can('solicitacoes', 'editar') && canConclude(v.r, v.base)) items.push({ label: 'Concluir sem OS', icon: <IconCircleCheck size={16} />, onClick: () => setConcluding(v.r) });
+    return (
     <RowActions>
       <RowAction icon={<IconEye size={16} />} label="Abrir solicitação" target={v.r.id} onClick={() => goTo(`solicitacao.html?id=${v.r.id}`)} />
-      {can('solicitacoes', 'editar') && (canConclude(v.r, v.base)
-        ? <RowAction icon={<IconCircleCheck size={16} />} label="Concluir sem OS" target={v.r.id} onClick={() => setConcluding(v.r)} />
-        : v.r.osId && <RowAction icon={<IconCircleCheck size={16} />} label="Indisponível, a solicitação segue o status da OS" target={v.r.id} onClick={() => undefined} disabled />)}
+      <RowMenu target={v.r.id} label={`Mais ações da ${v.r.id}`} items={items} />
     </RowActions>
-  );
+    );
+  };
 
   // Aprovada sem OS: o selo vem acompanhado de "Falta criar a OS", para não parecer que a OS já existe
   const statusWithNote = (r: Request) => (r.statusId === STS.APPROVED && !r.osId ? <CellPair primary={refs.statusBadge(r.statusId)} secondary="Falta criar a OS" /> : refs.statusBadge(r.statusId));
   const columns: TableColumn<Row>[] = [
-    { key: 'v', label: 'Protocolo', render: (_, row) => link(row.v.r.id) },
+    { key: 'v', label: 'Protocolo', render: (_, row) => withRisk(row.v.r) },
     { key: 'subject', label: 'Tipo de solicitação / Descrição', render: (_, row) => <CellPair primary={probName(row.v.r)} secondary={row.v.r.description.length > 48 ? `${row.v.r.description.slice(0, 48)}…` : row.v.r.description} /> },
     { key: 'id', label: 'Status', render: (_, row) => statusWithNote(row.v.r) },
     { key: 'waiting', label: 'Aguardando há', render: (_, row) => waiting(row.v) },
@@ -178,7 +184,7 @@ function SolicitacoesScreen() {
         columns={control}
         actions={can('solicitacoes', 'exportar') && (
           <DevNote note="Exportar (Excel): baixa um .xlsx com as solicitações do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
-            <ExportButton columns={shownColumns} rows={() => filtered.map((v): Row => ({ id: v.r.id, v }))} file="solicitacoes" sheet="Solicitações" noun={['solicitação', 'solicitações']} feminine label="Exportar solicitações para Excel" overrides={{ subject: (r) => `${probName(r.v.r)} · ${r.v.r.description}` }} />
+            <ExportButton company={company.tradeName || company.legalName} columns={shownColumns} rows={() => filtered.map((v): Row => ({ id: v.r.id, v }))} file="solicitacoes" sheet="Solicitações" noun={['solicitação', 'solicitações']} feminine label="Exportar solicitações" overrides={{ subject: (r) => `${probName(r.v.r)} · ${r.v.r.description}` }} />
           </DevNote>
         )}
       />
@@ -225,12 +231,13 @@ function SolicitacoesScreen() {
         <DevNote note="RF401: tabela paginada (10). “Aguardando há” = tempo desde a última mudança de status, só para solicitações não encerradas (RGN003). Perfil Solicitante/Gestor da unidade vê apenas as solicitações das suas unidades (RGN004). Concluir sem OS (FLU006): só para quem ainda não virou OS; convertida segue o status da OS (RGN007). SLA/prazos fora do escopo (FE001). No mobile vira lista de cards.">
           {isMobile ? (
             <MobileCardList
+              onItemClick={(i) => goTo(`solicitacao.html?id=${pageViews[i].r.id}`)}
               headingId="requests-title" title="Lista de solicitações" titleHidden toolbar={toolbar} emptyTitle={empty.title}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={pageViews.map((v) => {
                 const e = equipmentOf(v.r.equipmentId);
                 return {
-                  id: v.r.id, title: link(v.r.id), subtitle: probName(v.r), badge: statusWithNote(v.r),
+                  id: v.r.id, title: withRisk(v.r), subtitle: probName(v.r), badge: statusWithNote(v.r),
                   fields: fieldsFor([
                     { label: 'Unidade', value: unitName(db, v.unitId) },
                     { label: 'Equipamento', value: e.name },
@@ -245,7 +252,7 @@ function SolicitacoesScreen() {
               })}
             />
           ) : (
-            <Table<Row>
+            <Table<Row> onRowClick={(r) => goTo(`solicitacao.html?id=${r.v.r.id}`)}
               caption="Lista de solicitações" toolbar={toolbar} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />

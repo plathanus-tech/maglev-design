@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconEye, IconMail, IconMailForward, IconPencil, IconPlus, IconSearch, IconUserCheck, IconUserOff, IconUsers } from '@tabler/icons-react';
 import { Badge, Button, Input, KpiCard, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -77,20 +78,14 @@ function UsuariosScreen() {
   const actions = (u: AdminUser) => {
     const self = u.id === me.id;
     const activate = u.status === 'inativo';
+    const items: RowMenuItem[] = [];
+    if (can('usuarios', 'editar')) items.push({ label: 'Editar', icon: <IconPencil size={16} />, onClick: () => goTo(`usuario-form.html?id=${u.id}`) });
+    if (can('usuarios', 'cadastrar') && u.status === 'convite') items.push({ label: 'Reenviar convite', icon: <IconMailForward size={16} />, onClick: () => resend(u) });
+    if (can('usuarios', 'ativar') && u.status !== 'convite') items.push({ label: activate ? 'Ativar usuário' : 'Inativar usuário', icon: activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />, disabledReason: self ? 'Você não pode inativar o seu próprio usuário' : undefined, onClick: () => setToggling(u) });
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Visualizar usuário" target={u.name} onClick={() => goTo(`usuario.html?id=${u.id}`)} />
-        {can('usuarios', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar usuário" target={u.name} onClick={() => goTo(`usuario-form.html?id=${u.id}`)} />}
-        {can('usuarios', 'cadastrar') && u.status === 'convite' && <RowAction icon={<IconMailForward size={16} />} label="Reenviar convite" target={u.name} onClick={() => resend(u)} />}
-        {can('usuarios', 'ativar') && u.status !== 'convite' && (
-          <RowAction
-            icon={activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />}
-            label={self ? 'Você não pode inativar o seu próprio usuário' : activate ? 'Ativar usuário' : 'Inativar usuário'}
-            target={u.name}
-            disabled={self}
-            onClick={() => setToggling(u)}
-          />
-        )}
+        <RowMenu target={u.name} label="Mais ações do usuário" items={items} />
       </RowActions>
     );
   };
@@ -157,6 +152,7 @@ function UsuariosScreen() {
         <DevNote note="RF301: listagem paginada com busca por nome ou e-mail (CTA002). Estado de acesso: Convite pendente · Ativo · Inativo; a coluna Entrada / convite mostra a data de entrada (primeiro acesso concluído) ou a data do último envio do convite. Com convite pendente, Reenviar convite substitui Ativar/Inativar (não se inativa quem acabou de ser convidado); depois do primeiro acesso, Ativar/Inativar passa a valer. Reenviar convite é para quem pode cadastrar usuários. Ações: visualizar, editar (RF302), ativar/inativar com confirmação (RGN001). Ninguém inativa a si próprio (RGN002) - a ação aparece desabilitada na própria linha. Toda ação no Admin grava o usuário responsável (RGN004 / RNF011); a tela de histórico/feed por usuário é ZC004 (não prevista no contrato) e não entra.">
           {isMobile ? (
             <MobileCardList
+              onItemClick={(i) => goTo(`usuario.html?id=${rows[i].id}`)}
               headingId="users-title" title="Lista de usuários" titleHidden toolbar={toolbarFor(true)} emptyTitle={empty.title}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((u) => ({
@@ -170,7 +166,7 @@ function UsuariosScreen() {
               }))}
             />
           ) : (
-            <Table<Row>
+            <Table<Row> onRowClick={(r) => goTo(`usuario.html?id=${r.id}`)}
               caption="Lista de usuários"
               toolbar={toolbarFor(true)}
               columns={shownColumns}

@@ -135,7 +135,7 @@ function AmbientesScreen() {
     id: e.id, name: e.name, description: e.description, unit: unitName(db, e.unitId), equipments: envEquipmentCount(db, e.id), status: e.status, env: e,
   }));
 
-  /** Visualizar + menu ⋮ (Editar, Ativar/Inativar, Excluir - só as permitidas); no mobile todas aparecem como ícones. */
+  /** Visualizar + menu ⋮ (Editar, Ativar/Inativar, Excluir - só as permitidas); no desktop e no mobile. */
   const actions = (r: Row) => {
     const items: RowMenuItem[] = [];
     if (can('ambientes', 'editar')) items.push({ label: 'Editar', icon: <IconPencil size={16} />, onClick: () => setDialog({ kind: 'form', env: r.env }) });
@@ -148,8 +148,7 @@ function AmbientesScreen() {
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Visualizar ambiente" target={r.name} onClick={() => setDialog({ kind: 'view', env: r.env })} />
-        {isMobile && items.map((it) => <RowAction key={it.label} icon={it.icon as ReactElement} label={`${it.label} ambiente`} target={r.name} onClick={it.onClick} />)}
-        {!isMobile && <RowMenu target={r.name} items={items} defaultOpen={mode === 'menu' && r.id === rows[0]?.id} />}
+        <RowMenu target={r.name} items={items} defaultOpen={mode === 'menu' && r.id === rows[0]?.id} />
       </RowActions>
     );
   };

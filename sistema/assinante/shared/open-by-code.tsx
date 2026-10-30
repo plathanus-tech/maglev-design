@@ -10,7 +10,7 @@ import '../../externo/shared/externo.css';
 import { useSubDb, useSubSession } from './store';
 import { goTo, useRefs } from './ui';
 import { makeDetector, tokenOf } from './qr-link';
-import './rowmenu.css';
+import '../../admin/shared/rowmenu.css';
 
 const norm = (v: string) => v.trim().toLowerCase();
 

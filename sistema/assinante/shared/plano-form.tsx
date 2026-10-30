@@ -1,17 +1,18 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { IconArrowDown, IconArrowLeft, IconArrowUp, IconChevronLeft, IconGripVertical, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconArrowDown, IconArrowLeft, IconArrowUp, IconChevronLeft, IconGripVertical, IconChevronRight, IconPlus, IconTrash, IconDeviceFloppy } from '@tabler/icons-react';
 import { Accordion, Badge, Button, Card, DatePicker, Dialog, Dropdown, Feedback, Input, RadioButton, Stack, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, requiredMessage } from '../../admin/shared/format';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
-import { CHECKLIST_KIND_LABEL, ChecklistItem, ChecklistKind, EVIDENCE_OPTIONS, NO_UNIT, READING_UNITS, Executor, Frequency, Plan, nowLocal } from './data';
+import { CHECKLIST_KIND_LABEL, ChecklistItem, ChecklistKind, ChecklistTemplate, EVIDENCE_OPTIONS, NO_UNIT, READING_UNITS, Executor, Frequency, Plan, nowLocal } from './data';
 import { techSpecialtiesText } from './prestadores';
 import { CheckGroup } from './ListKit';
 import { FormStepper, FormStepState } from './form-stepper';
 import { useLeaveGuard } from './leave-guard';
 import { EquipmentPicker } from './PlanEquipmentPicker';
 import { EVERY_UNIT, FREQUENCY_OPTIONS, TODAY, WEEKDAY_OPTIONS, describeFrequency, executorOf, occurrences, savePlan } from './preventivas';
-import { nextSeq, unitName, useSubSession } from './store';
+import { nextSeq, unitName, updateSubDb, useSubSession } from './store';
+import { ReplaceChecklistDialog, SaveChecklistDialog, savableItems, templateHint } from './checklist-templates';
 import { useRefs } from './ui';
 import { Col, Grid, ReadField, SectionLabel, Text, goTo, param, setFlash, takeFlash } from './ui';
 
@@ -77,7 +78,7 @@ function PlanoFormScreen() {
   // Volta do cadastro de prestador (?restore=1&provider=): devolve tudo o que já tinha sido preenchido e escolhe o prestador novo
   const [restored] = useState(() => (!editing && param('restore') ? takePlanDraft() : null));
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const startStep = /^step([2-6])(?:empty)?$/.exec(initialState)?.[1];
+  const startStep = /^step([2-6])(?:empty|save|saveduplicate|replace)?$/.exec(initialState)?.[1];
   // Variante step4empty: mesmo exemplo preenchido, mas sem nenhum item de checklist (mostra o passo 4 vazio)
   const emptyChecklist = initialState === 'step4empty';
   const [d, setD] = useState<Draft>(() => {
@@ -120,7 +121,7 @@ function PlanoFormScreen() {
 
   useEffect(() => {
     const on = () => {
-      const m = /^step([2-6])(?:empty)?$/.exec(readState());
+      const m = /^step([2-6])(?:empty|save|saveduplicate|replace)?$/.exec(readState());
       if (m && !editing) { setStep(Number(m[1])); setMaxStep((x) => Math.max(x, Number(m[1]))); setTried(false); }
     };
     window.addEventListener('hashchange', on);
@@ -145,6 +146,22 @@ function PlanoFormScreen() {
     setLiveMsg(`Item movido para a posição ${to + 1} de ${a.length}`);
   };
   const plain = d.checklist.filter((c) => c.kind !== 'leitura');
+  // Checklists salvos: salvar o do plano (modal com nome) e preencher a partir de um salvo (busca; já traz todos os itens, editáveis)
+  const templates = db.checklistTemplates;
+  // Variantes do navegador (passo 4): step4save = modal de salvar · step4saveduplicate = nome já existente · step4replace = confirmação de substituir itens
+  const [saveOpen, setSaveOpen] = useState(initialState === 'step4save' || initialState === 'step4saveduplicate');
+  const [pendingTpl, setPendingTpl] = useState<ChecklistTemplate | null>(() => (initialState === 'step4replace' ? templates[0] ?? null : null));
+  const applyTemplate = (t: ChecklistTemplate) => {
+    setD((x) => ({ ...x, checklist: [...t.items.map((i) => ({ id: uid(), text: i.text, kind: i.kind })), ...x.checklist.filter((c) => c.kind === 'leitura')] }));
+    toast.show({ type: 'success', title: 'Checklist aplicado', message: `Os itens de “${t.name}” foram preenchidos. Você pode editar, remover e adicionar itens.` });
+  };
+  const pickTemplate = (id: string) => { const t = templates.find((x) => x.id === id); if (!t) return; if (savableItems(d.checklist).length) setPendingTpl(t); else applyTemplate(t); };
+  const saveTemplate = (name: string) => {
+    const items = savableItems(d.checklist).map((c) => ({ text: c.text.trim(), kind: c.kind as 'obrigatorio' | 'opcional' }));
+    updateSubDb((db0) => ({ ...db0, checklistTemplates: [...db0.checklistTemplates, { id: `CKL-${Date.now().toString(36)}`, name, items, createdAt: nowLocal(), createdBy: user.name }] }));
+    setSaveOpen(false);
+    toast.show({ type: 'success', title: 'Checklist salvo', message: `“${name}” já pode ser usado em outros planos.` });
+  };
   const readingItems = d.checklist.filter((c) => c.kind === 'leitura');
   const fullIndex = (id: string) => d.checklist.findIndex((c) => c.id === id);
   const moveItem = (i: number, dir: -1 | 1) => { const id = plain[i].id; const target = plain[i + dir]; if (!target) return; focusAfter.current = { id, dir: dir === -1 ? 'up' : 'down' }; relocate(id, fullIndex(target.id)); };
@@ -509,6 +526,15 @@ function PlanoFormScreen() {
       <Card className="card-open" title="Checklist" subtitle="Procedimentos que o executor percorre em cada preventiva">
         <div className="card-body-tight">
           <Stack gap="lg">
+            <DevNote note="Checklist salvo (reaproveitar): busca entre os checklists salvos do assinante (nome e itens) e, ao escolher, PREENCHE na hora todos os itens, que seguem editáveis (editar, remover, reordenar, adicionar), sem prévia separada; se já houver itens preenchidos, pede confirmação antes de substituí-los (as medições do passo Evidências não são tocadas). Aplicar não vincula o plano ao modelo: mudanças no checklist do plano não alteram o salvo, e o salvo não altera planos já criados.">
+              <Dropdown
+                label="Usar um checklist salvo" optional searchable searchPlaceholder="Buscar checklist salvo" emptyText="Nenhum checklist encontrado"
+                placeholder={templates.length ? 'Escolha um checklist para preencher os itens' : 'Nenhum checklist salvo ainda'} disabled={!templates.length}
+                options={templates.map((t) => ({ value: t.id, label: t.name, description: templateHint(t), keywords: t.items.map((i) => i.text).join(' ') }))}
+                value="" onChange={pickTemplate}
+                helperText={templates.length ? undefined : 'Salve o checklist deste plano para reaproveitar depois'}
+              />
+            </DevNote>
             {noChecklist && (
               <div className="fb-single">
                 <Feedback type="info" message="Sem checklist, o executor não terá itens para marcar nas execuções. Você pode adicionar itens depois, editando o plano" />
@@ -552,7 +578,10 @@ function PlanoFormScreen() {
             {dragId && <div data-chk-id={CHK_END} className={`chk-end${overId === CHK_END ? ' is-over' : ''}`} aria-hidden="true" />}
             <Stack direction="horizontal">
               <Button variant="ghost" size="sm" iconLeft={<IconPlus size={16} />} onClick={() => set('checklist', [...d.checklist, blankItem()])}>Adicionar item</Button>
+              <Button variant="ghost" size="sm" iconLeft={<IconDeviceFloppy size={16} />} disabled={savableItems(d.checklist).length === 0} onClick={() => setSaveOpen(true)}>Salvar checklist</Button>
             </Stack>
+            {saveOpen && <SaveChecklistDialog items={savableItems(d.checklist)} templates={templates} initialName={initialState === 'step4saveduplicate' ? templates[0]?.name : undefined} onClose={() => setSaveOpen(false)} onSave={saveTemplate} />}
+            {pendingTpl && <ReplaceChecklistDialog template={pendingTpl} onClose={() => setPendingTpl(null)} onConfirm={() => { applyTemplate(pendingTpl); setPendingTpl(null); }} />}
           </Stack>
         </div>
       </Card>

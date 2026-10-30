@@ -7,9 +7,9 @@ export interface AccordionItem {
   title: string;
   content: ReactNode;
   /** Texto de apoio sob o título (descreve o conteúdo do item). */
-  subtitle?: string;
+  subtitle?: ReactNode;
   /** Texto de apoio quando o item está recolhido (ex.: resumo do conteúdo). Sem ele, usa `subtitle`. */
-  collapsedSubtitle?: string;
+  collapsedSubtitle?: ReactNode;
   /** Informação secundária à direita do cabeçalho, antes do chevron (ex.: “2 dicas”). Menor e em cor de apoio. */
   meta?: ReactNode;
   /** Informação à esquerda do `meta`, só com o item recolhido (ex.: um badge com o resultado que, aberto, já aparece no conteúdo). */

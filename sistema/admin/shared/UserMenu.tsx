@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { IconChevronDown, IconLogout, IconMoon, IconSun } from '@tabler/icons-react';
-import { Avatar, Button, Tooltip } from '@maglev/ds';
+import { IconChevronDown, IconLogout, IconMoon, IconSun, IconUsers } from '@tabler/icons-react';
+import { Avatar, Button, Toggle, Tooltip } from '@maglev/ds';
 import { useTheme } from './theme';
 
 /** Alternância direta claro/escuro: só o ícone, com nome acessível e dica indicando a ação. */
@@ -25,10 +25,13 @@ export function ThemeButton({ placement = 'bottom' }: { placement?: 'top' | 'bot
 
 /**
  * Conta da pessoa logada. Desktop: avatar + nome + seta; mobile (`compact`): só o avatar.
- * Ao abrir: nome, e-mail e “Sair”. Fecha com Esc, clique fora ou ao escolher uma ação.
+ * Ao abrir: nome, e-mail, “Gestão de usuários” (só com `usersHref`, para quem tem permissão), “Modo escuro” (interruptor; o menu fica aberto para ver o efeito) e “Sair”.
+ * Fecha com Esc, clique fora ou ao escolher uma ação.
  */
-export function UserMenu({ name, email, compact, onLogout }: { name: string; email: string; compact?: boolean; onLogout: () => void }) {
+export function UserMenu({ name, email, compact, onLogout, usersHref }: { name: string; email: string; compact?: boolean; onLogout: () => void; usersHref?: string }) {
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useTheme();
+  const dark = theme === 'dark';
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
@@ -68,6 +71,22 @@ export function UserMenu({ name, email, compact, onLogout }: { name: string; ema
           <div className="user-menu-info">
             <span className="user-menu-name">{name}</span>
             <span className="user-menu-email">{email}</span>
+          </div>
+          <div className="user-menu-sep" role="separator" />
+          {usersHref && (
+            <a role="menuitem" className="user-menu-item" href={usersHref}>
+              <IconUsers size={16} aria-hidden="true" />
+              Gestão de usuários
+            </a>
+          )}
+          <div
+            role="menuitemcheckbox" aria-checked={dark} tabIndex={0} className="user-menu-item"
+            onClick={() => setTheme(dark ? 'light' : 'dark')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTheme(dark ? 'light' : 'dark'); } }}
+          >
+            <IconMoon size={16} aria-hidden="true" />
+            Modo escuro
+            <span className="user-menu-switch" aria-hidden="true"><Toggle size="sm" checked={dark} tabIndex={-1} onChange={() => undefined} aria-label="Modo escuro" /></span>
           </div>
           <div className="user-menu-sep" role="separator" />
           <button type="button" role="menuitem" className="user-menu-item" onClick={() => { setOpen(false); onLogout(); }}>

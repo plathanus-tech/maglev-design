@@ -55,7 +55,7 @@ function OrdensScreen() {
   const toast = useToast();
   const isMobile = useIsMobile();
   const refs = useRefs();
-  const { db, user, can, unitIds } = useSubSession();
+  const { db, user, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const isExecutor = user.profile === 'executor';
   const canPlan = can('os', 'editar') && !isExecutor;
@@ -210,7 +210,7 @@ function OrdensScreen() {
 
   const dueNode = (r: Row) => dueCell(r.dueAt, r.late);
 
-  /** Desktop: olho + menu ⋮ (Editar, Classificar, Reatribuir). Cards no mobile: as quatro ações já abertas, como ícones. */
+  /** Olho + menu ⋮ (Editar, Classificar, Reatribuir), no desktop e no mobile. */
   const actions = (r: Row) => {
     const closed = !isEditable(refs.base(r.statusId));
     const manage: RowMenuItem[] = canPlan && !closed ? [
@@ -221,9 +221,7 @@ function OrdensScreen() {
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Visualizar OS" target={r.id} onClick={() => goTo(`os.html?id=${r.id}`)} />
-        {isMobile
-          ? manage.map((it) => <RowAction key={it.label} icon={it.icon as ReactElement} label={`${it.label} OS`} target={r.id} onClick={it.onClick} />)
-          : <RowMenu target={r.id} label={`Mais ações da ${r.id}`} items={manage} />}
+        <RowMenu target={r.id} label={`Mais ações da ${r.id}`} items={manage} />
       </RowActions>
     );
   };
@@ -276,7 +274,7 @@ function OrdensScreen() {
         columns={control}
         actions={can('os', 'exportar') && (
           <DevNote note="Exportar (Excel): baixa um .xlsx com as ordens de serviço do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
-            <ExportButton columns={shownColumns} rows={() => filtered.map(toRow)} file="ordens-de-servico" sheet="Ordens de serviço" noun={['ordem de serviço', 'ordens de serviço']} feminine label="Exportar ordens de serviço para Excel" />
+            <ExportButton company={company.tradeName || company.legalName} columns={shownColumns} rows={() => filtered.map(toRow)} file="ordens-de-servico" sheet="Ordens de serviço" noun={['ordem de serviço', 'ordens de serviço']} feminine label="Exportar ordens de serviço" />
           </DevNote>
         )}
       />
@@ -367,6 +365,7 @@ function OrdensScreen() {
             <DevNote note="RF501: Executor/Prestador e Responsável são colunas separadas. Prazo vencido e não concluído é destacado em vermelho com o atraso (RGN003) - SLA configurável é FE001, fora do escopo. Ações por linha: ícone de olho (Visualizar, RF503, somente leitura, sempre permitido) e menu ⋮ com Editar (abre o formulário de edição), Classificar (diálogo rápido só com tipo de manutenção e prioridade, RF502-FLU006) e Reatribuir (diálogo rápido). O menu só aparece para quem pode editar e enquanto a OS não estiver concluída/cancelada. Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação.">
               {isMobile ? (
                 <MobileCardList
+                  onItemClick={(i) => goTo(`os.html?id=${pageRows[i].id}`)}
                   headingId="os-title" title="Lista de ordens de serviço" titleHidden toolbar={toolbar} emptyTitle={empty.title}
                   page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
                   items={pageRows.map((r) => ({
@@ -384,7 +383,7 @@ function OrdensScreen() {
                   }))}
                 />
               ) : (
-                <Table<Row>
+                <Table<Row> onRowClick={(r) => goTo(`os.html?id=${r.id}`)}
                   caption="Lista de ordens de serviço" toolbar={toolbar} columns={shownColumns} rows={pageRows}
                   sortKey={sort.key as keyof Row} sortDir={sort.dir}
                   onSort={(k) => setSort((s) => (s.key === k ? (s.dir === 'desc' ? { key: s.key, dir: 'asc' } : { key: 'attention', dir: 'asc' }) : { key: String(k), dir: 'desc' }))}

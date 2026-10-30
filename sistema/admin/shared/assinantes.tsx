@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import {
   IconCircleCheck, IconCircleOff, IconEye, IconMessageReport, IconPencil, IconPlus, IconReportMoney, IconSearch,
@@ -109,17 +110,13 @@ function AssinantesScreen() {
   const actions = (s: Subscriber) => {
     const name = subscriberName(s);
     const activate = s.status === 'inativo';
+    const items: RowMenuItem[] = [];
+    if (can('assinantes', 'editar')) items.push({ label: 'Editar', icon: <IconPencil size={16} />, onClick: () => goTo(`assinante-form.html?id=${s.id}`) });
+    if (can('assinantes', 'ativar')) items.push({ label: activate ? 'Ativar ambiente' : 'Inativar ambiente', icon: activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />, onClick: () => setToggling(s) });
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Visualizar assinante" target={name} onClick={() => goTo(`assinante.html?id=${s.id}`)} />
-        {can('assinantes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar assinante" target={name} onClick={() => goTo(`assinante-form.html?id=${s.id}`)} />}
-        {can('assinantes', 'ativar') && (
-          <RowAction
-            icon={activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />}
-            label={activate ? 'Ativar ambiente' : 'Inativar ambiente'} target={name}
-            onClick={() => setToggling(s)}
-          />
-        )}
+        <RowMenu target={name} label="Mais ações do assinante" items={items} />
       </RowActions>
     );
   };
@@ -170,7 +167,7 @@ function AssinantesScreen() {
       columns={withColumns ? control : undefined}
       actions={can('assinantes', 'exportar') && (
         <DevNote note="Exportar (Excel): baixa um .xlsx com os assinantes do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
-          <ExportButton columns={shownColumns} rows={() => filtered.map((s): Row => ({ ...s, activeUsers: activeUsersCount(s) }))} file="assinantes" sheet="Assinantes" noun={['assinante', 'assinantes']} label="Exportar assinantes para Excel" overrides={{ units: (r) => r.units, activeUsers: (r) => r.activeUsers, equipments: (r) => r.equipments, maintenanceCents: (r) => r.maintenanceCents / 100 }} />
+          <ExportButton columns={shownColumns} rows={() => filtered.map((s): Row => ({ ...s, activeUsers: activeUsersCount(s) }))} file="assinantes" sheet="Assinantes" noun={['assinante', 'assinantes']} label="Exportar assinantes" overrides={{ units: (r) => r.units, activeUsers: (r) => r.activeUsers, equipments: (r) => r.equipments, maintenanceCents: (r) => r.maintenanceCents / 100 }} />
         </DevNote>
       )}
     />
@@ -216,6 +213,7 @@ function AssinantesScreen() {
         <DevNote note="RF201: listagem paginada (10), ordenada por nome (clique no cabeçalho inverte - RGN001). Busca por nome fantasia, razão social ou CNPJ + filtro de status, combinados (CTA002). Usuários ativos = só quem tem conta (sem solicitantes anônimos via QR). Gasto = soma dos custos realizados das OS. Ações por linha conforme o perfil: visualizar (RF203), editar (RF202), ativar/inativar ambiente (RF204). Coluna “Estágio de implantação” é FE013 (fora do escopo). No mobile vira lista de cards.">
           {isMobile ? (
             <MobileCardList
+              onItemClick={(i) => goTo(`assinante.html?id=${pageRows[i].id}`)}
               headingId="subscribers-title"
               title="Lista de assinantes"
               titleHidden
@@ -245,7 +243,7 @@ function AssinantesScreen() {
               }))}
             />
           ) : (
-            <Table<Row>
+            <Table<Row> onRowClick={(r) => goTo(`assinante.html?id=${r.id}`)}
               caption="Lista de assinantes"
               toolbar={toolbarFor(true)}
               columns={shownColumns}

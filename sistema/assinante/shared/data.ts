@@ -11,7 +11,7 @@ import { daysText, expiringWarranties } from './warranty';
 import { alertText, attendanceAlerts } from './os-alerts';
 import { clockNow } from '../../admin/shared/clock';
 
-export const DB_VERSION = 37;
+export const DB_VERSION = 41;
 
 /** Alerta de reincidência (documento do cliente: “3 falhas em 90 dias”). 💡 Valores a confirmar e, se aprovado, configuráveis. */
 export const RECURRENCE_N = 3;
@@ -130,6 +130,15 @@ export type TipResult = 'realizada' | 'pulada';
 /** Notas do troubleshooting (RF402-RGN008): resultado geral + resultado de cada dica. */
 export interface TroubleshootingRun { overall: 'resolvido' | 'sem-sucesso' | 'nao-iniciado'; tips: Array<{ text: string; result: TipResult }> }
 export interface LogEntry { id: string; at: string; by: string; text: string }
+/** Detalhes opcionais da solicitação (Nova solicitação v2): contexto da ocorrência, tentativas, impacto, segurança, acesso e observações. */
+export interface RequestDetails {
+  startedDate: string; startedTime: string; pattern: '' | 'continuo' | 'intermitente'; frequency: string;
+  tried: string[]; triedNotes: string; errorCode: string;
+  impacts: string[]; alternative: '' | 'sim' | 'nao' | 'nao-sei';
+  risks: string[]; riskNotes: string;
+  bestTime: string; accessRestricted: '' | 'sim' | 'nao'; accessInfo: string;
+  extra: string;
+}
 export interface Request {
   /** SOL-000124 (RF404-RGN003: sequencial por assinante). */
   id: string;
@@ -152,6 +161,8 @@ export interface Request {
   priorityChange?: { suggestedId: string; reason: string };
   osId?: string;
   previousRepair: { related: boolean; note?: string };
+  /** Só quando a pessoa preencheu a parte opcional (v2). */
+  details?: RequestDetails;
   troubleshooting: TroubleshootingRun;
   internalNotes?: string;
   complement?: { question: string; askedAt: string; answer?: string; /** Foto enviada na resposta (nome do arquivo). A resposta é texto e/ou foto (RF004-FLU003). */ answerPhoto?: string; answeredAt?: string };
@@ -229,6 +240,8 @@ export type ChecklistKind = 'obrigatorio' | 'leitura' | 'opcional';
 export const CHECKLIST_KIND_LABEL: Record<ChecklistKind, string> = { obrigatorio: 'Obrigatório', leitura: 'Leitura obrigatória', opcional: 'Opcional' };
 /** Item do checklist. Para `leitura`, é a medição configurada no plano: nome (`text`) e unidade; toda medição é obrigatória na execução. */
 export interface ChecklistItem { id: string; text: string; kind: ChecklistKind; unit?: string }
+/** Checklist salvo (modelo reutilizável do assinante): só itens de procedimento; as medições são do passo Evidências. */
+export interface ChecklistTemplate { id: string; name: string; items: Array<{ text: string; kind: Exclude<ChecklistKind, 'leitura'> }>; createdAt: string; createdBy: string }
 export const READING_UNITS = ['°C', '°F', '%', 'bar', 'V', 'A', 'Sem unidade'];
 export const NO_UNIT = 'Sem unidade';
 export const EVIDENCE_OPTIONS = ['Foto antes/depois', 'Foto da placa', 'Leitura/medição', 'Assinatura/aceite', 'Relatório técnico'];
@@ -286,6 +299,8 @@ export interface SubDb {
   users: SubUser[]; units: Unit[]; environments: Environment[]; equipments: Equipment[];
   requests: Request[]; orders: WorkOrder[]; providers: Provider[]; plans: Plan[]; executions: PlanExecution[];
   notifications: Notification[];
+  /** Checklists salvos para reaproveitar em novos planos de manutenção. */
+  checklistTemplates: ChecklistTemplate[];
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -797,6 +812,10 @@ export function seed(): SubDb {
     if (u.status === 'convite') return;
     if (u.profile === 'administrador' || u.profile === 'gestor') {
       note(u.id, 1, 'solicitacao', 'Nova solicitação aberta', `${r1.id}: ${fritadeira.name} não liga (impacto alto)`, `solicitacao.html?id=${r1.id}`, hoursAgo(2));
+      // Risco de segurança informado na SOL-000123 (gás): notificação própria, além da de nova solicitação
+      const riskReq = requests.find((r) => r.id === 'SOL-000123');
+      const riskEq = riskReq && equipments.find((e) => e.id === riskReq.equipmentId);
+      if (riskReq && riskEq) note(u.id, 8, 'solicitacao', 'Risco de segurança informado', `${riskReq.id}: ${riskEq.name} · cheiro de gás. Priorize a triagem`, `solicitacao.html?id=${riskReq.id}`, hoursAgo(1));
       note(u.id, 2, 'os', 'Orçamento aguardando aprovação', `${osLava.id}: orçamento de R$ 1.380,00 da Lava Forte`, `os.html?id=${osLava.id}`, daysAgo(4, 17));
       note(u.id, 3, 'solicitacao', 'Resposta à complementação pendente', 'Solicitação da coifa aguarda a foto do solicitante', 'solicitacoes.html', daysAgo(2, 15), true);
       note(u.id, 4, 'preventiva', 'Preventiva vencida', 'Preventiva mensal das câmaras frias está atrasada', 'planos.html', daysAgo(1, 7));
@@ -859,7 +878,22 @@ export function seed(): SubDb {
   orders.filter((o) => o.equipmentId === fornoId && o.subject === 'Descalcificação do forno combinado').forEach((o) => { o.files.push({ id: 'F1', name: 'forno2.webp', kind: 'foto', at: daysAgo(25, 11), by: 'Chama Viva' }); });
   // Orçamentos aprovados de OS já concluídas: custo realizado confirmado no valor aprovado (histórico de demonstração). As OS em andamento ficam pendentes de confirmação, para mostrar o aviso
   orders.forEach((o) => { if (o.budget?.decision === 'aprovado' && o.statusId === 'STO-08' && !o.budget.realized) o.budget.realized = { cents: o.budget.cents, confirmedAt: o.budget.decidedAt ?? o.createdAt, by: o.budget.decidedBy ?? '-' }; });
-  return { version: DB_VERSION, subscriberId: SUBSCRIBER_ID, users, units, environments, equipments, requests, orders, providers, plans, executions, notifications };
+  // DEMONSTRAÇÃO: solicitação aberta com detalhes adicionais (para ver o card no detalhe da solicitação)
+  const withDetails = requests.find((r) => r.id === 'SOL-000126');
+  if (withDetails) withDetails.details = { startedDate: dayOnly(3), startedTime: '22:30', pattern: 'intermitente', frequency: 'diaria', tried: ['ligado', 'reiniciou'], triedNotes: 'Religuei o equipamento duas vezes e o problema voltou.', errorCode: 'E24', impacts: ['producao', 'estoque'], alternative: 'nao', risks: ['eletrico'], riskNotes: 'Faíscas ao ligar o disjuntor.', bestTime: 'fora', accessRestricted: 'sim', accessInfo: 'Entrada pela doca; falar com o gerente de plantão.', extra: '' };
+  // DEMONSTRAÇÃO: solicitação aberta (em triagem) com risco de gás informado, para ver o aviso na linha da lista
+  const openWithRisk = requests.find((r) => r.id === 'SOL-000123');
+  if (openWithRisk) openWithRisk.details = { startedDate: dayOnly(0), startedTime: '07:40', pattern: 'continuo', frequency: '', tried: ['ligado'], triedNotes: '', errorCode: '', impacts: ['indisponivel'], alternative: 'nao-sei', risks: ['gas'], riskNotes: 'Cheiro de gás perto do queimador.', bestTime: 'qualquer', accessRestricted: 'nao', accessInfo: '', extra: '' };
+  // DEMONSTRAÇÃO: checklists salvos para reaproveitar em novos planos
+  const checklistTemplates: ChecklistTemplate[] = [
+    { id: 'CKL-001', name: 'Higienização da câmara fria', createdAt: daysAgo(40, 9), createdBy: 'Mariana Costa', items: [
+      { text: 'Verificar a temperatura de operação', kind: 'obrigatorio' }, { text: 'Higienizar prateleiras e piso', kind: 'obrigatorio' },
+      { text: 'Conferir a vedação das portas', kind: 'obrigatorio' }, { text: 'Checar o dreno de degelo', kind: 'opcional' }] },
+    { id: 'CKL-002', name: 'Inspeção da cozinha quente', createdAt: daysAgo(18, 14), createdBy: 'Mariana Costa', items: [
+      { text: 'Verificar chamas e queimadores', kind: 'obrigatorio' }, { text: 'Limpar filtros e coifa', kind: 'obrigatorio' },
+      { text: 'Testar as válvulas de segurança do gás', kind: 'obrigatorio' }, { text: 'Registrar ruídos ou vibrações anormais', kind: 'opcional' }] },
+  ];
+  return { version: DB_VERSION, subscriberId: SUBSCRIBER_ID, users, units, environments, equipments, requests, orders, providers, plans, executions, notifications, checklistTemplates };
 }
 
 /**

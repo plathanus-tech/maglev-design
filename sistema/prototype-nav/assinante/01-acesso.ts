@@ -18,6 +18,7 @@ export const journeys: Journey[] = [
           v('login-pending', 'Convite pendente', 'login.html#state=pending'),
           v('login-envinactive', 'Ambiente desativado', 'login.html#state=envinactive'),
           v('login-passwordchanged', 'Senha alterada com sucesso', 'login.html#state=passwordchanged'),
+          v('login-teaminfo', 'Faz parte de uma equipe? (modal de orientação)', 'login.html#state=teaminfo'),
         ],
       },
       {

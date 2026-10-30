@@ -34,6 +34,7 @@ function SolicitarScreen() {
   return (
     <SolicitacaoFormCore
       external
+      advanced
       shell={shell}
       header={<PageHeader title="Abrir solicitação" subtitle={eq.name} />}
       troubleshootingHeader={<PageHeader title="Solução de problemas" subtitle={eq.name} />}

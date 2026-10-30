@@ -10,6 +10,7 @@ import {
 } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
+import { ShareButton } from './share-button';
 import { MobileCardList, MobileCardItem } from '../../admin/shared/MobileCardList';
 import { useHashState } from '../../admin/shared/useHashState';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
@@ -1084,6 +1085,7 @@ function OsScreen() {
             subtitle={[req ? refs.requestType(req.problemId)?.name : plan?.name, eq?.name].filter(Boolean).join(' · ') || order.subject}
             badge={refs.statusBadge(order.statusId)}
             breadcrumb={[{ label: 'Ordens de serviço', href: 'ordens-servico.html' }, { label: order.id }]}
+            iconActions={<ShareButton kind="os" id={order.id} requiresLogin />}
             actions={(
               <>
                 {canPlan && <Button iconLeft={<IconPencil size={20} />} onClick={() => goTo(`os-form.html?id=${order.id}`)}>Editar OS</Button>}

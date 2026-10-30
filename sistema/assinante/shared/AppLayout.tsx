@@ -9,7 +9,7 @@ import logoIcon from '../../../public/maglev-symbol-dark.svg';
 import logoLight from '../../../public/maglev-logo.svg';
 import logoDark from '../../../public/maglev-logo-dark.svg';
 import { PageHeader, mountApp } from '../../admin/shared/AppLayout';
-import { ThemeButton, UserMenu } from '../../admin/shared/UserMenu';
+import { UserMenu } from '../../admin/shared/UserMenu';
 import { useIsMobile } from '../../admin/shared/useMediaQuery';
 import { formatDateTime } from '../../admin/shared/format';
 import { ScreenKey } from './data';
@@ -181,8 +181,7 @@ function AppLayoutInner({ active, screen, children, layout = 'default' }: { acti
       {!compact && <GlobalSearch />}
       <NotificationBell />
       <HelpButton />
-      <ThemeButton />
-      <UserMenu name={user.name} email={user.email} compact={compact} onLogout={logout} />
+      <UserMenu name={user.name} email={user.email} compact={compact} onLogout={logout} usersHref={can('equipe') ? 'equipe.html' : undefined} />
     </>
   );
 

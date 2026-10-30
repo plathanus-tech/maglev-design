@@ -3,6 +3,7 @@ import { IconAlertTriangle, IconBuilding, IconCalendarEvent, IconCircleCheck, Ic
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, Table, TableColumn, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
+import { ShareButton } from './share-button';
 import { EnvironmentDialog } from './EnvironmentDialog';
 import { OverdueDialog } from './OverdueDialog';
 import { RowMenu, RowMenuItem } from '../../assinante/shared/RowMenu';
@@ -86,6 +87,7 @@ function AssinanteScreen() {
           badge={subscriberStatusBadge(s.status)}
           subtitle={s.legalName}
           breadcrumb={[{ label: 'Assinantes', href: 'assinantes.html' }, { label: name }]}
+          iconActions={<ShareButton kind="assinante" id={name} requiresLogin />}
           actions={(
             <>
               {can('assinantes', 'editar') && (

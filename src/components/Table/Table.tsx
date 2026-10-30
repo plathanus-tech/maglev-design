@@ -84,6 +84,13 @@ export type TableProps<T extends Record<string, unknown>> = {
   toolbar?: ReactNode;
   /** Ações no cabeçalho do Card, no lado oposto ao título (ex.: escolher colunas). */
   actions?: ReactNode;
+  /**
+   * Clicar na linha abre a visualização. É um atalho do mouse: cliques em links, botões e campos da linha (e seleção de texto) não disparam a ação, e o acesso por teclado continua
+   * pelo link ou pela ação da própria linha (a linha não entra na ordem de tabulação).
+   */
+  onRowClick?: (row: T, index: number) => void;
+  /** Quais linhas respondem ao clique (padrão: todas). Linhas sem ação ficam sem cursor de mão. */
+  isRowClickable?: (row: T) => boolean;
 };
 
 export type TablePagination = {
@@ -184,6 +191,8 @@ export function Table<T extends Record<string, unknown>>({
   pagination,
   toolbar,
   actions,
+  onRowClick,
+  isRowClickable,
 }: TableProps<T>) {
   const ariaSort = (col: TableColumn<T>): 'ascending' | 'descending' | 'none' | undefined => {
     if (!col.sortable) return undefined;
@@ -241,7 +250,15 @@ export function Table<T extends Record<string, unknown>>({
               </tr>
             ) : (
               rows.map((row, i) => (
-                <tr key={i} className={styles.tr}>
+                <tr
+                  key={i} className={cx(styles.tr, onRowClick && (!isRowClickable || isRowClickable(row)) && styles.clickable)}
+                  onClick={onRowClick && (!isRowClickable || isRowClickable(row)) ? (e) => {
+                    const t = e.target as HTMLElement;
+                    if (t.closest('a, button, input, select, textarea, label, summary, [role="button"], [role="menuitem"], [role="checkbox"], [data-no-row-click]')) return;
+                    if (window.getSelection()?.toString()) return;
+                    onRowClick(row, i);
+                  } : undefined}
+                >
                   {columns.map(col => (
                     <td
                       key={String(col.key)}

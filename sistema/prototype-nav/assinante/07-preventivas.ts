@@ -52,7 +52,12 @@ export const journeys: Journey[] = [
           { id: 'plano-novo-3', label: 'Passo 3 - Executor', path: `${s}/plano-form.html#state=step3` },
           {
             id: 'plano-novo-4', label: 'Passo 4 - Checklist', path: `${s}/plano-form.html#state=step4`,
-            variants: [v('plano-novo-4-empty', 'Sem checklist (Continuar sem checklist)', 'plano-form.html#state=step4empty')],
+            variants: [
+              v('plano-novo-4-empty', 'Sem checklist (Continuar sem checklist; usar ou salvar checklist)', 'plano-form.html#state=step4empty'),
+              v('plano-novo-4-save', 'Salvar checklist (modal com nome)', 'plano-form.html#state=step4save'),
+              v('plano-novo-4-save-dup', 'Salvar checklist: nome já existente', 'plano-form.html#state=step4saveduplicate'),
+              v('plano-novo-4-replace', 'Usar checklist salvo: substituir itens atuais', 'plano-form.html#state=step4replace'),
+            ],
           },
           { id: 'plano-novo-5', label: 'Passo 5 - Evidências e anomalia', path: `${s}/plano-form.html#state=step5` },
           { id: 'plano-novo-6', label: 'Passo 6 - Revisão e salvar', path: `${s}/plano-form.html#state=step6` },

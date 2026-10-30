@@ -8,7 +8,7 @@ import '../../externo/shared/externo.css';
 import { Equipment, SubDb } from './data';
 import { useSubDb } from './store';
 import { goTo } from './ui';
-import './rowmenu.css';
+import '../../admin/shared/rowmenu.css';
 
 /**
  * Vínculo de equipamento com um QR Code que já existe (etiqueta já impressa): leitura pela câmera (mobile), por foto ou arquivo de imagem

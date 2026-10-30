@@ -38,10 +38,12 @@ export function ListFilters({ searchLabel, placeholder, query, onQuery, filters 
  * Tabela do DS no desktop; no mobile (< 768px) a mesma lista vira cards (MobileCardList). Paginação de 10 própria:
  * a página volta à 1 quando `resetKey` muda (busca/filtros).
  */
-export function ResponsiveTable<T extends Record<string, unknown>>({ id, title, subtitle, titleHidden, toolbar, columns, rows, card, emptyTitle, emptyDescription, resetKey = '', pageSize = 10 }: {
+export function ResponsiveTable<T extends Record<string, unknown>>({ id, title, subtitle, titleHidden, toolbar, columns, rows, card, emptyTitle, emptyDescription, resetKey = '', pageSize = 10, onRowClick }: {
   id: string; title: string; subtitle?: string; titleHidden?: boolean; toolbar?: ReactNode;
   columns: TableColumn<T>[]; rows: T[]; card: (row: T) => MobileCardItem;
   emptyTitle: string; emptyDescription?: string; resetKey?: string; pageSize?: number;
+  /** Clicar na linha (desktop) abre a visualização. */
+  onRowClick?: (row: T) => void;
 }) {
   const isMobile = useIsMobile();
   const [page, setPage] = useState(1);
@@ -52,13 +54,14 @@ export function ResponsiveTable<T extends Record<string, unknown>>({ id, title, 
       <MobileCardList
         headingId={id} title={title} titleHidden={titleHidden} subtitle={subtitle} toolbar={toolbar} emptyTitle={emptyTitle}
         page={page} pageSize={pageSize} total={rows.length} onPageChange={setPage} items={slice.map(card)}
+        onItemClick={onRowClick ? (i) => onRowClick(slice[i]) : undefined}
       />
     );
   }
   return (
     <Table<T>
       caption={titleHidden ? title : undefined} title={titleHidden ? undefined : title} subtitle={titleHidden ? undefined : subtitle}
-      toolbar={toolbar} columns={columns} rows={slice}
+      toolbar={toolbar} columns={columns} rows={slice} onRowClick={onRowClick}
       empty={{ title: emptyTitle, description: emptyDescription }}
       pagination={{ page, pageSize, total: rows.length, onPageChange: setPage }}
     />

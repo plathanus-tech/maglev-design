@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { IconEye, IconPrinter, IconQrcodeOff, IconSearch } from '@tabler/icons-react';
 import { Badge, Button, Checkbox, Dialog, Dropdown, Feedback, Input, Stack, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
@@ -173,8 +174,10 @@ export function SubscriberEquipmentsTab({ subscriber }: { subscriber: Subscriber
   const actions = (r: Row) => (
     <RowActions>
       <RowAction icon={<IconEye size={16} />} label="Visualizar equipamento" target={r.name} onClick={() => setViewing(r.eq)} />
-      <RowAction icon={<IconPrinter size={16} />} label="Imprimir QR Code" target={r.name} onClick={() => setPrinting(r.eq)} />
-      {can('assinantes', 'ativar') && <RowAction icon={<IconQrcodeOff size={16} />} label="Inativar código QR" target={r.name} onClick={() => setInactivating(r.eq)} />}
+      <RowMenu target={r.name} label="Mais ações do equipamento" items={[
+        { label: 'Imprimir QR Code', icon: <IconPrinter size={16} />, onClick: () => setPrinting(r.eq) },
+        ...(can('assinantes', 'ativar') ? [{ label: 'Inativar código QR', icon: <IconQrcodeOff size={16} />, danger: true, onClick: () => setInactivating(r.eq) }] : []),
+      ]} />
     </RowActions>
   );
 

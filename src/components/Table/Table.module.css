@@ -183,3 +183,6 @@
 .toolbar button::after { content: ""; position: absolute; inset: calc(var(--spacing-xs) * -1) 0; }
 
 /* Barra de rolagem: padrão global (tokens --scrollbar-*), ver tokens.css. */
+
+/* Linha que abre a visualização ao clicar */
+.clickable { cursor: pointer; }

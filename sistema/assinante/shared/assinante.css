@@ -152,12 +152,6 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 /* Texto de apoio em célula de tabela (ex.: "Não atribuído") */
 .cell-muted { color: var(--color-text-secondary); }
 
-/* Compartilhar: opções do modal em largura total, alinhadas à esquerda */
-.share-option { width: 100%; justify-content: center; }
-/* Ação principal: verde do WhatsApp (tokens de verde do DS; texto branco com contraste AA) */
-.share-option.share-whatsapp { background: var(--color-green-700); border-color: var(--color-green-700); color: var(--color-gray-white); }
-.share-option.share-whatsapp:hover:not(:disabled) { background: var(--color-green-800); border-color: var(--color-green-800); }
-.share-id { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-label); color: var(--color-text-secondary); white-space: nowrap; overflow-wrap: normal; }
 /* Código com ícone de copiar (Atendimento da OS e Executar preventiva) */
 .copy-code { display: inline-flex; align-items: center; gap: var(--spacing-xs); padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; color: inherit; cursor: pointer; border-radius: var(--radius-control); }
 .copy-code strong { color: var(--color-text-primary); font-weight: var(--font-weight-label); }

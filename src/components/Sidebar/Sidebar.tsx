@@ -133,7 +133,7 @@ export function Sidebar({
           aria-expanded={open}
           type="button"
         >
-          {open ? <IconChevronLeft size={14} aria-hidden="true" /> : <IconChevronRight size={14} aria-hidden="true" />}
+          {open ? <IconChevronLeft size={18} aria-hidden="true" /> : <IconChevronRight size={18} aria-hidden="true" />}
         </button>
       </div>}
 

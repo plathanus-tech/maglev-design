@@ -89,6 +89,7 @@ function NotificacoesScreen() {
         <DevNote note="RF801: notificações do usuário logado, mais recentes primeiro, paginadas (10). Clicar abre a tela relacionada e marca como lida (FLU005); o contador do sino atualiza (CTA002). Eventos e destinatários (RGN001: notifica só quem está ligado ao item): nova solicitação → responsáveis pela triagem da unidade · mudança de status de solicitação/OS → solicitante, responsável e executor/prestador · atribuição/reatribuição → a pessoa atribuída (CTA004) · pedido de complementação → solicitante · orçamento anexado → responsável e aprovadores · orçamento aprovado/reprovado → executor/prestador e responsável · OS aguardando validação → solicitante (ou quem recebeu a validação) · conclusão manual da solicitação → solicitante e responsáveis · preventiva gerada/próxima/vencida → executor e responsável do plano · 💡 garantia expirando e equipamento crítico parado → Administrador/Gestor, a confirmar. SMS fora do escopo (RGN004).">
           {isMobile ? (
             <MobileCardList
+              onItemClick={(i) => open(rows[i])}
               headingId="notifications-title" title="Lista de notificações" titleHidden toolbar={toolbar} emptyTitle={empty.title}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((n) => ({
@@ -98,7 +99,7 @@ function NotificacoesScreen() {
               }))}
             />
           ) : (
-            <Table<Row>
+            <Table<Row> onRowClick={(n) => open(n)}
               caption="Lista de notificações"
               toolbar={toolbar}
               columns={shownColumns}

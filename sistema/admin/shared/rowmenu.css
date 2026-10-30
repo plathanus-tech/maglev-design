@@ -1,7 +1,8 @@
 /* Menu ⋮ de ações por linha (RowMenu): só layout do conteúdo do Popover, com tokens existentes. */
-.row-menu { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 10rem; }
+.row-menu { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
 @media (max-width: 767px) { .row-menu { min-width: 0; } }
 .row-menu .btn-menu { justify-content: flex-start; width: 100%; }
+.row-menu-sep { height: var(--border-width-thin); background: var(--color-border-subtle); margin: var(--spacing-2xs) 0; }
 .row-menu .menu-danger { color: var(--color-text-error); }
 .row-menu .menu-danger:hover:not(:disabled) { background: var(--color-status-error-bg); color: var(--color-text-error); }
 

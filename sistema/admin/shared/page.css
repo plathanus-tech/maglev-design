@@ -269,6 +269,8 @@ section.contact-card { border: none; background: var(--color-gray-50); }
   padding: 0 var(--spacing-sm); border: none; border-radius: var(--radius-control-sm); background: transparent;
   font-family: inherit; font-size: var(--font-size-md); color: var(--color-text-primary); cursor: pointer; text-align: left;
 }
+.user-menu-item { text-decoration: none; }
+.user-menu-switch { margin-left: auto; display: inline-flex; pointer-events: none; }
 .user-menu-item:hover { background: var(--color-bg-subtle); }
 .user-menu-item:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: calc(var(--focus-ring-width) * -1); }
 .app-topbar-desktop { position: sticky; top: 0; z-index: var(--z-sticky); }
@@ -450,3 +452,19 @@ div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(
   .form-actions { flex-direction: column !important; align-items: stretch !important; }
   .form-actions button { width: 100%; }
 }
+
+/* Card da lista no mobile que abre a visualização ao tocar */
+.mcl-open { cursor: pointer; }
+
+/* Popover de exportação: opções alinhadas à esquerda, todas com a largura do painel */
+.export-option { width: 100%; justify-content: flex-start; }
+
+/* Compartilhar: opções do modal em largura total, alinhadas à esquerda */
+.share-option { width: 100%; justify-content: center; }
+/* Ação principal: verde do WhatsApp (tokens de verde do DS; texto branco com contraste AA) */
+.share-option.share-whatsapp { background: var(--color-green-700); border-color: var(--color-green-700); color: var(--color-gray-white); }
+.share-option.share-whatsapp:hover:not(:disabled) { background: var(--color-green-800); border-color: var(--color-green-800); }
+.share-id { font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-label); color: var(--color-text-secondary); white-space: nowrap; overflow-wrap: normal; }
+
+/* Link de ajuda longo na autenticação: quebra em linhas em vez de estourar a largura */
+.auth-help-link { white-space: normal; height: auto; text-align: center; }

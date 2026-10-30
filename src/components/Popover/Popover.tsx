@@ -16,6 +16,8 @@ export interface PopoverProps {
   align?: 'start' | 'end';
   /** Menu de ações curto: no mobile o painel se ajusta ao conteúdo (em vez da largura padrão) e fica dentro da margem da tela. */
   fit?: boolean;
+  /** Painel com a largura do conteúdo (a do maior item) em qualquer tela, em vez da largura padrão de 352px. Para listas curtas de opções. */
+  hug?: boolean;
   /** Ações do painel (ex.: Aplicar e Limpar): ficam fixas no rodapé enquanto só o conteúdo rola, então nunca ficam fora da tela. */
   footer?: ReactNode;
   children: ReactNode;
@@ -27,7 +29,7 @@ export interface PopoverProps {
  * (Dropdown) funcionam dentro dele: enquanto um menu está aberto, o clique não fecha o painel.
  * Para conteúdo que exige decisão ou foco preso, use `Dialog`.
  */
-export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, footer, children }: PopoverProps) {
+export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, hug = false, footer, children }: PopoverProps) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<CSSProperties>();
@@ -77,7 +79,7 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
 
   if (!open) return null;
   return createPortal(
-    <div ref={panelRef} id={id} role="dialog" aria-label={label} className={fit ? `${styles.panel} ${styles.fit}` : styles.panel} style={style}>
+    <div ref={panelRef} id={id} role="dialog" aria-label={label} className={[styles.panel, fit && styles.fit, hug && styles.hug].filter(Boolean).join(' ')} style={style}>
       <div className={styles.body}>{children}</div>
       {footer && <div className={styles.footer}>{footer}</div>}
     </div>,

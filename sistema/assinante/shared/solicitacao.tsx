@@ -16,6 +16,7 @@ import './solicitacao.css';
 import { ShareButton } from './share-button';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { environmentName, equipmentOf, getSubDb, unitIdOfEquipment, unitName, userName, useSubSession } from './store';
+import { DetailsReadOnly, detailsFilled, hasSafetyRisk } from './solicitacao-details';
 import { CellPair, Col, Grid, ReadField, goTo, param, takeFlash, useRefs, TroubleshootingNotes } from './ui';
 import {
   ComplementDialog, ConcludeDialog, GROUPS, IS_THUMB, RejectDialog, STS, changeRequest, canConclude, isOpenBase, suggestedPriority,
@@ -223,7 +224,7 @@ function SolicitacaoScreen() {
           subtitle={`${problem} · ${eq.name}`}
           breadcrumb={[{ label: 'Solicitações', href: 'solicitacoes.html' }, { label: req.id }]}
           actions={req.osId || req.duplicateOf || (approvedPending && canTriage) ? headerActions : undefined}
-          iconActions={<ShareButton kind="solicitacao" id={req.id} />}
+          iconActions={<ShareButton kind="solicitacao" id={req.id} requiresLogin />}
         />
 
         {req.osId && (
@@ -286,6 +287,21 @@ function SolicitacaoScreen() {
                   </div>
                 </Card>
               </DevNote>
+
+              {req.details && detailsFilled(req.details) && (
+                <DevNote note="Detalhes adicionais (opcional): o que o solicitante informou além do essencial, só se preencheu algo (Ocorrência, O que já foi tentado, Impacto na operação, Segurança, Acesso e atendimento e Informações adicionais). É contexto para a triagem: não muda a prioridade sozinho (a prioridade segue a matriz criticidade × impacto). Risco de segurança de gás, fumaça ou elétrico informado pelo solicitante aparece em destaque no topo do card. 💡 A confirmar com o cliente se esse risco deve elevar o impacto ou avisar o gestor automaticamente.">
+                  <Card className="card-open" title="Detalhes adicionais" subtitle="Informações extras enviadas pelo solicitante">
+                    <div className="card-body-tight">
+                      <Stack gap="md">
+                        {hasSafetyRisk(req.details) && (
+                          <Feedback type="warning" title="Risco de segurança informado" message="O solicitante indicou risco de gás, fumaça ou elétrico. Considere priorizar a triagem" />
+                        )}
+                        <DetailsReadOnly details={req.details} />
+                      </Stack>
+                    </div>
+                  </Card>
+                </DevNote>
+              )}
 
               {req.complement && (
                 <DevNote note="RF402-FLU006 e CTA004: a resposta do solicitante à complementação (PWA RF004) aparece aqui na triagem e a solicitação volta para Em triagem. Use o estado “Resposta recebida” do Navegador para simulá-la.">

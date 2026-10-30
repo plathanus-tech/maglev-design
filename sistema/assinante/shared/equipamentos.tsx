@@ -52,7 +52,7 @@ const KIND_LABEL = { unit: 'Unidade', env: 'Ambiente', eq: 'Equipamento' } as co
 function EquipamentosScreen() {
   const toast = useToast();
   const isMobile = useIsMobile();
-  const { db, can, unitIds, canSeeCosts } = useSubSession();
+  const { db, can, unitIds, canSeeCosts, company } = useSubSession();
   const refs = useRefs();
   // Ícone herdado da categoria cadastrada no Admin (sem ícone, só o conteúdo)
   const WithIcon = ({ e, children }: { e?: Equipment; children: ReactNode }) => {
@@ -254,7 +254,7 @@ function EquipamentosScreen() {
 
   const request = (e: Equipment) => goTo(`solicitacao-form.html?equipment=${e.id}`);
   const canRequest = can('solicitacoes', 'cadastrar');
-  /** Menu ⋮ do equipamento (lista, árvore e cards): Visualizar, Editar e Imprimir QR Code; Solicitar manutenção e Ativar/Inativar seguem as permissões. */
+  /** Ações do equipamento. Desktop: menu ⋮ com Visualizar, Editar, Imprimir QR Code, Solicitar manutenção e Ativar/Inativar (conforme as permissões). Mobile (`expanded`): ícone de Visualizar visível + menu ⋮ com o resto. */
   const rowActions = (e: Equipment, withToggle = false, expanded = false) => {
     const inactive = isInactive(refs, e);
     const items: RowMenuItem[] = [{ label: 'Visualizar', icon: <IconEye size={16} />, onClick: () => goTo(`equipamento.html?id=${e.id}`) }];
@@ -267,8 +267,13 @@ function EquipamentosScreen() {
         : { label: 'Inativar', icon: <IconCircleOff size={16} />, onClick: () => setToggling(e) });
     }
     if (expanded) {
-      // Cards da Lista no mobile: todas as ações já abertas, como ícones
-      return <>{items.map((it) => <RowAction key={it.label} icon={it.icon as ReactElement} label={it.label} target={e.name} onClick={it.onClick} />)}</>;
+      // Mobile (cards da Lista e Hierárquica): Visualizar fica visível como ação explícita (no mobile não há hover) e as demais vão para o menu ⋮
+      return (
+        <>
+          <RowAction icon={items[0].icon as ReactElement} label={items[0].label} target={e.name} onClick={items[0].onClick} />
+          <RowMenu target={e.name} label="Mais ações do equipamento" items={items.slice(1)} />
+        </>
+      );
     }
     return (
       <DevNote note="Menu ⋮ com Visualizar, Editar (só com permissão), Imprimir QR Code (abre direto a prévia da etiqueta para impressão, sem passar por Visualizar; o QR Code continua nos detalhes do equipamento) Solicitar manutenção e Ativar/Inativar, conforme a permissão (com confirmação; RF301-RGN004: equipamento nunca é excluído). Mesmo menu na visão Hierárquica e na Lista.">
@@ -318,7 +323,7 @@ function EquipamentosScreen() {
       columns={withColumns ? control : undefined}
       actions={withColumns && can('equipamentos', 'exportar') && (
         <DevNote note="Exportar (Excel): baixa um .xlsx com os equipamentos do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
-          <ExportButton columns={shownColumns} rows={rows} file="equipamentos" sheet="Equipamentos" noun={['equipamento', 'equipamentos']} label="Exportar equipamentos para Excel" overrides={{ open: (r) => r.open, cost: (r) => Number(r.cost) / 100 }} />
+          <ExportButton company={company.tradeName || company.legalName} columns={shownColumns} rows={rows} file="equipamentos" sheet="Equipamentos" noun={['equipamento', 'equipamentos']} label="Exportar equipamentos" overrides={{ open: (r) => r.open, cost: (r) => Number(r.cost) / 100 }} />
         </DevNote>
       )}
     />
@@ -333,6 +338,7 @@ function EquipamentosScreen() {
 
   const listView = isMobile ? (
     <MobileCardList
+      onItemClick={(i) => goTo(`equipamento.html?id=${pageRows[i].equipment.id}`)}
       headingId="equipments-title" rangeLabel={listRange} title="Lista de equipamentos" titleHidden toolbar={toolbarFor(true, mobileSelectBar)} emptyTitle={empty.title}
       selection={selectMode ? { selectedIds: selected, onToggle: toggleOne, label: (id) => `Selecionar ${rows.find((r) => r.id === id)?.name ?? 'equipamento'}` } : undefined}
       stickyFooter={selectMode && selectedCount > 0 ? <Button iconLeft={<IconPrinter size={20} />} onClick={() => setBatchOpen(true)}>{selectedCount === 1 ? 'Imprimir 1 etiqueta' : `Imprimir ${selectedCount} etiquetas`}</Button> : undefined}
@@ -349,7 +355,7 @@ function EquipamentosScreen() {
       }))}
     />
   ) : (
-    <Table<Row>
+    <Table<Row> onRowClick={(r) => goTo(`equipamento.html?id=${r.equipment.id}`)}
       caption="Lista de equipamentos" toolbar={toolbarFor(true, selectionBar)} columns={[selectColumn, ...shownColumns]} rows={pageRows}
       sortKey="name" sortDir={sortDir} onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
       empty={empty} pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage, rangeLabel: listRange }}
@@ -413,6 +419,11 @@ function EquipamentosScreen() {
   const summary = (t: ReturnType<typeof totals>) => [
     plural(t.total, 'equipamento', 'equipamentos'), plural(t.stopped, 'parado', 'parados'), plural(t.alert, 'alerta', 'alertas'), `${t.open} OS`,
   ].join(' · ');
+  // Toque na linha da árvore (mobile): equipamento abre o detalhe; unidade e ambiente expandem/recolhem. Links, botões e menus da linha não disparam
+  const mTap = (fn?: () => void) => (fn ? (ev: React.MouseEvent) => {
+    if ((ev.target as HTMLElement).closest('a, button, input, select, textarea, label, [role="button"], [role="menuitem"], [data-no-row-click]')) return;
+    fn();
+  } : undefined);
   const mChevron = (id: string, name: string, open: boolean, expandable: boolean) => (expandable ? (
     <Button
       variant="ghost" size="sm" iconOnly className="hit-44" iconLeft={open ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
@@ -431,7 +442,7 @@ function EquipamentosScreen() {
         return (
           <Card key={u.id} padding="none">
             <div className="mtree">
-              <div className="mtree-row">
+              <div className={`mtree-row${envs.length > 0 ? ' mtree-tap' : ''}`} onClick={mTap(envs.length > 0 ? () => toggleExpand(u.id) : undefined)}>
                 {mChevron(u.id, u.name, unitOpen, envs.length > 0)}
                 <span className="tree-lead tree-lead--unit" aria-hidden="true"><IconBuildingStore size={20} /></span>
                 <div className="mtree-text">
@@ -447,7 +458,7 @@ function EquipamentosScreen() {
                 const xRow = { rowId: x.id, kind: 'env', name: x.name, unitId: u.id, envId: x.id } as unknown as TreeRow;
                 return (
                   <div key={x.id} className="mtree-group">
-                    <div className="mtree-row mtree-row--env">
+                    <div className={`mtree-row mtree-row--env${eqs.length > 0 ? ' mtree-tap' : ''}`} onClick={mTap(eqs.length > 0 ? () => toggleExpand(x.id) : undefined)}>
                       {mChevron(x.id, x.name, envOpen, eqs.length > 0)}
                       <span className="tree-lead tree-lead--env" aria-hidden="true"><IconLayoutGrid size={20} /></span>
                       <div className="mtree-text">
@@ -457,7 +468,7 @@ function EquipamentosScreen() {
                       {treeActions(xRow)}
                     </div>
                     {envOpen && [...eqs].sort((p, r) => p.name.localeCompare(r.name, 'pt-BR')).map((e) => (
-                      <div key={e.id} className="mtree-row mtree-row--eq">
+                      <div key={e.id} className="mtree-row mtree-row--eq mtree-tap" onClick={mTap(() => goTo(`equipamento.html?id=${e.id}`))}>
                         <span className="mtree-spacer" aria-hidden="true" />
                         <span className="tree-lead tree-lead--eq" aria-hidden="true">{eqThumb(e)}</span>
                         <div className="mtree-text">
@@ -465,7 +476,7 @@ function EquipamentosScreen() {
                           <span className="cell-secondary">{`${KIND_LABEL.eq} · ${e.code || '-'}`}</span>
                           {refs.statusBadge(e.statusId)}
                         </div>
-                        <RowActions>{rowActions(e, true)}</RowActions>
+                        <RowActions>{rowActions(e, true, true)}</RowActions>
                       </div>
                     ))}
                   </div>
@@ -486,7 +497,7 @@ function EquipamentosScreen() {
   const treeView = isMobile ? (
     mobileTree
   ) : (
-    <Table<TreeRow>
+    <Table<TreeRow> onRowClick={(r) => { if (r.kind === 'eq' && r.equipment) goTo(`equipamento.html?id=${r.equipment.id}`); else if (r.expandable) toggleExpand(r.rowId); }} isRowClickable={(r) => (r.kind === 'eq' && !!r.equipment) || !!r.expandable}
       caption="Equipamentos por unidade e ambiente" toolbar={toolbarFor(false)} columns={treeColumns} rows={treeRows} empty={treeEmpty}
       pagination={{ page: treePage, pageSize: TREE_PAGE_SIZE, total: treeUnits.length, onPageChange: setTreePage, rangeLabel: (from, to, total) => `Mostrando ${from}–${to} de ${total} unidades` }}
     />

@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import {
@@ -124,8 +125,10 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
       render: (_, r) => (
         <RowActions>
           {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => openForm(r)} />}
-          {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar' : 'Ativar'} target={r.name} onClick={() => setToggling(r)} />}
-          {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir" target={r.name} onClick={() => setPending({ kind: 'delete', item: r })} />}
+          <RowMenu target={r.name} label="Mais ações" items={[
+            ...(can('configuracoes', 'ativar') ? [{ label: r.status === 'ativo' ? 'Inativar' : 'Ativar', icon: r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />, onClick: () => setToggling(r) }] : []),
+            ...(can('configuracoes', 'excluir') ? [{ label: "Excluir", icon: <IconTrash size={16} />, danger: true, onClick: () => setPending({ kind: 'delete', item: r }) }] : []),
+          ]} />
         </RowActions>
       ),
     },
@@ -156,8 +159,10 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
               actions: (
                 <RowActions>
                   {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar" target={r.name} onClick={() => openForm(r)} />}
-                  {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar' : 'Ativar'} target={r.name} onClick={() => setToggling(r)} />}
-                  {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir" target={r.name} onClick={() => setPending({ kind: 'delete', item: r })} />}
+                  <RowMenu target={r.name} label="Mais ações" items={[
+                    ...(can('configuracoes', 'ativar') ? [{ label: r.status === 'ativo' ? 'Inativar' : 'Ativar', icon: r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />, onClick: () => setToggling(r) }] : []),
+                    ...(can('configuracoes', 'excluir') ? [{ label: "Excluir", icon: <IconTrash size={16} />, danger: true, onClick: () => setPending({ kind: 'delete', item: r }) }] : []),
+                  ]} />
                 </RowActions>
               ),
             }))}
@@ -482,8 +487,10 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
       render: (_, r) => (
         <RowActions>
           {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar status" target={r.name} onClick={() => goTo(`configuracoes-status-form.html?id=${r.id}`)} />}
-          {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar status' : 'Ativar status'} target={r.name} onClick={() => setToggling(r)} />}
-          {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir status" target={r.name} onClick={() => setRemoving(r)} />}
+          <RowMenu target={r.name} label="Mais ações" items={[
+            ...(can('configuracoes', 'ativar') ? [{ label: r.status === 'ativo' ? 'Inativar status' : 'Ativar status', icon: r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />, onClick: () => setToggling(r) }] : []),
+            ...(can('configuracoes', 'excluir') ? [{ label: "Excluir status", icon: <IconTrash size={16} />, danger: true, onClick: () => setRemoving(r) }] : []),
+          ]} />
         </RowActions>
       ),
     },
@@ -521,8 +528,10 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
               actions: (
                 <RowActions>
                   {can('configuracoes', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar status" target={r.name} onClick={() => goTo(`configuracoes-status-form.html?id=${r.id}`)} />}
-                  {can('configuracoes', 'ativar') && <RowAction icon={r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={r.status === 'ativo' ? 'Inativar status' : 'Ativar status'} target={r.name} onClick={() => setToggling(r)} />}
-                  {can('configuracoes', 'excluir') && <RowAction icon={<IconTrash size={16} />} label="Excluir status" target={r.name} onClick={() => setRemoving(r)} />}
+                  <RowMenu target={r.name} label="Mais ações" items={[
+                    ...(can('configuracoes', 'ativar') ? [{ label: r.status === 'ativo' ? 'Inativar status' : 'Ativar status', icon: r.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />, onClick: () => setToggling(r) }] : []),
+                    ...(can('configuracoes', 'excluir') ? [{ label: "Excluir status", icon: <IconTrash size={16} />, danger: true, onClick: () => setRemoving(r) }] : []),
+                  ]} />
                 </RowActions>
               ),
             }))}

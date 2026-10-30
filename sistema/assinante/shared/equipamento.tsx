@@ -16,6 +16,7 @@ import {
   AttentionPoint, AttentionPoints, EquipmentToggleDialog, QrDialogs, SimpleList, downtimeText, executorName, frequencyText, isInactive, isOverdue, isStopped, nextPreventive, openOrdersOf, realizedCents, recurrenceOf, spentOf, useCopy,
 } from './equipamento-lib';
 import { RowMenu, RowMenuItem } from './RowMenu';
+import { ShareButton } from './share-button';
 import { photoSrc } from './photos';
 import { MobileCardItem } from '../../admin/shared/MobileCardList';
 import './equipamento.css';
@@ -285,6 +286,7 @@ function EquipamentoScreen() {
           badge={<Stack direction="horizontal" align="center" gap="xs" wrap>{refs.statusBadge(eq.statusId)}{refs.criticalityBadge(eq.criticalityId)}</Stack>}
           subtitle={`${eq.code || eq.id} · ${place}`}
           breadcrumb={[{ label: 'Equipamentos', href: 'equipamentos.html' }, { label: eq.name }]}
+          iconActions={<ShareButton kind="equipamento" id={eq.name} requiresLogin />}
           actions={(
             <>
               {canRequest ? (

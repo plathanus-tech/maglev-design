@@ -3,6 +3,7 @@ import { serviceWarrantyText } from './warranty';
 import { IconCircleCheck, IconCircleOff, IconClipboardList, IconClock, IconPencil, IconReportMoney } from '@tabler/icons-react';
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
+import { ShareButton } from './share-button';
 import { formatCnpj, formatDate, formatMoney, formatNumber, formatPhone, noBreak } from '../../admin/shared/format';
 import { KpiMoney } from '../../admin/shared/kpi-value';
 import { useHashState } from '../../admin/shared/useHashState';
@@ -184,6 +185,7 @@ function PrestadorScreen() {
           title={name} badge={recordStatusBadge(p.status)}
           subtitle={company && p.tradeName ? `${PROVIDER_KIND_LABEL[p.kind]} · ${p.name}` : PROVIDER_KIND_LABEL[p.kind]}
           breadcrumb={[{ label: 'Prestadores', href: 'prestadores.html' }, { label: name }]}
+          iconActions={<ShareButton kind="prestador" id={name} requiresLogin />}
           actions={(
             <>
               {can('prestadores', 'ativar') && (inactive

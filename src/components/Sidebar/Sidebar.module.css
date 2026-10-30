@@ -172,9 +172,9 @@
   align-items: center;
   justify-content: center;
   position: absolute;
-  right: calc(var(--spacing-md) * -0.75);
-  width: 24px;
-  height: 24px;
+  right: calc(var(--spacing-md) * -1);
+  width: 32px;
+  height: 32px;
   border: var(--border-width-thin) solid var(--color-nav-border);
   border-radius: 50%;
   background: var(--color-nav-bg);
@@ -185,6 +185,8 @@
   transition: background var(--transition-fast), box-shadow var(--transition-fast);
   z-index: var(--z-sticky);
 }
+/* área de toque de 44px sem aumentar o botão visível */
+.toggleBtn::after { content: ''; position: absolute; inset: -6px; }
 .toggleBtn:hover { background: var(--color-secondary-700); box-shadow: var(--shadow-md); }
 .toggleBtn:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring-color);

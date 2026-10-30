@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { IconAlertTriangle, IconChevronDown, IconCalendarEvent, IconChecks, IconPencil, IconPlayerPause, IconPlayerPlay, IconPlayerPlayFilled } from '@tabler/icons-react';
 import { Badge, Button, Card, Feedback, KpiCard, Stack, Tab, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
+import { ShareButton } from './share-button';
 import { formatDate, formatNumber, formatPhone, noBreak, onlyDigits } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
@@ -264,6 +265,7 @@ function PlanoScreen() {
           badge={<Badge status={paused ? 'neutral' : 'success'} dot>{paused ? 'Pausado' : 'Ativo'}</Badge>}
           subtitle={[describeFrequency(plan), `${plan.equipmentIds.length} ${plan.equipmentIds.length === 1 ? 'equipamento' : 'equipamentos'}`, `${planUnitIds(db, plan).length} ${planUnitIds(db, plan).length === 1 ? 'unidade' : 'unidades'}`].join(' · ')}
           breadcrumb={[{ label: 'Planos de manutenção', href: 'planos.html' }, { label: plan.name }]}
+          iconActions={<ShareButton kind="plano" id={plan.name} requiresLogin />}
           actions={(
             <>
               {stateAction}

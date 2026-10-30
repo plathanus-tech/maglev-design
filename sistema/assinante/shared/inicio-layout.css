@@ -257,5 +257,4 @@ section.ag2-att:hover { border-color: var(--color-gray-300); box-shadow: var(--s
 /* só um cartão em destaque: borda e fundo de atenção; o título leva o contador vermelho */
 .ag-card.is-focus { border: var(--border-width-medium) solid var(--color-status-warning-fg); background: color-mix(in srgb, var(--color-status-warning-bg) 45%, var(--color-bg-surface)); }
 :root[data-theme="dark"] .ag-banner, :root[data-theme="dark"] .ag-card.is-focus { background: var(--color-status-warning-bg); }
-.ag-card.is-focus > header h3 { display: flex; align-items: center; gap: var(--spacing-xs); flex-wrap: wrap; }
-@media (max-width: 767px) { .ag-banner-in > button { inline-size: 100%; } }
+.ag-banner-link { display: inline-flex; align-items: center; gap: var(--spacing-xs); font-weight: var(--font-weight-label); white-space: nowrap; }

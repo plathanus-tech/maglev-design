@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { Badge, Button, Dialog, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -47,15 +48,17 @@ function PerfisScreen() {
     setPending(null);
   };
 
-  const actions = (p: Row) => (
-    <RowActions>
-      {can('perfis', 'editar') && <RowAction icon={<IconPencil size={16} />} label={p.fixed ? 'Visualizar perfil' : 'Editar perfil'} target={p.name} onClick={() => goTo(`perfil-form.html?id=${p.id}`)} />}
-      {can('perfis', 'ativar') && !p.fixed && (
-        <RowAction icon={p.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />} label={p.status === 'ativo' ? 'Inativar perfil' : 'Ativar perfil'} target={p.name} onClick={() => setPending({ kind: 'toggle', profile: p })} />
-      )}
-      {can('perfis', 'excluir') && !p.fixed && <RowAction icon={<IconTrash size={16} />} label="Excluir perfil" target={p.name} onClick={() => askDelete(p)} />}
-    </RowActions>
-  );
+  const actions = (p: Row) => {
+    const items: RowMenuItem[] = [];
+    if (can('perfis', 'ativar') && !p.fixed) items.push({ label: p.status === 'ativo' ? 'Inativar' : 'Ativar', icon: p.status === 'ativo' ? <IconCircleOff size={16} /> : <IconCircleCheck size={16} />, onClick: () => setPending({ kind: 'toggle', profile: p }) });
+    if (can('perfis', 'excluir') && !p.fixed) items.push({ label: 'Excluir', icon: <IconTrash size={16} />, danger: true, onClick: () => askDelete(p) });
+    return (
+      <RowActions>
+        {can('perfis', 'editar') && <RowAction icon={<IconPencil size={16} />} label={p.fixed ? 'Visualizar perfil' : 'Editar perfil'} target={p.name} onClick={() => goTo(`perfil-form.html?id=${p.id}`)} />}
+        <RowMenu target={p.name} label="Mais ações do perfil" items={items} />
+      </RowActions>
+    );
+  };
 
   const columns: TableColumn<Row>[] = [
     {

@@ -6,6 +6,7 @@ import { useHashState } from '../../admin/shared/useHashState';
 import { getPrototypePassword } from '../../admin/shared/recovery';
 import { isValidEmail, requiredMessage } from '../../admin/shared/format';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
+import { TeamInviteHelp } from '../../admin/shared/TeamInviteHelp';
 import { getDb as getAdminDb } from '../../admin/shared/store';
 import { getSubDb, setSubSessionUser } from './store';
 
@@ -14,7 +15,7 @@ import { getSubDb, setSubSessionUser } from './store';
  *  idle · required · invalid (credenciais incorretas, mensagem genérica - RF001-FLU005) · inactive (usuário inativo - RGN001)
  *  · pending (convite ainda não aceito) · envinactive (ambiente desativado - RGN002) · passwordchanged (retorno da recuperação)
  */
-const STATES = ['idle', 'required', 'invalid', 'inactive', 'pending', 'envinactive', 'passwordchanged'] as const;
+const STATES = ['idle', 'required', 'invalid', 'inactive', 'pending', 'envinactive', 'passwordchanged', 'teaminfo'] as const;
 type Mode = (typeof STATES)[number];
 
 const INVALID_MESSAGE = 'E-mail ou senha incorretos. Esqueceu a sua senha? Clique em “Esqueci minha senha” para recuperá-la.';
@@ -129,6 +130,7 @@ function LoginScreen() {
               <Stack><Button type="submit" disabled={loading}>{loading ? 'Entrando...' : 'Entrar'}</Button></Stack>
             </DevNote>
             <Button variant="ghost" onClick={() => { window.location.href = 'recuperar-senha.html'; }}>Esqueci minha senha</Button>
+            <TeamInviteHelp initialOpen={mode === 'teaminfo'} />
           </Stack>
         </Stack>
       </form>

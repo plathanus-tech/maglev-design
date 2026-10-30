@@ -13,7 +13,7 @@ import { ScreenKey } from './data';
 import { useSession } from './store';
 import { useIsMobile } from './useMediaQuery';
 import { AlertBell } from './AlertBell';
-import { ThemeButton, UserMenu } from './UserMenu';
+import { UserMenu } from './UserMenu';
 
 import '../../../src/tokens/tokens.css';
 import './theme';
@@ -100,8 +100,7 @@ export function AppLayout({ active, screen, children }: { active: string; screen
   const account = (compact: boolean) => (
     <>
       <AlertBell />
-      <ThemeButton />
-      <UserMenu name={user.name} email={user.email} compact={compact} onLogout={logout} />
+      <UserMenu name={user.name} email={user.email} compact={compact} onLogout={logout} usersHref={can('usuarios') ? 'usuarios.html' : undefined} />
     </>
   );
 

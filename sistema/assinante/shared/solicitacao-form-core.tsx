@@ -8,7 +8,8 @@ import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { PhotoSlot } from './photo-slot';
 import { useHashState } from '../../admin/shared/useHashState';
 import { formatDateTime, formatPhone, isValidPhone, noBreak, onlyDigits, requiredMessage, PHONE_INVALID_EXAMPLE, PHONE_INVALID_MESSAGE } from '../../admin/shared/format';
-import { IMPACT_LABEL, Impact, Request, TipResult, TroubleshootingRun, nowLocal } from './data';
+import { IMPACT_LABEL, Impact, Request, RequestDetails, TipResult, TroubleshootingRun, nowLocal } from './data';
+import { AdvancedDetails, DetailsReadOnly, EMPTY_DETAILS, detailsFilled, hasSafetyRisk, seriousRisks } from './solicitacao-details';
 import { logEntry, nextSeq, notify, updateSubDb, useSubDb, useSubSession } from './store';
 import { CellPair, Col, FormSection, Grid, ReadField, param, takeFlash, useRefs } from './ui';
 import { SafetyGuidance } from './equipamento-lib';
@@ -16,11 +17,12 @@ import { IS_THUMB, STS, isOpenBase } from './solicitacoes-shared';
 import { OpenRequestCard } from '../../colaborador/shared/open-request-card';
 
 import { LegalText } from './legal-placeholder';
+import { todayIso } from '../../admin/shared/clock';
 import '../../admin/shared/primeiro-acesso.css';
 import './solicitacao-form.css';
 
 /** Estados: idle · required · duplicate (aviso de duplicidade) · troubleshooting (aviso + Começar) · tip1 · lasttip · tipsdone (volta ao formulário) · resolved · review (revisão antes de enviar) · phoneinvalid (telefone de contato inválido) */
-const STATES = ['idle', 'required', 'duplicate', 'troubleshooting', 'tip1', 'lasttip', 'tipsdone', 'resolved', 'review', 'phoneinvalid'] as const;
+const STATES = ['idle', 'required', 'duplicate', 'troubleshooting', 'tip1', 'lasttip', 'tipsdone', 'resolved', 'review', 'phoneinvalid', 'advanced', 'reviewdetails'] as const;
 type Mode = (typeof STATES)[number];
 type Stage = 'form' | 'tips' | 'resolved' | 'review';
 const MAX_PHOTOS = 5;
@@ -31,7 +33,7 @@ const shortText = (t: string) => (t.length > 48 ? `${t.slice(0, 48)}…` : t);
 
 const DRAFT_KEY = 'maglev.v2.sub.solicitacaoDraft';
 const IS_THUMB_URL = new URLSearchParams(location.search).has('thumb');
-interface Draft { unitId: string; problemId: string; impact: string; description: string; related: string; prevNote: string }
+interface Draft { unitId: string; problemId: string; impact: string; description: string; related: string; prevNote: string; details?: RequestDetails }
 /** Lê (e apaga) o que o usuário já tinha preenchido antes de ir cadastrar um equipamento. */
 let draftCache: Draft | null | undefined;   // o React (modo dev) chama o inicializador do estado duas vezes: lê uma única vez por carregamento
 function takeDraft(): Draft | null {
@@ -61,13 +63,15 @@ export interface SolicitacaoFormCoreProps {
   trackHref: (id: string) => string;
   /** Lembra nome/telefone no dispositivo (Colaborador RF002-RGN011), chamado ao enviar. */
   onRemember?: (name: string, phone: string) => void;
+  /** v2 (Nova solicitação): ambiente e categoria do equipamento em leitura, dica na descrição e a parte opcional "Detalhes adicionais" (solicitação avançada). */
+  advanced?: boolean;
 }
 
 /**
  * Formulário "Abrir solicitação" compartilhado: Área do assinante (RF404) e Colaborador via QR Code (RF002).
  * Mesma ordem de tela (RGN013): equipamento → problema → solução de problemas (opcional) → demais campos → enviar.
  */
-export function SolicitacaoFormCore({ external = false, shell, header, actor, unitIds, fixedEquipmentId, channel, onSent, onCancel, resolvedActions, troubleshootingHeader, trackHref, onRemember }: SolicitacaoFormCoreProps) {
+export function SolicitacaoFormCore({ external = false, shell, header, actor, unitIds, fixedEquipmentId, channel, onSent, onCancel, resolvedActions, troubleshootingHeader, trackHref, onRemember, advanced = false }: SolicitacaoFormCoreProps) {
   // Portal: seções recolhíveis no mobile (consistência com os demais formulários); o QR Code (externo) mantém os cards
   const Section = external ? Card : FormSection;
   const refs = useRefs();
@@ -110,6 +114,12 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
   const [finished, setFinished] = useState(false);
   const [resolvedId, setResolvedId] = useState('');
   const [legal, setLegal] = useState<'terms' | 'privacy' | null>(null);
+  // v2: detalhes opcionais (nada é obrigatório); a variante #state=advanced abre todas as seções com um exemplo
+  const [details, setDetails] = useState<RequestDetails>(draft?.details ?? EMPTY_DETAILS);
+  const [openAllDetails, setOpenAllDetails] = useState(false);
+  // Ao voltar da revisão para editar os detalhes, o bloco reabre já com as categorias preenchidas
+  // Também reabre assim ao voltar do cadastro de equipamento com detalhes já preenchidos (o rascunho os devolve)
+  const [reopenDetails, setReopenDetails] = useState(() => !!draft?.details && detailsFilled(draft.details));
 
   const equipment = db.equipments.find((e) => e.id === equipmentId);
   const tips = equipment?.troubleshooting.find((t) => t.problemId === problemId)?.tips ?? [];
@@ -127,6 +137,20 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     if (mode === 'duplicate') {
       const e = eqs.find((x) => hasOpen(x.id));
       if (e) { setUnitId(e.unitId); setEquipmentId(e.id); setProblemId('TSO-002'); }
+      return;
+    }
+    if (mode === 'advanced' || mode === 'reviewdetails') {
+      const e = eqs.find((x) => x.safetyNote && !hasOpen(x.id)) ?? eqs[0];
+      if (!e) return;
+      setUnitId(e.unitId); setEquipmentId(e.id);
+      setProblemId(refs.admin.requestTypes.find((t) => t.status === 'ativo' && typeFits(t, e.categoryId))?.id ?? '');
+      setImpact('alto'); setDescription('O equipamento parou de funcionar hoje de manhã e já há perda de produto.'); setRelated('nao');
+      setDetails({ ...EMPTY_DETAILS, startedDate: todayIso(), startedTime: '08:30', pattern: 'intermitente', frequency: 'varias', tried: ['ligado', 'energia'], triedNotes: 'Verifiquei o disjuntor e religuei o equipamento.', errorCode: 'E24', impacts: ['indisponivel', 'estoque'], alternative: 'nao', risks: ['gas'], riskNotes: 'Cheiro fraco perto do registro.', bestTime: 'manha', accessRestricted: 'sim', accessInfo: 'Falar com a portaria; a chave fica no armário da cozinha.', extra: 'O fornecedor dos insumos chega às 10h.' });
+      if (mode === 'reviewdetails') {
+        // Revisão com só alguns detalhes preenchidos (o card mostra apenas o que foi informado)
+        setDetails({ ...EMPTY_DETAILS, startedDate: todayIso(), startedTime: '08:30', pattern: 'continuo', risks: ['agua'], bestTime: 'manha', accessRestricted: 'nao' });
+        setStage('review');
+      } else setOpenAllDetails(true);
       return;
     }
     const withTips = eqs.filter((e) => e.troubleshooting.length).sort((a, b) => Number(hasOpen(a.id)) - Number(hasOpen(b.id)) || Math.max(...b.troubleshooting.map((t) => t.tips.length)) - Math.max(...a.troubleshooting.map((t) => t.tips.length)));
@@ -196,7 +220,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
    * O que já foi preenchido fica guardado na sessão e volta junto (as fotos anexadas não; o upload é simulado).
    */
   const registerEquipment = () => {
-    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ unitId, problemId, impact, description, related, prevNote })); } catch { /* sem storage */ }
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ unitId, problemId, impact, description, related, prevNote, details })); } catch { /* sem storage */ }
     window.location.href = `equipamento-form.html?return=solicitacao-form.html${unitId ? `&unit=${unitId}` : ''}`;
   };
   const allowRegister = !external && can('equipamentos', 'cadastrar');
@@ -261,7 +285,8 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     window.scrollTo({ top: 0 });
   };
   /** Volta ao formulário (nada se perde) e leva a pessoa à seção que quer corrigir. */
-  const backToEdit = (section?: 'equipment' | 'problem' | 'contact') => {
+  const backToEdit = (section?: 'equipment' | 'problem' | 'contact' | 'details') => {
+    if (section === 'details') setReopenDetails(true);
     setStage('form');
     window.setTimeout(() => (section ? document.querySelector(`.sec-${section}`)?.scrollIntoView({ block: 'start' }) : window.scrollTo({ top: 0 })), 50);
   };
@@ -277,6 +302,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
         openedAt: nowLocal(), statusId: STS.NEW, statusChangedAt: nowLocal(),
         previousRepair: related === 'sim' ? { related: true, note: prevNote.trim() || undefined } : { related: false },
         troubleshooting: run, log: [logEntry(contactName.trim(), 'Abriu a solicitação')],
+        ...(advanced && detailsFilled(details) ? { details } : {}),
       };
       return { ...d, requests: [...d.requests, created] };
     });
@@ -284,6 +310,10 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
     const triagers = db.users.filter((u) => u.status === 'ativo' && (u.profile === 'administrador' || u.profile === 'gestor') && u.id !== user.id).map((u) => u.id);
     onRemember?.(contactName.trim(), formatPhone(contactPhone));
     notify(triagers, { title: 'Nova solicitação aberta', text: `${id}: ${equipment.name} · ${problemName} (impacto ${IMPACT_LABEL[impact as Impact].toLowerCase()})`, href: `solicitacao.html?id=${id}`, kind: 'solicitacao' });
+    // Risco de segurança informado (gás, fumaça ou elétrico): além do aviso normal, os gestores recebem uma notificação própria, para priorizar a triagem
+    if (advanced && hasSafetyRisk(details)) {
+      notify(triagers, { title: 'Risco de segurança informado', text: `${id}: ${equipment.name} · ${seriousRisks(details).join(', ')}. Priorize a triagem`, href: `solicitacao.html?id=${id}`, kind: 'solicitacao' });
+    }
     onSent(id);
   };
 
@@ -334,7 +364,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
   if (stage === 'review' && equipment) {
     const unit = db.units.find((u) => u.id === equipment.unitId);
     const env = db.environments.find((x) => x.id === equipment.environmentId);
-    const edit = (section: 'equipment' | 'problem' | 'contact') => <Button variant="ghost" size="sm" disabled={saving} onClick={() => backToEdit(section)}>Editar</Button>;
+    const edit = (section: 'equipment' | 'problem' | 'contact' | 'details') => <Button variant="ghost" size="sm" disabled={saving} onClick={() => backToEdit(section)}>Editar</Button>;
     return shell(<>
       <Stack gap="xl" className="form-page">
         {header}
@@ -372,6 +402,13 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
             </Grid>
           </div>
         </Card>
+        {advanced && detailsFilled(details) && (
+          <Card title="Detalhes adicionais" actions={edit('details')}>
+            <div className="card-body-tight">
+              <DetailsReadOnly details={details} />
+            </div>
+          </Card>
+        )}
         <div className={external ? 'ext-actions' : undefined}>
           <Stack direction="horizontal" justify="start" gap="sm" wrap>
             <Button disabled={saving} onClick={send}>{saving ? 'Enviando...' : 'Confirmar e enviar'}</Button>
@@ -470,6 +507,12 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
                   </DevNote>
                   {registerLink && !equipmentId && <div>{registerLink}</div>}
                 </Col>
+                {advanced && equipment && (
+                  <>
+                    <Col span={6} mobileFull><Input label="Ambiente" readOnly value={db.environments.find((x) => x.id === equipment.environmentId)?.name ?? '-'} helperText="Preenchido pelo equipamento" /></Col>
+                    <Col span={6} mobileFull><Input label="Categoria" readOnly value={refs.category(equipment.categoryId)?.name ?? '-'} helperText="Preenchida pelo equipamento" /></Col>
+                  </>
+                )}
               </Grid>
             </div>
           </Section>
@@ -540,7 +583,7 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
                 <Col span={12}>
                   <Textarea
                     label="Descrição" required rows={5} maxLength={DESC_MAX} value={description} onChange={(e) => setDescription(e.target.value)} error={show('description')}
-                    helperText={`${description.length}/${DESC_MAX} caracteres`}
+                    helperText={advanced ? `Conte o que acontece, desde quando e como afeta a operação · ${description.length}/${DESC_MAX} caracteres` : `${description.length}/${DESC_MAX} caracteres`}
                   />
                 </Col>
                 <Col span={12}>
@@ -578,6 +621,14 @@ export function SolicitacaoFormCore({ external = false, shell, header, actor, un
               </Grid>
             </div>
           </Section>
+
+          {advanced && (
+            <DevNote note="Nova solicitação v2 (solicitação avançada): em vez de duas abas (Rápida e Completa), é UM formulário só: os campos obrigatórios bastam para enviar, e este bloco opcional, no fim, é recolhível e começa FECHADO (título Detalhes adicionais com o selo Opcional e uma frase de apoio; ao abrir, uma orientação de quando vale preencher) e reúne os detalhes extras em categorias que também começam fechadas e abrem sob demanda (Ocorrência, O que já foi tentado, Impacto na operação, Segurança, Acesso e atendimento, Informações adicionais). Quem tem um caso simples nem precisa abri-lo; quem tem um caso urgente, de risco ou de acesso complicado abre só as seções que interessam. Nada aqui é obrigatório. Os dados ficam em Request.details e ainda NÃO aparecem na triagem, na OS nem na solicitação (a definir depois da aprovação do desenho).">
+              <div className="sec-details">
+                <AdvancedDetails value={details} onChange={setDetails} equipment={equipment} open={reopenDetails ? 'filled' : openAllDetails ? 'all' : 'none'} />
+              </div>
+            </DevNote>
+          )}
 
           {external && (
             <DevNote note="Colaborador RF002: aceite dos Termos e da Política de Privacidade obrigatório (LGPD). Cada documento abre em um modal; os textos serão fornecidos pelo cliente e hoje são provisórios (placeholder, sinalizado no modal).">

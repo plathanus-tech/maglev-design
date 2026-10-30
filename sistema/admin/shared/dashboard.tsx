@@ -295,6 +295,7 @@ function DashboardScreen() {
         <DevNote note="Lista tudo o que não está fechado, independentemente da data (RF101-RGN002): solicitações com status ≠ encerrada e OS ≠ concluída/cancelada. Ordem: criticidade (A › B › C), depois prioridade (Emergência › Baixa), depois o mais antigo - críticos no topo e destacados (CTA003). Status com o tipo visual configurado (RF407). 10 por página; no mobile vira lista de cards.">
           {isMobile ? (
             <MobileCardList
+              onItemClick={(i) => setSelected(rows[i] as Ticket)}
               headingId="open-tickets-title"
               title="Chamados em aberto"
               subtitle="Solicitações e ordens de serviço ainda não resolvidas"
@@ -323,6 +324,7 @@ function DashboardScreen() {
             />
           ) : (
             <Table<Row>
+              onRowClick={(r) => setSelected(r as Ticket)}
               title="Chamados em aberto"
               subtitle="Solicitações e ordens de serviço ainda não resolvidas, de todos os assinantes"
               toolbar={toolbar}

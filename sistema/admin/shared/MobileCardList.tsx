@@ -21,7 +21,7 @@ export interface MobileCardItem {
 /** Modo de seleção múltipla: cada card ganha um Checkbox, tocar no card marca/desmarca e o rodapé de ações individuais (⋮) some. */
 export interface MobileSelection { selectedIds: Set<string>; onToggle: (id: string) => void; label: (id: string) => string }
 
-export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction, rangeLabel }: {
+export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction, rangeLabel, onItemClick }: {
   title: string;
   titleHidden?: boolean;
   subtitle?: string;
@@ -40,6 +40,8 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
   stickyFooter?: ReactNode;
   /** Ação ao lado do "Mostrando X–Y de Z" (ex.: "Ver todas"): o texto fica à esquerda e a ação à direita, na mesma linha. */
   footerAction?: ReactNode;
+  /** Tocar no card abre a visualização (recebe a posição do item na lista). Links, botões e campos do card, e a seleção em lote, não disparam. */
+  onItemClick?: (index: number) => void;
   /** Texto do intervalo (padrão: "Mostrando X–Y de Z"). */
   rangeLabel?: (from: number, to: number, total: number) => string;
 }) {
@@ -59,7 +61,7 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
 
       {items.length === 0 ? (
         <Card><EmptyState icon={<IconInbox size={40} />} title={emptyTitle} description={emptyDescription} /></Card>
-      ) : items.map((it) => {
+      ) : items.map((it, idx) => {
         const checked = !!selection?.selectedIds.has(it.id);
         const card = (
           <Card
@@ -86,6 +88,16 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
         );
         return selection ? (
           <div key={it.id} className={`mcl-select${checked ? ' is-selected' : ''}`} onClick={() => selection.onToggle(it.id)}>{card}</div>
+        ) : onItemClick ? (
+          <div
+            key={it.id} className="mcl-open"
+            onClick={(e) => {
+              const t = e.target as HTMLElement;
+              if (t.closest('a, button, input, select, textarea, label, summary, [role="button"], [role="menuitem"], [role="checkbox"], [data-no-row-click]')) return;
+              if (window.getSelection()?.toString()) return;
+              onItemClick(idx);
+            }}
+          >{card}</div>
         ) : card;
       })}
 

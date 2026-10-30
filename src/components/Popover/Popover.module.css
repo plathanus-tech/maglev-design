@@ -19,3 +19,6 @@
 @media (max-width: 767px) {
   .fit { width: max-content; min-width: calc(var(--spacing-3xl) * 2.5); max-width: calc(100vw - var(--spacing-xl)); padding: var(--spacing-xs); }
 }
+
+/* Largura do conteúdo (lista curta de opções), em qualquer tela */
+.hug { width: max-content; min-width: 0; max-width: calc(100vw - var(--spacing-xl)); padding: var(--spacing-xs); }

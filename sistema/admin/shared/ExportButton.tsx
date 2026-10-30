@@ -1,11 +1,13 @@
-import { ReactNode } from 'react';
+import { ReactNode, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { IconDownload } from '@tabler/icons-react';
-import { Button, TableColumn, Tooltip, useToast } from '@maglev/ds';
+import { IconDownload, IconFileSpreadsheet, IconFileTypePdf } from '@tabler/icons-react';
+import { Button, Popover, Stack, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { Cell, downloadXlsx } from './export-xlsx';
+import { downloadPdf } from './export-pdf';
 import { formatNumber } from './format';
 import { todayIso } from './clock';
+import { formatDate } from './format';
 
 /** Texto de uma célula renderizada (o que a pessoa lê na tabela): renderiza fora da tela e lê o texto; irmãos com conteúdo (ex.: nome e subtexto) ficam separados por " · ". */
 const SEP = ' · ';
@@ -35,11 +37,11 @@ const makeTextReader = () => {
 };
 
 /**
- * Exportar para Excel (.xlsx) as colunas que a tabela está EXIBINDO (as da "Exibição", na ordem em que aparecem, sem a coluna de ações) para
+ * Exportar para Excel (.xlsx) ou PDF (.pdf), à escolha da pessoa num popover, as colunas que a tabela está EXIBINDO (as da "Exibição", na ordem em que aparecem, sem a coluna de ações) para
  * TODOS os registros do filtro/busca atuais (não só a página). O valor de cada célula é o que a pessoa lê na tabela; `overrides` troca por
  * número/valor puro onde faz sentido (ex.: dinheiro em reais, contagens). O chamador só renderiza o botão para quem tem a permissão Exportar.
  */
-export function ExportButton<T extends Record<string, unknown>>({ columns, rows, file, sheet, noun, feminine = false, overrides = {}, label }: {
+export function ExportButton<T extends Record<string, unknown>>({ columns, rows, file, sheet, noun, feminine = false, overrides = {}, label, company }: {
   columns: TableColumn<T>[];
   /** Todos os registros do filtro atual (ou uma função que os monta só na hora de exportar). */
   rows: T[] | (() => T[]);
@@ -53,11 +55,18 @@ export function ExportButton<T extends Record<string, unknown>>({ columns, rows,
   overrides?: Record<string, (row: T) => Cell>;
   /** Nome acessível (ex.: "Exportar equipamentos para Excel"). */
   label: string;
+  /** Nome do assinante (restaurante), impresso no PDF das listas da Área do assinante. */
+  company?: string;
 }) {
   const toast = useToast();
   const exportable = columns.filter((c) => c.sticky !== 'right' && c.type !== 'actions' && c.label);
 
-  const run = () => {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLDivElement>(null);
+
+  /** Exporta no formato escolhido (Excel ou PDF): mesmas colunas exibidas e mesmos registros do filtro, com o texto que a tabela mostra. */
+  const run = async (format: 'xlsx' | 'pdf') => {
+    setOpen(false);
     const list = typeof rows === 'function' ? rows() : rows;
     if (!list.length) { toast.show({ type: 'warning', title: 'Nada para exportar', message: `Nenhum registro corresponde aos filtros aplicados.` }); return; }
     const reader = makeTextReader();
@@ -71,8 +80,10 @@ export function ExportButton<T extends Record<string, unknown>>({ columns, rows,
         return typeof raw === 'number' || typeof raw === 'string' ? raw : raw == null ? '' : String(raw);
       }));
       reader.done();
-      const name = downloadXlsx(file, todayIso(), sheet, headers, data);
-      toast.show({ type: 'success', title: 'Exportação concluída', message: `${formatNumber(data.length)} ${data.length === 1 ? noun[0] + (feminine ? ' exportada' : ' exportado') : noun[1] + (feminine ? ' exportadas' : ' exportados')} em ${name}` });
+      const today = todayIso();
+      if (format === 'xlsx') downloadXlsx(file, today, sheet, headers, data);
+      else await downloadPdf(file, today, sheet, `Gerado em ${formatDate(today)} · ${formatNumber(data.length)} ${data.length === 1 ? noun[0] : noun[1]}`, headers, data, company);
+      toast.show({ type: 'success', title: 'Exportação concluída', message: `${formatNumber(data.length)} ${data.length === 1 ? noun[0] + (feminine ? ' exportada' : ' exportado') : noun[1] + (feminine ? ' exportadas' : ' exportados')} em ${format === 'xlsx' ? 'Excel' : 'PDF'}.` });
     } catch {
       reader.done();
       toast.show({ type: 'error', title: 'Não foi possível exportar', message: 'Tente novamente. Se o problema continuar, contate o suporte.' });
@@ -80,8 +91,16 @@ export function ExportButton<T extends Record<string, unknown>>({ columns, rows,
   };
 
   return (
-    <Tooltip content="Exportar para Excel" placement="left">
-      <Button variant="outline" iconOnly iconLeft={<IconDownload size={16} />} aria-label={label} onClick={run} />
-    </Tooltip>
+    <div ref={anchor} className="export-anchor">
+      <Tooltip content="Exportar" placement="left">
+        <Button variant="outline" iconOnly iconLeft={<IconDownload size={16} />} aria-label={label} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)} />
+      </Tooltip>
+      <Popover open={open} onClose={() => setOpen(false)} anchorRef={anchor} label="Escolher formato de exportação" align="end" hug>
+        <Stack gap="2xs">
+          <Button variant="ghost" size="sm" className="export-option" iconLeft={<IconFileSpreadsheet size={16} />} onClick={() => run('xlsx')}>Excel (.xlsx)</Button>
+          <Button variant="ghost" size="sm" className="export-option" iconLeft={<IconFileTypePdf size={16} />} onClick={() => run('pdf')}>PDF (.pdf)</Button>
+        </Stack>
+      </Popover>
+    </div>
   );
 }

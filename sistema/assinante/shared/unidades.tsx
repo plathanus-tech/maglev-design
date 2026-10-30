@@ -69,9 +69,7 @@ function UnidadesScreen() {
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Visualizar unidade" target={u.name} onClick={() => goTo(`unidade.html?id=${u.id}`)} />
-        {/* Mobile: os cards têm espaço, então todas as ações aparecem como ícones (sem o menu ⋮) */}
-        {isMobile && items.map((it) => <RowAction key={it.label} icon={it.icon as ReactElement} label={`${it.label} unidade`} target={u.name} onClick={it.onClick} />)}
-        {!isMobile && <RowMenu target={u.name} items={items} defaultOpen={mode === 'menu' && r.id === rows[0]?.id} />}
+        <RowMenu target={u.name} items={items} defaultOpen={mode === 'menu' && r.id === rows[0]?.id} />
       </RowActions>
     );
   };
@@ -112,6 +110,7 @@ function UnidadesScreen() {
         <DevNote note="RF202-FLU002/FLU003: listagem com busca e filtro de status, paginada (10). Colunas da spec: nome, cidade/UF, responsável, qtde. de ambientes, qtde. de equipamentos e status. Ações por linha: Visualizar e o menu ⋮ (Editar, Ativar/Inativar com confirmação e Excluir), só as permitidas ao perfil. Exibição (colunas personalizáveis) é a FE011, incluída a pedido para avaliação. 💡 RGN004: limite de unidades por plano a confirmar (P01/FE012).">
           {isMobile ? (
             <MobileCardList
+              onItemClick={(i) => goTo(`unidade.html?id=${rows[i].id}`)}
               headingId="units-title" title="Lista de unidades" titleHidden toolbar={toolbar} emptyTitle={empty.title}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((r) => ({
@@ -124,7 +123,7 @@ function UnidadesScreen() {
               }))}
             />
           ) : (
-            <Table<Row>
+            <Table<Row> onRowClick={(r) => goTo(`unidade.html?id=${r.id}`)}
               caption="Lista de unidades" toolbar={toolbar} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />

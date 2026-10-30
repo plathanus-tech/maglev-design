@@ -32,7 +32,7 @@ type Row = Record<string, unknown> & { id: string; plan: Plan; stats: PlanStats;
 
 function PlanosScreen() {
   const toast = useToast();
-  const { db, user, can, unitIds } = useSubSession();
+  const { db, user, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState(() => (['ativo', 'pausado'].includes(param('status') ?? '') ? (param('status') as string) : 'todos'));
@@ -136,7 +136,7 @@ function PlanosScreen() {
   );
   const toolbar = <div className="toolbar-fill"><ListFilters searchLabel="Buscar plano por nome, equipamento, unidade ou executor" placeholder="Buscar por plano, equipamento ou executor" query={query} onQuery={setQuery} filterControl={filterControl} columns={control} actions={can('planos', 'exportar') && (
     <DevNote note="Exportar (Excel): baixa um .xlsx com os planos do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
-      <ExportButton columns={shownColumns} rows={filtered} file="planos-de-manutencao" sheet="Planos" noun={['plano', 'planos']} label="Exportar planos para Excel" overrides={{ equipments: (r) => r.equipments.join('; '), units: (r) => r.units.join('; ') }} />
+      <ExportButton company={company.tradeName || company.legalName} columns={shownColumns} rows={filtered} file="planos-de-manutencao" sheet="Planos" noun={['plano', 'planos']} label="Exportar planos" overrides={{ equipments: (r) => r.equipments.join('; '), units: (r) => r.units.join('; ') }} />
     </DevNote>
   )} /></div>;
   const noPlans = plans.length === 0;
@@ -191,7 +191,7 @@ function PlanosScreen() {
           </Card>
         ) : (
           <DevNote note="RF602: listagem paginada (10) com busca e filtros combinados (status, situação, executor, unidade). Equipamento(s) e Unidade(s) mostram o primeiro + “+N”. Clique no plano abre o histórico (plano.html). “Salvar visualização” é FE010 (fora do escopo). Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação. Executor só vê os planos em que é o executor. No mobile vira lista de cards.">
-            <ResponsiveTable<Row>
+            <ResponsiveTable<Row> onRowClick={(r) => goTo(`plano.html?id=${r.id}`)}
               id="plans-title" title="Lista de planos de manutenção" titleHidden toolbar={toolbar} columns={shownColumns} rows={filtered} resetKey={resetKey}
               emptyTitle="Nenhum plano encontrado" emptyDescription="Revise a busca ou os filtros."
               card={(r) => {

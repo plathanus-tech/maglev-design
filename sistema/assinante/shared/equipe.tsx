@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconMailForward, IconPencil, IconPlus, IconSearch } from '@tabler/icons-react';
 import { Badge, Button, Dialog, Feedback, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -86,17 +87,13 @@ function EquipeScreen() {
   const actions = (r: Row) => {
     const u = r.member;
     const activate = u.status === 'inativo';
+    const items: RowMenuItem[] = [];
+    if (can('equipe', 'editar') && u.status === 'convite') items.push({ label: 'Reenviar convite', icon: <IconMailForward size={16} />, onClick: () => resend(u) });
+    if (can('equipe', 'ativar')) items.push({ label: activate ? 'Ativar' : 'Inativar', icon: activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />, onClick: () => (u.id === me.id ? setSelfBlock(true) : setToggling(u)) });
     return (
       <RowActions>
         {can('equipe', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar membro" target={u.name} onClick={() => goTo(`membro-form.html?id=${u.id}`)} />}
-        {can('equipe', 'editar') && u.status === 'convite' && <RowAction icon={<IconMailForward size={16} />} label="Reenviar convite" target={u.name} onClick={() => resend(u)} />}
-        {can('equipe', 'ativar') && (
-          <RowAction
-            icon={activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />}
-            label={activate ? 'Ativar membro' : 'Inativar membro'} target={u.name}
-            onClick={() => (u.id === me.id ? setSelfBlock(true) : setToggling(u))}
-          />
-        )}
+        <RowMenu target={u.name} label="Mais ações do membro" items={items} />
       </RowActions>
     );
   };

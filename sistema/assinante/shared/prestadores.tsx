@@ -1,3 +1,4 @@
+import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconClipboardList, IconEye, IconPencil, IconPlus, IconTools, IconTruck, IconBuilding } from '@tabler/icons-react';
 import { IconSearch } from '@tabler/icons-react';
@@ -27,7 +28,7 @@ type Row = Record<string, unknown> & { id: string; provider: Provider; orders: W
 function PrestadoresScreen() {
   const toast = useToast();
   const refs = useRefs();
-  const { db, can, unitIds } = useSubSession();
+  const { db, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('todos');
@@ -73,13 +74,13 @@ function PrestadoresScreen() {
 
   const actions = (r: Row) => {
     const p = r.provider; const activate = p.status === 'inativo'; const name = providerName(p);
+    const items: RowMenuItem[] = [];
+    if (can('prestadores', 'editar')) items.push({ label: 'Editar', icon: <IconPencil size={16} />, onClick: () => goTo(`prestador-form.html?id=${p.id}`) });
+    if (can('prestadores', 'ativar')) items.push({ label: activate ? 'Ativar' : 'Inativar', icon: activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />, onClick: () => setToggling(p) });
     return (
       <RowActions>
         <RowAction icon={<IconEye size={16} />} label="Visualizar prestador" target={name} onClick={() => goTo(`prestador.html?id=${p.id}`)} />
-        {can('prestadores', 'editar') && <RowAction icon={<IconPencil size={16} />} label="Editar prestador" target={name} onClick={() => goTo(`prestador-form.html?id=${p.id}`)} />}
-        {can('prestadores', 'ativar') && (
-          <RowAction icon={activate ? <IconCircleCheck size={16} /> : <IconCircleOff size={16} />} label={activate ? 'Ativar prestador' : 'Inativar prestador'} target={name} onClick={() => setToggling(p)} />
-        )}
+        <RowMenu target={name} label="Mais ações do prestador" items={items} />
       </RowActions>
     );
   };
@@ -114,7 +115,7 @@ function PrestadoresScreen() {
       columns={control}
       actions={can('prestadores', 'exportar') && (
         <DevNote note="Exportar (Excel): baixa um .xlsx com os prestadores do filtro e da busca atuais (todas as páginas) e SÓ as colunas que estão sendo exibidas (as da “Exibição”, na ordem atual, sem Ações). Só aparece para perfis com a permissão “Exportar”. Sem resultados avisa em vez de baixar vazio; se falhar mostra erro e permite tentar de novo. Formatos finais, colunas e escopo por permissão serão confirmados no desenvolvimento; importação em lote não faz parte do protótipo.">
-          <ExportButton columns={shownColumns} rows={filtered} file="prestadores" sheet="Prestadores" noun={['prestador', 'prestadores']} label="Exportar prestadores para Excel" overrides={{ region: (r) => r.provider.regions.join('; ') }} />
+          <ExportButton company={company.tradeName || company.legalName} columns={shownColumns} rows={filtered} file="prestadores" sheet="Prestadores" noun={['prestador', 'prestadores']} label="Exportar prestadores" overrides={{ region: (r) => r.provider.regions.join('; ') }} />
         </DevNote>
       )}
     />
@@ -161,7 +162,7 @@ function PrestadoresScreen() {
           </Card>
         ) : (
           <DevNote note="RF701: listagem paginada (10) com busca (nome, especialidade, cidade) e filtros. Sem ranking nem avaliação de prestadores (RGN002, fora do MVP). Cidade/UF mostra a primeira região + “+N”. Última OS = a mais recente atribuída ao prestador. No mobile vira lista de cards.">
-            <ResponsiveTable<Row>
+            <ResponsiveTable<Row> onRowClick={(r) => goTo(`prestador.html?id=${r.id}`)}
               id="providers-title" title="Lista de prestadores" titleHidden toolbar={toolbar} columns={shownColumns} rows={filtered} resetKey={`${query}|${status}|${specialty}|${category}|${region}`}
               emptyTitle="Nenhum prestador encontrado" emptyDescription="Revise a busca ou os filtros."
               card={(r) => ({

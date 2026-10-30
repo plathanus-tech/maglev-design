@@ -232,3 +232,6 @@ button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(
 .qr-missing-flag { display: inline-flex; align-items: center; color: var(--color-status-warning-fg); }
 .qr-missing-flag:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
 .eq-qr--sm { inline-size: calc(var(--spacing-3xl) * 2); flex-shrink: 0; }
+
+/* Linha da árvore (mobile) que responde ao toque */
+.mtree-tap { cursor: pointer; }
