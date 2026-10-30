@@ -86,6 +86,7 @@ export const journeys: Journey[] = [
         id: 'dashboard', label: 'RF101 - Dashboard da plataforma', path: `${s}/dashboard.html`,
         variants: [
           v('dashboard-empty', 'Sem chamados em aberto', 'dashboard.html#state=empty'),
+          v('dashboard-firstaccess', 'Primeiro acesso: canal de avisos (WhatsApp) e telefone', 'dashboard.html#state=firstaccess'),
           v('dashboard-session', 'Conta já conectada em outra sessão (modal)', 'dashboard.html#state=session'),
         ],
       },

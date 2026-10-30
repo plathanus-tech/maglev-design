@@ -9,7 +9,8 @@ import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { MobileCardList } from './MobileCardList';
 import { useIsMobile } from './useMediaQuery';
-import { useSession } from './store';
+import { updateDb, useSession } from './store';
+import { ContactChannelDialog } from './ContactChannelDialog';
 import { SessionConflictModal } from './SessionConflictModal';
 import { Db, LevelItem, Ticket, subscriberName, visualBadge } from './data';
 import { formatDateTime, formatNumber, normalize, openedAgo } from './format';
@@ -21,7 +22,7 @@ import { todayIso } from './clock';
 import { Col, Grid, ReadField, param, SectionLabel, TableToolbar, levelBadgeOf, statusBadgeOf } from './ui';
 
 /** Estados: idle · empty (nenhum chamado em aberto - todos resolvidos) */
-const STATES = ['idle', 'empty', 'session'] as const;
+const STATES = ['idle', 'empty', 'session', 'firstaccess'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
@@ -91,7 +92,7 @@ type Row = Record<string, unknown> & Ticket & { subscriber: string; openedAgo: s
 const NO_RESPONSIBLE = 'sem-responsavel';
 
 function DashboardScreen() {
-  const { db, can } = useSession();
+  const { db, can, user } = useSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   // Sessão única (variante #state=session): a conta já está aberta em outra sessão; nada do painel aparece até a pessoa escolher
   const [sessionChoice, setSessionChoice] = useState<'pending' | 'here'>('pending');
@@ -234,9 +235,20 @@ function DashboardScreen() {
   const empty = { title: 'Nenhum chamado em aberto', description: 'Todas as solicitações e ordens de serviço dos assinantes estão resolvidas.' };
 
   const blocked = mode === 'session' && sessionChoice === 'pending';
+  // Primeiro acesso (variante #state=firstaccess): orientação sobre o canal de avisos (WhatsApp) e conferência do telefone
+  const [contactOpen, setContactOpen] = useState(mode === 'firstaccess');
 
   return (
     <AppLayout active="dashboard" screen="dashboard">
+      {contactOpen && (
+        <ContactChannelDialog
+          initial={{ phone: user.phone, notifyEmail: user.notifyEmail ?? true, notifyWhatsapp: user.notifyWhatsapp ?? false }}
+          email={user.email}
+          notices={['Alertas de segurança da sua conta, como acesso de um novo dispositivo', 'Assinantes inadimplentes e prazos de inativação do ambiente', 'Convites aceitos e mudanças de acesso da equipe da plataforma']}
+          onSave={(c) => updateDb((d) => ({ ...d, adminUsers: d.adminUsers.map((u) => (u.id === user.id ? { ...u, ...c } : u)) }))}
+          onClose={() => setContactOpen(false)}
+        />
+      )}
       <div aria-hidden={blocked || undefined} {...(blocked ? ({ inert: '' } as object) : {})}>
       <Stack gap="xl">
         <PageHeader

@@ -16,13 +16,14 @@ import { executorPhone } from './preventivas';
 import { KpiMoney } from '../../admin/shared/kpi-value';
 import { greeting, todayText } from './saudacao';
 import { DEMO_NOW, Equipment, Request, WorkOrder, dayOnly, orderRealizedCents } from './data';
-import { equipmentOf, ordersVisible, requestsVisible, unitName, userName, useSubSession } from './store';
+import { equipmentOf, ordersVisible, requestsVisible, unitName, updateSubDb, userName, useSubSession } from './store';
+import { ContactChannelDialog } from '../../admin/shared/ContactChannelDialog';
 import { CellPair, RowAction, RowActions, SectionLabel, Text, firstName, goTo, useRefs } from './ui';
 import './inicio.css';
 import './inicio-layout.css';
 
 /** Estados: idle (cheio) · empty (sem pendências) · v1 (Início anterior: sem a faixa de ações e sem cartão em destaque) · mobilev1 (mobile anterior: cartões completos e sem blocos recolhíveis novos). */
-const STATES = ['idle', 'empty', 'v1', 'mobilev1'] as const;
+const STATES = ['idle', 'empty', 'v1', 'mobilev1', 'firstaccess'] as const;
 type Mode = (typeof STATES)[number];
 
 const TODAY = dayOnly(0);
@@ -360,8 +361,26 @@ function InicioScreen() {
   const reqSectionId = 'inicio-req';
   const osSectionId = 'inicio-os';
 
+  // Primeiro acesso (variante #state=firstaccess): orientação sobre o canal de avisos (WhatsApp) e conferência do telefone
+  const [contactOpen, setContactOpen] = useState(mode === 'firstaccess');
+  const contactNotices = [
+    'Atualizações das suas solicitações, como triagem, pedido de informação e conclusão',
+    'Ordens de serviço: agendamento de visita, orçamento para aprovar e atendimento concluído',
+    'Manutenções preventivas próximas do vencimento ou atrasadas',
+    ...(canSeeCosts ? ['Garantia de equipamento a vencer e inativação prevista do ambiente'] : []),
+  ];
+
   return (
     <AppLayout active="inicio" screen="inicio">
+      {contactOpen && (
+        <ContactChannelDialog
+          initial={{ phone: user.phone, notifyEmail: user.notifyEmail, notifyWhatsapp: user.notifyWhatsapp }}
+          email={user.email}
+          notices={contactNotices}
+          onSave={(c) => updateSubDb((d) => ({ ...d, users: d.users.map((u) => (u.id === user.id ? { ...u, ...c } : u)) }))}
+          onClose={() => setContactOpen(false)}
+        />
+      )}
       <Stack gap="xl">
         <DevNote note="RF101-FLU001/FLU002: tela inicial após o login; blocos conforme o perfil e as unidades (RGN002/CTA003). Saudação com a data de hoje e Bom dia/Boa tarde/Boa noite (relógio real). RGN016: o rótulo do menu é “Início”. Fora do escopo: SLA (FE001/RGN008), estágio de implantação (RGN010) e tutorial guiado (FE015/RGN011). Sem filtro de período.">
           <PageHeader title={`${greeting()}, ${firstName(user.name)}`} subtitle={dateText} {...{ [isMobile ? 'iconActions' : 'actions']: createMenu }} />

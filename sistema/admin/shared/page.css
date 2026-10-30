@@ -468,3 +468,6 @@ div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(
 
 /* Link de ajuda longo na autenticação: quebra em linhas em vez de estourar a largura */
 .auth-help-link { white-space: normal; height: auto; text-align: center; }
+
+/* Lista de avisos no modal de canal de contato */
+.contact-notices { margin: 0; padding-left: var(--spacing-lg); }
