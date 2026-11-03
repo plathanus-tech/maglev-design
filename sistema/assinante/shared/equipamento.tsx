@@ -23,7 +23,7 @@ import './equipamento.css';
 
 /** Estados: idle · qr (abre o Dialog do QR Code) */
 /** idle: mostra todos os pontos de atenção (1 = alerta individual, 2+ = agrupados) · stopped / recurrence: filtros de protótipo para ver só um motivo */
-const STATES = ['idle', 'qr', 'stopped', 'recurrence', 'v2'] as const;
+const STATES = ['idle', 'qr', 'stopped', 'recurrence', 'v1'] as const;
 type Mode = (typeof STATES)[number];
 
 type Row = Record<string, unknown> & { id: string };
@@ -279,7 +279,8 @@ function EquipamentoScreen() {
   );
 
   // ── v2 (proposta): perfil do ativo em uma única área ──
-  const v2 = mode === 'v2';
+  // v2 (Perfil do ativo) é o padrão; a tela anterior (v1) fica na variante #state=v1
+  const v2 = mode !== 'v1';
   const costsCard = canSeeCosts ? (<DevNote note="RF304-RGN004 / CTA003: relação manutenção/ativo = manutenção acumulada ÷ valor de aquisição. Sem valor de aquisição, a barra fica zerada e só a manutenção acumulada é exibida, sem erro. Acima de 100% a barra enche e muda de cor. Dado sensível: só Administrador e Gestor (RGN003).">
               <Card title="Custos do ativo" subtitle="Compare os custos de manutenção com o valor de aquisição do equipamento">
                 <div className="card-body-tight">
@@ -307,7 +308,7 @@ function EquipamentoScreen() {
   // Informações v2: um card de perfil (identificação com as duas fotos, localização e situação) e o histórico em card separado, como antes
   const infoV2 = (
     <Stack gap="lg">
-      <DevNote note="v2 (proposta, a validar com o cliente): pedido “agrupar identificação, localização, situação e histórico em seções claras” com os principais atributos em uma única área. Na aba Informações, um só card Perfil do ativo com três seções de título destacado e separadas por linhas: Identificação (nome, código, categoria, série, fabricante e modelo, com as fotos do equipamento e da etiqueta ao lado, como antes), Localização e Situação (status, criticidade, garantia, cadastrado em e instalação), mais Observações e Orientação de segurança quando existem. O histórico de manutenções segue em card próprio logo abaixo. Os indicadores e o card Custos do ativo ficam acima das abas; o card de Localização foi absorvido pelo perfil.">
+      <DevNote note="v2 (padrão; a tela anterior é a variante v1): pedido “agrupar identificação, localização, situação e histórico em seções claras” com os principais atributos em uma única área. Na aba Informações, um só card Perfil do ativo com três seções de título destacado e separadas por linhas: Identificação (nome, código, categoria, série, fabricante e modelo, com as fotos do equipamento e da etiqueta ao lado, como antes), Localização e Situação (status, criticidade, garantia, cadastrado em e instalação), mais Observações e Orientação de segurança quando existem. O histórico de manutenções segue em card próprio logo abaixo. Os indicadores e o card Custos do ativo ficam acima das abas; o card de Localização foi absorvido pelo perfil.">
         <Card title="Perfil do ativo" subtitle="Identificação, localização e situação do equipamento">
           <div className="card-body-tight">
             <div className="eq-profile2">
