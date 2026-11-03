@@ -235,3 +235,17 @@
 .ext-suggest-text { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .ext-suggest-desc { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 @media (max-width: 640px) { .ext-suggest-option { min-height: 3rem; } }
+
+/* Resumo do ativo (v2): código em destaque com status e linhas com ícone */
+.ext-eq-head { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: calc(var(--spacing-md) - var(--spacing-xs)) var(--spacing-md) var(--spacing-md); }
+.ext-eq-label { display: block; font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.ext-eq-code { display: block; font: var(--text-subtitle-l); letter-spacing: var(--text-subtitle-l-tracking); color: var(--color-text-primary); overflow-wrap: anywhere; }
+.ext-eq-rows { margin: 0; }
+.ext-eq-rows > div { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--spacing-md); align-items: center; padding: var(--spacing-md); border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.ext-eq-rows dt { grid-column: 2; font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+.ext-eq-rows dd { grid-column: 2; margin: 0; overflow-wrap: anywhere; font-weight: var(--font-weight-label); }
+.ext-eq-icon { grid-row: 1 / span 2; display: inline-flex; align-items: center; justify-content: center; width: var(--spacing-xl); height: var(--spacing-xl); border-radius: var(--radius-control); background: var(--color-bg-subtle); color: var(--color-text-secondary); }
+@media (min-width: 640px) { .ext-actions--pair { flex-wrap: nowrap; } .ext-actions--pair > * { flex: 1; } }
+/* 12px entre o título do card e a foto (o cabeçalho do Card já deixa 16px abaixo do título) */
+.ext-eq-media { padding: 0 var(--spacing-md); margin-top: calc(var(--spacing-xs) * -1); }
+.ext-eq-footer { padding: var(--spacing-md); border-top: var(--border-width-thin) solid var(--color-border-subtle); }

@@ -79,8 +79,9 @@ export function useSubSession() {
   const admin = useAdminDb();
   const user = getSubSessionUser(db);
   const can = useCallback((screen: ScreenKey, action: ActionKey = 'visualizar') => !!PERMISSIONS[user.profile][screen]?.includes(action), [user.profile]);
-  const scoped = user.profile === 'solicitante' || user.profile === 'executor';
-  const unitIds = useMemo(() => (scoped ? user.unitIds : db.units.map((u) => u.id)), [scoped, user.unitIds, db.units]);
+  // Todo perfil enxerga só as unidades a que está vinculado (Usuários > unidades vinculadas); unidades excluídas saem do vínculo
+  const scoped = true;
+  const unitIds = useMemo(() => user.unitIds.filter((id) => db.units.some((u) => u.id === id)), [user.unitIds, db.units]);
   const canSeeCosts = user.profile === 'administrador' || user.profile === 'gestor';
   const company = admin.subscribers.find((s) => s.id === db.subscriberId)!;
   return { db, admin, user, can, scoped, unitIds, canSeeCosts, company };

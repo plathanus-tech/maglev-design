@@ -13,6 +13,10 @@ const v = (id: string, label: string, path: string) => ({ id, label, path: `${s}
 const users = seed().users;
 const idOf = (profile: string) => users.find((u) => u.profile === profile && u.status === 'ativo')?.id ?? users[0].id;
 const executor = idOf('executor');
+// Leitura de QR Code / código pela Área do assinante: equipamento de uma unidade que o solicitante NÃO tem vinculada (para a variante sem permissão)
+const seedDb = seed();
+const limited = seedDb.users.find((u) => u.profile === 'solicitante' && u.status === 'ativo' && u.unitIds.length < seedDb.units.length) ?? users[0];
+const foreignEq = seedDb.equipments.find((e) => !limited.unitIds.includes(e.unitId))?.id ?? 'EQP-0001';
 
 export const journeys: Journey[] = [
   {
@@ -67,6 +71,9 @@ export const journeys: Journey[] = [
           v('sol-nova-review', 'Revisão antes de enviar', 'solicitacao-form.html#state=review'),
           v('sol-nova-review-details', 'Revisão com detalhes adicionais preenchidos', 'solicitacao-form.html#state=reviewdetails'),
           v('sol-nova-phone', 'Telefone de contato inválido', 'solicitacao-form.html#state=phoneinvalid'),
+          { id: 'sol-nova-qr', label: 'Leitura de QR Code ou código: resumo do ativo (Abrir solicitação e Ver detalhes)', path: 'colaborador/screens/equipamento.html?e=EQP-0001&app=1' },
+          { id: 'sol-nova-qr-detalhes', label: 'Ver detalhes (a partir da leitura): dados e histórico do equipamento', path: `${s}/equipamento.html?id=EQP-0001`, sub: true },
+          { id: 'sol-nova-qr-semacesso', label: 'Leitura de equipamento de unidade sem permissão', path: `colaborador/screens/equipamento.html?e=${foreignEq}&app=1&as=${limited.id}` },
         ],
       },
       {

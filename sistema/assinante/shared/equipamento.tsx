@@ -23,7 +23,7 @@ import './equipamento.css';
 
 /** Estados: idle · qr (abre o Dialog do QR Code) */
 /** idle: mostra todos os pontos de atenção (1 = alerta individual, 2+ = agrupados) · stopped / recurrence: filtros de protótipo para ver só um motivo */
-const STATES = ['idle', 'qr', 'stopped', 'recurrence'] as const;
+const STATES = ['idle', 'qr', 'stopped', 'recurrence', 'v2'] as const;
 type Mode = (typeof STATES)[number];
 
 type Row = Record<string, unknown> & { id: string };
@@ -278,6 +278,94 @@ function EquipamentoScreen() {
     </Card>
   );
 
+  // ── v2 (proposta): perfil do ativo em uma única área ──
+  const v2 = mode === 'v2';
+  const costsCard = canSeeCosts ? (<DevNote note="RF304-RGN004 / CTA003: relação manutenção/ativo = manutenção acumulada ÷ valor de aquisição. Sem valor de aquisição, a barra fica zerada e só a manutenção acumulada é exibida, sem erro. Acima de 100% a barra enche e muda de cor. Dado sensível: só Administrador e Gestor (RGN003).">
+              <Card title="Custos do ativo" subtitle="Compare os custos de manutenção com o valor de aquisição do equipamento">
+                <div className="card-body-tight">
+                  <Stack gap="lg">
+                    <Grid>
+                    <Col span={6}><ReadField label="Valor de aquisição" value={eq.valueCents ? formatMoney(eq.valueCents) : 'Não informado'} /></Col>
+                    <Col span={6}><ReadField label="Manutenção acumulada" value={formatMoney(data.spent)} /></Col>
+                    </Grid>
+                <Stack gap="xs">
+                  <Stack direction="horizontal" justify="between" align="center" gap="sm">
+                    <span className="read-label">Relação manutenção/ativo</span>
+                    <span className="read-value">{eq.valueCents ? `${ratio.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '0%'}</span>
+                  </Stack>
+                  <div className="eq-bar" role="progressbar" aria-label="Relação manutenção/ativo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(ratio))}>
+                    <div className={`eq-bar-fill${ratio > 100 ? ' is-over' : ''}`} style={{ width: `${Math.min(100, ratio)}%` }} />
+                  </div>
+                  {!eq.valueCents && <p className="field-note">Sem valor de aquisição informado, não é possível calcular a relação</p>}
+                  {eq.valueCents && ratio >= 50 ? <p className="field-note">{ratio > 100 ? 'A manutenção já custou mais que o valor do equipamento' : 'A manutenção já passou de metade do valor do equipamento'}</p> : null}
+                </Stack>
+                  </Stack>
+                </div>
+              </Card>
+            </DevNote>) : null;
+
+  // Informações v2: um card de perfil (identificação com as duas fotos, localização e situação) e o histórico em card separado, como antes
+  const infoV2 = (
+    <Stack gap="lg">
+      <DevNote note="v2 (proposta, a validar com o cliente): pedido “agrupar identificação, localização, situação e histórico em seções claras” com os principais atributos em uma única área. Na aba Informações, um só card Perfil do ativo com três seções de título destacado e separadas por linhas: Identificação (nome, código, categoria, série, fabricante e modelo, com as fotos do equipamento e da etiqueta ao lado, como antes), Localização e Situação (status, criticidade, garantia, cadastrado em e instalação), mais Observações e Orientação de segurança quando existem. O histórico de manutenções segue em card próprio logo abaixo. Os indicadores e o card Custos do ativo ficam acima das abas; o card de Localização foi absorvido pelo perfil.">
+        <Card title="Perfil do ativo" subtitle="Identificação, localização e situação do equipamento">
+          <div className="card-body-tight">
+            <div className="eq-profile2">
+              <section className="eq-profile2-sec" aria-labelledby="eqp-ident">
+                <h3 id="eqp-ident" className="eq-profile2-title">Identificação</h3>
+                <div className="eq-ident-wrap">
+                  <div className="eq-ident">
+                    <div className="eq-profile2-fields is-pair">
+                      <ReadField label="Nome do equipamento" value={eq.name} />
+                      <ReadField label="Código" value={eq.code} />
+                      <ReadField label="Categoria" value={category} />
+                      <ReadField label="Número de série" value={eq.serial} />
+                      <ReadField label="Fabricante" value={eq.maker} />
+                      <ReadField label="Modelo" value={eq.model} />
+                    </div>
+                    <div className="eq-photos-row">
+                      {photoThumb('Foto do equipamento', eq.photoName)}
+                      {photoThumb('Foto da etiqueta ou placa', eq.labelPhotoName)}
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section className="eq-profile2-sec" aria-labelledby="eqp-loc">
+                <h3 id="eqp-loc" className="eq-profile2-title">Localização</h3>
+                <div className="eq-profile2-fields">
+                  <ReadField label="Unidade" value={unitName(db, eq.unitId)} />
+                  <ReadField label="Ambiente" value={eq.environmentId ? environmentName(db, eq.environmentId) : undefined} />
+                </div>
+              </section>
+              <section className="eq-profile2-sec" aria-labelledby="eqp-sit">
+                <h3 id="eqp-sit" className="eq-profile2-title">Situação</h3>
+                <div className="eq-profile2-fields">
+                  <ReadField label="Status" value={refs.statusBadge(eq.statusId)} />
+                  <ReadField label="Criticidade" value={refs.criticalityBadge(eq.criticalityId)} />
+                  <ReadField label="Garantia" value={warrantyBadge} />
+                  <ReadField label="Cadastrado em" value={formatDate(eq.createdAt)} />
+                  <ReadField label="Data de instalação" value={eq.acquiredAt ? formatDate(eq.acquiredAt) : undefined} />
+                  {w.has && <ReadField label="Início da garantia" value={w.start ? formatDate(w.start) : undefined} />}
+                  {w.has && <ReadField label="Fim da garantia" value={w.end ? formatDate(w.end) : undefined} />}
+                </div>
+              </section>
+              {(eq.notes || eq.safetyNote) && (
+                <section className="eq-profile2-sec" aria-labelledby="eqp-obs">
+                  <h3 id="eqp-obs" className="eq-profile2-title">Observações e segurança</h3>
+                  <Stack gap="md">
+                    {eq.notes && <ReadField label="Observações" value={eq.notes} />}
+                    {eq.safetyNote && <ReadField label="Orientação de segurança" value={eq.safetyNote} />}
+                  </Stack>
+                </section>
+              )}
+            </div>
+          </div>
+        </Card>
+      </DevNote>
+      {timeline}
+    </Stack>
+  );
+
   return (
     <AppLayout active="equipamentos" screen="equipamentos">
       <Stack gap="xl">
@@ -307,68 +395,51 @@ function EquipamentoScreen() {
 
         {inactive && <Feedback type="warning" title="Equipamento inativo" message="Ele não aceita novas solicitações. O histórico, o QR Code e os custos continuam disponíveis para consulta" />}
 
-        <DevNote note="RF304: indicadores calculados dos registros do equipamento (CTA002). Downtime atual = tempo desde que entrou em status do tipo Parado até agora, zerado quando volta a operar (RGN005). Gasto com manutenção = custos realizados das OS (sem orçamento ainda não aprovado). Gasto só para Administrador e Gestor (RGN003 - 💡 a confirmar).">
-          <div className="eq-kpis">
-            <KpiCard label="OS abertas" value={data.open.length} icon={<IconClipboardList size={20} />} href={`ordens-servico.html?equipment=${eq.id}`} />
-            {canSeeCosts && <KpiCard label="Gasto com manutenção" value={<KpiMoney cents={data.spent} />} description="Acumulado nas OS" icon={<IconReportMoney size={20} />} />}
-            <KpiCard
-              tone={isOverdue(data.next) ? 'error' : undefined} label="Próxima preventiva" value={data.next ? formatDate(data.next) : '-'} description={isOverdue(data.next) ? 'Vencida' : data.next ? 'Prevista' : 'Nenhuma agendada'}
-              icon={<IconCalendarEvent size={20} />}
-            />
-            <KpiCard label="Downtime atual" value={stopped ? downtimeText(eq.stoppedSince) : '0 h'} description={stopped ? 'Parado desde ' + (eq.stoppedSince ? formatDateTime(eq.stoppedSince) : '-') : 'Em operação'} icon={<IconClockPause size={20} />} />
-          </div>
-        </DevNote>
-
-        <Grid>
-        <Col span={canSeeCosts ? 4 : 12} fill>
-          <Card title="Localização" subtitle="Unidade e ambiente onde o equipamento está instalado">
-            <div className="card-body-tight">
-              <div className="eq-loc">
-                <div className="eq-loc-item">
-                  <span className="tree-lead" aria-hidden="true"><IconBuildingStore size={20} /></span>
-                  <div className="eq-loc-text"><strong className="eq-loc-name">{unitName(db, eq.unitId)}</strong><span className="cell-secondary">Unidade</span></div>
-                </div>
-                {eq.environmentId && (
-                  <>
-                    <span className="eq-loc-link" aria-hidden="true" />
-                    <div className="eq-loc-item">
-                      <span className="tree-lead" aria-hidden="true"><IconLayoutGrid size={20} /></span>
-                      <div className="eq-loc-text"><strong className="eq-loc-name">{environmentName(db, eq.environmentId)}</strong><span className="cell-secondary">Ambiente</span></div>
-                    </div>
-                  </>
-                )}
+        <>
+            <DevNote note="RF304: indicadores calculados dos registros do equipamento (CTA002). Downtime atual = tempo desde que entrou em status do tipo Parado até agora, zerado quando volta a operar (RGN005). Gasto com manutenção = custos realizados das OS (sem orçamento ainda não aprovado). Gasto só para Administrador e Gestor (RGN003 - 💡 a confirmar).">
+              <div className="eq-kpis">
+                <KpiCard label="OS abertas" value={data.open.length} icon={<IconClipboardList size={20} />} href={`ordens-servico.html?equipment=${eq.id}`} />
+                {canSeeCosts && <KpiCard label="Gasto com manutenção" value={<KpiMoney cents={data.spent} />} description="Acumulado nas OS" icon={<IconReportMoney size={20} />} />}
+                <KpiCard
+                  tone={isOverdue(data.next) ? 'error' : undefined} label="Próxima preventiva" value={data.next ? formatDate(data.next) : '-'} description={isOverdue(data.next) ? 'Vencida' : data.next ? 'Prevista' : 'Nenhuma agendada'}
+                  icon={<IconCalendarEvent size={20} />}
+                />
+                <KpiCard label="Downtime atual" value={stopped ? downtimeText(eq.stoppedSince) : '0 h'} description={stopped ? 'Parado desde ' + (eq.stoppedSince ? formatDateTime(eq.stoppedSince) : '-') : 'Em operação'} icon={<IconClockPause size={20} />} />
               </div>
-            </div>
-          </Card>
-        </Col>
-        {canSeeCosts && (
-          <Col span={8} fill><div className="eq-fill">
-            <DevNote note="RF304-RGN004 / CTA003: relação manutenção/ativo = manutenção acumulada ÷ valor de aquisição. Sem valor de aquisição, a barra fica zerada e só a manutenção acumulada é exibida, sem erro. Acima de 100% a barra enche e muda de cor. Dado sensível: só Administrador e Gestor (RGN003).">
-              <Card title="Custos do ativo" subtitle="Compare os custos de manutenção com o valor de aquisição do equipamento">
+            </DevNote>
+
+            <Grid>
+            {!v2 && (
+            <Col span={canSeeCosts ? 4 : 12} fill>
+              <Card title="Localização" subtitle="Unidade e ambiente onde o equipamento está instalado">
                 <div className="card-body-tight">
-                  <Stack gap="lg">
-                    <Grid>
-                    <Col span={6}><ReadField label="Valor de aquisição" value={eq.valueCents ? formatMoney(eq.valueCents) : 'Não informado'} /></Col>
-                    <Col span={6}><ReadField label="Manutenção acumulada" value={formatMoney(data.spent)} /></Col>
-                    </Grid>
-                <Stack gap="xs">
-                  <Stack direction="horizontal" justify="between" align="center" gap="sm">
-                    <span className="read-label">Relação manutenção/ativo</span>
-                    <span className="read-value">{eq.valueCents ? `${ratio.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '0%'}</span>
-                  </Stack>
-                  <div className="eq-bar" role="progressbar" aria-label="Relação manutenção/ativo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(ratio))}>
-                    <div className={`eq-bar-fill${ratio > 100 ? ' is-over' : ''}`} style={{ width: `${Math.min(100, ratio)}%` }} />
+                  <div className="eq-loc">
+                    <div className="eq-loc-item">
+                      <span className="tree-lead" aria-hidden="true"><IconBuildingStore size={20} /></span>
+                      <div className="eq-loc-text"><strong className="eq-loc-name">{unitName(db, eq.unitId)}</strong><span className="cell-secondary">Unidade</span></div>
+                    </div>
+                    {eq.environmentId && (
+                      <>
+                        <span className="eq-loc-link" aria-hidden="true" />
+                        <div className="eq-loc-item">
+                          <span className="tree-lead" aria-hidden="true"><IconLayoutGrid size={20} /></span>
+                          <div className="eq-loc-text"><strong className="eq-loc-name">{environmentName(db, eq.environmentId)}</strong><span className="cell-secondary">Ambiente</span></div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  {!eq.valueCents && <p className="field-note">Sem valor de aquisição informado, não é possível calcular a relação</p>}
-                  {eq.valueCents && ratio >= 50 ? <p className="field-note">{ratio > 100 ? 'A manutenção já custou mais que o valor do equipamento' : 'A manutenção já passou de metade do valor do equipamento'}</p> : null}
-                </Stack>
-                  </Stack>
                 </div>
               </Card>
-            </DevNote>
-          </div></Col>
-        )}
-        </Grid>
+            </Col>
+            )}
+            {canSeeCosts && (
+              <Col span={v2 ? 12 : 8} fill><div className="eq-fill">
+                {costsCard}
+              </div></Col>
+            )}
+            </Grid>
+
+        </>
 
         {attention.length > 0 && <DevNote note="RF304/RF801 (💡 a confirmar): pontos de atenção do ativo. Um único motivo aparece como alerta individual; dois ou mais ficam agrupados em “Pontos de atenção”, cada item com o ícone da própria severidade. Falhas recorrentes = N corretivas em X dias (documento do cliente: 3 falhas em 90 dias; N e X fixos no protótipo) e também geram notificação (tipo Equipamento) para Administrador e Gestor. As variantes “só parado” e “só falhas recorrentes” são filtros de protótipo para comparar os cenários.">
           <div><AttentionPoints points={attention} /></div>
@@ -378,7 +449,7 @@ function EquipamentoScreen() {
           <Tab
             aria-label="Informações do equipamento"
             tabs={[
-              { label: 'Informações', content: info },
+              { label: 'Informações', content: v2 ? infoV2 : info },
               { label: `Solicitações (${data.requests.length})`, content: <SimpleList id="eq-requests" title="Solicitações" subtitle="Histórico de solicitações deste equipamento" rows={requestRows} columns={requestCols} toItem={requestItem} emptyTitle="Nenhuma solicitação para este equipamento" /> },
               { label: `Ordens de serviço (${data.orders.length})`, content: <SimpleList id="eq-orders" title="Ordens de serviço" subtitle="Ordens de serviço vinculadas a este equipamento" rows={orderRows} columns={orderCols} toItem={orderItem} emptyTitle="Nenhuma OS para este equipamento" /> },
               {

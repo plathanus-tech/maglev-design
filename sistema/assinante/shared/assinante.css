@@ -203,3 +203,39 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 .app-brand-stack .logo-link img { block-size: 1.25rem; inline-size: auto; }
 .app-brand-stack .app-company { font-size: var(--font-size-sm); line-height: var(--line-height-tight); max-inline-size: 8.5rem; }
 .app-topbar header div:has(> .app-brand-stack) { height: auto; min-width: 0; }
+
+/* Seleção de equipamentos v2: filtros e categorias com ícone */
+/* Faixa horizontal de categorias: ~2,5 cartões no mobile, 5 no tablet e no desktop; nunca quebra em outra linha */
+.pick-strip { --visible: 2.5; display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.pick-strip-nav { display: flex; justify-content: center; gap: var(--spacing-sm); }
+/* Desktop/tablet: setas nas pontas da faixa (o contêiner das setas some do fluxo e elas viram colunas da grade); mobile: embaixo, centralizadas */
+@media (min-width: 768px) {
+  .pick-strip { --visible: 5; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--spacing-xs); }
+  .pick-strip-nav { display: contents; }
+  .pick-strip-arrow--prev { grid-column: 1; grid-row: 1; }
+  .pick-strip-track { grid-column: 2; grid-row: 1; }
+  .pick-strip-arrow--next { grid-column: 3; grid-row: 1; }
+}
+.pick-strip-track { flex: 1; min-width: 0; display: flex; gap: var(--spacing-sm); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: var(--spacing-xs); scrollbar-width: none; padding: var(--spacing-xs); }
+.pick-strip-track::-webkit-scrollbar { display: none; }
+.pick-strip-arrow { flex-shrink: 0; }
+/* Todos os cartões com a mesma largura (--visible por faixa de tela) */
+.pick-cat { flex: 0 0 max(calc((100% - (var(--visible) - 1) * var(--spacing-sm)) / var(--visible)), calc(var(--spacing-3xl) * 2 + var(--spacing-sm))); scroll-snap-align: start; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--spacing-xs); padding: var(--spacing-sm) var(--spacing-md); font: inherit; color: var(--color-text-primary); text-align: center; cursor: pointer; background: var(--color-bg-stripe); border: var(--border-width-thin) solid color-mix(in srgb, var(--color-border-muted) 30%, var(--color-bg-surface)); border-radius: var(--radius-card); transition: background-color 120ms, border-color 120ms; }
+.pick-cat:hover { background: var(--color-bg-subtle); border-color: color-mix(in srgb, var(--color-border-muted) 55%, var(--color-bg-surface)); }
+.pick-cat:focus-visible { outline: var(--border-width-medium) solid var(--color-border-focus); outline-offset: var(--border-width-thin); }
+.pick-cat[aria-pressed='true'] { background: color-mix(in srgb, var(--brand-primary) 7%, var(--color-bg-surface)); border-color: var(--brand-primary); }
+.pick-cat-icon { display: inline-flex; color: var(--brand-primary); }
+.pick-cat-icon .category-icon { color: inherit; }
+/* Ícone fixo no topo; nome + contagem centralizados no espaço restante (nomes de uma linha ganham respiro, os de duas linhas ocupam tudo) */
+.pick-cat-text { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing-2xs); min-width: 0; }
+.pick-cat-name {$1font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); font-weight: var(--font-weight-semibold); line-height: 1.25; overflow-wrap: break-word; }
+.pick-cat-count { white-space: nowrap; font: var(--text-body-xs); letter-spacing: var(--text-body-xs-tracking); color: var(--color-text-tertiary); }
+/* Miniatura do equipamento na lista (foto real ou ícone da categoria) */
+.pick-eq.pick-eq--media { flex-direction: row; align-items: center; gap: var(--spacing-sm); }
+.pick-eq-text { display: flex; flex-direction: column; gap: var(--spacing-2xs); min-width: 0; }
+.pick-thumb { flex-shrink: 0; width: calc(var(--spacing-xl) + var(--spacing-xs)); height: calc(var(--spacing-xl) + var(--spacing-xs)); object-fit: cover; background: var(--color-bg-subtle); border-radius: var(--radius-control); }
+.pick-thumb--icon { display: inline-flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); }
+.pick-thumb--icon .category-icon { color: inherit; }
+.pick-eq--media .pick-eq-env { color: var(--color-text-tertiary); }
+/* Busca e Filtros da seleção de equipamentos: 16px entre os campos quando empilham (sem o respiro extra da barra da tabela) */
+.pick-toolbar .toolbar-row > * { padding-block: 0; }

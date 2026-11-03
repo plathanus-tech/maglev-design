@@ -47,6 +47,7 @@ export const journeys: Journey[] = [
       {
         id: 'equipamento', label: 'RF304 - Detalhe do equipamento', path: `${s}/equipamento.html?id=EQP-0001`,
         variants: [
+          v('eqd-v2', 'v2 (proposta): Perfil do ativo com identificação, localização, situação e histórico em uma única área', 'equipamento.html?id=EQP-0001#state=v2'),
           v('eqd-photos', 'Com fotos (equipamento e etiqueta)', 'equipamento.html?id=EQP-0011'),
           v('eqd-stopped', 'Alerta: somente equipamento parado', 'equipamento.html?id=EQP-0016#state=stopped'),
           v('eqd-recurrence', 'Alerta: somente falhas recorrentes', 'equipamento.html?id=EQP-0016#state=recurrence'),

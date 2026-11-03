@@ -235,3 +235,14 @@ button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(
 
 /* Linha da árvore (mobile) que responde ao toque */
 .mtree-tap { cursor: pointer; }
+
+/* v2 · Perfil do ativo (aba Informações): seções de título destacado separadas por linhas; Identificação com as fotos ao lado (como antes) */
+.eq-profile2 { display: flex; flex-direction: column; }
+.eq-profile2-sec { display: flex; flex-direction: column; gap: var(--spacing-md); padding-block: var(--spacing-lg); }
+.eq-profile2-sec:first-child { padding-top: 0; }
+.eq-profile2-sec:last-child { padding-bottom: 0; }
+.eq-profile2-sec + .eq-profile2-sec { border-top: var(--border-width-thin) solid var(--color-border-subtle); }
+.eq-profile2-title { margin: 0; font: var(--text-subtitle-m); letter-spacing: var(--text-subtitle-m-tracking); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+.eq-profile2-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--spacing-md) var(--spacing-lg); min-width: 0; }
+.eq-profile2-fields.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1023px) { .eq-profile2-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

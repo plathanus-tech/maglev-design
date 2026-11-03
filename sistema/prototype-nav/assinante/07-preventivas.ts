@@ -44,6 +44,7 @@ export const journeys: Journey[] = [
             id: 'plano-novo-1', label: 'Passo 1 - Informações', path: `${s}/plano-form.html`,
             variants: [
               v('plano-novo-required', 'Campos obrigatórios', 'plano-form.html#state=required'),
+              v('plano-novo-picker1', 'v1: lista de equipamentos anterior (sem categorias nem filtros agrupados)', 'plano-form.html#state=picker1'),
               v('plano-novo-duplicate', 'Nome do plano já existente', 'plano-form.html#state=duplicate'),
               v('plano-novo-copy', 'Duplicar plano (cópia de um plano existente)', 'plano-form.html?from=PLA-001'),
             ],

@@ -20,7 +20,7 @@ const BLANK: Draft = { name: '', code: '', cep: '', street: '', number: '', dist
 const NONE = '__none';
 
 function UnidadeFormScreen() {
-  const { db, can } = useSubSession();
+  const { db, can, user } = useSubSession();
   const editingId = param('id');
   const editing = db.units.find((u) => u.id === editingId);
   // Quem só visualiza não edita: vai para a tela de visualização (unidade.html)
@@ -88,7 +88,11 @@ function UnidadeFormScreen() {
     const data = { ...rest, name: d.name.trim(), code: d.code.trim(), phone: onlyDigits(d.phone), ...(managerId ? { managerId } : { managerId: undefined }) };
     updateSubDb((db0) => (editing
       ? { ...db0, units: db0.units.map((u) => (u.id === editing.id ? { ...u, ...data } : u)) }
-      : { ...db0, units: [...db0.units, { ...data, id: nextSeq('UNI', db0.units.map((u) => u.id), 3) }] }));
+      : (() => {
+        const id = nextSeq('UNI', db0.units.map((u) => u.id), 3);
+        // Quem cadastra a unidade já fica vinculado a ela (o acesso é só às unidades vinculadas)
+        return { ...db0, units: [...db0.units, { ...data, id }], users: db0.users.map((u) => (u.id === user.id ? { ...u, unitIds: [...u.unitIds, id] } : u)) };
+      })()));
     // CTA001: a unidade cadastrada já fica disponível para ambientes, equipamentos e usuários
     setFlash(editing
       ? { type: 'success', title: 'Unidade atualizada', message: 'As alterações foram salvas' }

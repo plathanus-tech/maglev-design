@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { IconHelpCircle, IconLock } from '@tabler/icons-react';
-import { Badge, Button, Card, Checkbox, Dialog, Dropdown, Feedback, Input, RadioButton, Stack } from '@maglev/ds';
+import { Badge, Button, Card, Checkbox, Dialog, Dropdown, Feedback, Input, MultiSelect, RadioButton, Stack } from '@maglev/ds';
 import { ChangePasswordDialog } from '../../admin/shared/ChangePasswordDialog';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useHashState } from '../../admin/shared/useHashState';
@@ -14,9 +14,6 @@ import { Col, FormSection, Grid, ReadField, Text, goTo, param, setFlash } from '
 /** Estados: idle · required · duplicate (e-mail já cadastrado) · profiles (modal "Perfis de acesso") */
 const STATES = ['idle', 'required', 'duplicate', 'profiles'] as const;
 type Mode = (typeof STATES)[number];
-
-/** Perfis que dependem das unidades vinculadas (RF204): Solicitante/Gestor da unidade e Executor. Os demais veem todas. */
-const needsUnits = (p: ProfileKey | '') => p === 'solicitante' || p === 'executor';
 
 /** Resumo em linguagem simples do que cada perfil faz (lido das permissões de `PERMISSIONS` em data.ts, RF204-RGN004). */
 const PROFILE_SUMMARY: Record<ProfileKey, { scope: string; text: string }> = {
@@ -74,7 +71,7 @@ function MembroFormScreen() {
     email: editing ? undefined : emailProblem,
     phone: phoneProblem,
     profile: !profile ? requiredMessage('Perfil de acesso') : undefined,
-    units: needsUnits(profile) && unitIds.length === 0 ? requiredMessage('Unidade(s)') : undefined,
+    units: unitIds.length === 0 ? requiredMessage('Unidades vinculadas') : undefined,
   };
   const show = (k: keyof typeof problems) => (tried ? problems[k] : undefined);
   const invalid = Object.values(problems).some(Boolean);
@@ -96,7 +93,6 @@ function MembroFormScreen() {
   // Sem telefone cadastrado, o WhatsApp fica indisponível (e desmarcado)
   useEffect(() => { if (!hasPhone && notifyWhatsapp) setNotifyWhatsapp(false); }, [hasPhone, notifyWhatsapp]);
 
-  const toggleUnit = (id: string, on: boolean) => setUnitIds((cur) => (on ? [...cur, id] : cur.filter((x) => x !== id)));
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -104,8 +100,7 @@ function MembroFormScreen() {
     feedback.submitted();
     if (invalid || !profile) return;
     setSaving(true);
-    const units = needsUnits(profile) ? unitIds : db.units.map((u) => u.id);
-    const data = { name: name.trim(), phone: onlyDigits(phone), profile, unitIds: units, notifyEmail, notifyWhatsapp };
+    const data = { name: name.trim(), phone: onlyDigits(phone), profile, unitIds, notifyEmail, notifyWhatsapp };
     if (editing) {
       updateSubDb((d) => ({ ...d, users: d.users.map((u) => (u.id === editing.id ? { ...u, ...data, status: self ? 'ativo' : status } : u)) }));
       setFlash({ type: 'success', title: 'Membro atualizado', message: 'As alterações foram salvas e valem a partir do próximo acesso' });
@@ -189,24 +184,18 @@ function MembroFormScreen() {
             </FormSection>
           </DevNote>
 
-          {needsUnits(profile) ? (
-            <DevNote note="RF204-CTA002: o usuário vinculado a unidades só enxerga dados delas. Obrigatório para Solicitante/Gestor da unidade e Executor; Administrador e Gestor de manutenção veem todas as unidades e o campo não aparece. Unidade inativa não é ofertada em novos vínculos (RF202-CTA002).">
-              <FormSection className="card-open" title="Unidades de acesso" subtitle="O membro só enxerga os dados das unidades selecionadas">
-                <div className="card-body-tight">
-                  <div role="group" aria-label="Unidades de acesso"><Stack gap="sm">
-                    {unitChoices.map((u, i) => (
-                      <Checkbox
-                        key={u.id} label={u.status === 'inativo' ? `${u.name} (inativa)` : u.name} checked={unitIds.includes(u.id)} onChange={(e) => toggleUnit(u.id, e.target.checked)}
-                        error={i === unitChoices.length - 1 ? show('units') : undefined}
-                      />
-                    ))}
-                  </Stack></div>
-                </div>
-              </FormSection>
-            </DevNote>
-          ) : profile ? (
-            <p className="field-note">{`${PROFILE_LABEL[profile]} vê os dados de todas as unidades, por isso não é preciso escolher unidades`}</p>
-          ) : null}
+          <DevNote note="RF204-CTA002 (ajuste do cliente): todo membro, de qualquer perfil, é vinculado a uma ou mais unidades e só enxerga dados delas (equipamentos, solicitações, OS, planos e buscas); o vínculo pode ser alterado depois na edição. Campo obrigatório. Unidade inativa não é ofertada em novos vínculos (RF202-CTA002); uma unidade criada depois só vale para quem for vinculado a ela (quem a cadastra já é vinculado).">
+            <FormSection className="card-open" title="Acesso por unidade" subtitle="O membro só terá acesso às unidades selecionadas e você pode alterá-las depois">
+              <div className="card-body-tight">
+                <MultiSelect
+                  label="Unidades vinculadas" placeholder="Selecione as unidades" removeLabel={(l) => `Remover unidade ${l}`}
+                  options={unitChoices.map((u) => ({ value: u.id, label: u.status === 'inativo' ? `${u.name} (inativa)` : u.name }))}
+                  value={unitIds} onChange={setUnitIds} error={show('units')} required
+                  emptyText="Nenhuma unidade disponível."
+                />
+              </div>
+            </FormSection>
+          </DevNote>
 
           <DevNote note="RF204 v0.3 / RGN006: notificações na plataforma são sempre enviadas; e-mail (padrão ligado) e WhatsApp são opcionais, definidos no convite e editáveis pelo próprio usuário (ZC003). CTA004: quem desativa o e-mail não recebe notificações por e-mail. 💡 WhatsApp depende de FE002 (fora do escopo): aqui só a preferência.">
             <FormSection className="card-open" title="Preferências de notificação" subtitle="Por quais canais o membro recebe avisos">

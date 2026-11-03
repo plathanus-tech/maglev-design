@@ -71,13 +71,13 @@ export function OpenByCode({ controlled, autoScan, withoutQr }: { controlled?: {
   const close = () => { stopCamera(); setOpen(false); controlled?.onClose(); setCode(''); setError(undefined); setScanMsg(undefined); setShowList(false); setActive(-1); };
   useEffect(() => stopCamera, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Localiza o equipamento pelo código digitado ou pelo identificador do QR e abre a solicitação dele. */
+  /** Localiza o equipamento pelo código digitado ou pelo identificador do QR e abre o resumo dele (Abrir solicitação e Ver detalhes). */
   const resolve = (raw: string): boolean => {
     const t = tokenOf(raw);
     const e = mine.find((x) => (t ? x.qrToken === t : norm(x.code) === norm(raw) || norm(x.id) === norm(raw)));
     if (!e) { setError('Não encontramos um equipamento com este código. Confira o código na etiqueta'); return false; }
-    if (e.statusId === 'STE-05') { setError('Este equipamento está inativo e não aceita novas solicitações'); return false; }
-    goTo(`solicitacao-form.html?equipment=${e.id}`);
+    // Abre o Resumo do ativo (mesma tela do QR Code do solicitante) com Ver detalhes; equipamento inativo também abre, sem o botão de solicitar
+    goTo(`../../colaborador/screens/equipamento.html?e=${e.id}&app=1`);
     return true;
   };
   const submit = (ev?: FormEvent) => {

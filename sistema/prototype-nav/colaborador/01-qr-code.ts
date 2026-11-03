@@ -36,6 +36,7 @@ export const journeys: Journey[] = [
       {
         id: 'colab-equipamento', label: 'RF001/RF003 - Resumo do equipamento e solicitações abertas', path: `${s}/equipamento.html?${q(withOpen)}`,
         variants: [
+          v('colab-eq-v1', 'v1 (resumo anterior, em card)', `equipamento.html?${q(withOpen)}#state=v1`),
           v('colab-eq-noopen', 'Sem solicitações abertas', `equipamento.html?${q(withoutOpen)}`),
           v('colab-eq-safety', 'Equipamento com orientação de segurança', `equipamento.html?${q(withSafety)}`),
           { ...v('colab-eq-safety-sol', 'Orientação ao abrir a solicitação', `solicitar.html?${q(withSafety)}`), sub: true },

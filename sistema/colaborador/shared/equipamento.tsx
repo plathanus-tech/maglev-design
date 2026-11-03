@@ -1,12 +1,13 @@
 import { FormEvent, useState } from 'react';
-import { IconAlertCircle, IconClipboardList, IconClipboardPlus, IconPhoto, IconSearch } from '@tabler/icons-react';
-import { Badge, Button, Card, EmptyState, Feedback, Input, Stack } from '@maglev/ds';
+import { IconAlertCircle, IconClipboardList, IconClipboardPlus, IconListDetails, IconMapPin, IconPhoto, IconSearch, IconTool, IconToolsKitchen2 } from '@tabler/icons-react';
+import { Button, Card, EmptyState, Feedback, Input, Stack } from '@maglev/ds';
+import { CategoryIcon } from '../../admin/shared/IconPicker';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDateTime } from '../../admin/shared/format';
 import { useHashState } from '../../admin/shared/useHashState';
 import { ExternalLayout, PageHeader, mountApp } from '../../externo/shared/ExternalLayout';
 import { photoSrc } from '../../assinante/shared/photos';
-import { useSubDb } from '../../assinante/shared/store';
+import { useSubDb, useSubSession } from '../../assinante/shared/store';
 import { useDb as useAdminDb } from '../../admin/shared/store';
 import { goTo, param } from '../../assinante/shared/ui';
 import { OpenRequestCard } from './open-request-card';
@@ -14,16 +15,18 @@ import { SafetyGuidance } from '../../assinante/shared/equipamento-lib';
 import { EquipmentSearch } from './busca-equipamento';
 import { equipmentFromLink, linkToRequest, openRequestsOf, simpleStatus, useBlockedReason, useRefs } from './lib';
 
-/** Estados: idle · inactive (equipamento inativo) · envinactive (ambiente do assinante desativado) · notfound (QR inválido) · replaced (QR substituído ou inativado) */
-const STATES = ['idle', 'inactive', 'envinactive', 'notfound', 'replaced', 'searchfound', 'searchnotfound'] as const;
+/** Estados: idle (v2: visual "Resumo do ativo") · v1 (resumo anterior, em Card) · inactive (equipamento inativo) · envinactive (ambiente do assinante desativado) · notfound (QR inválido) · replaced (QR substituído ou inativado) */
+const STATES = ['idle', 'inactive', 'envinactive', 'notfound', 'replaced', 'searchfound', 'searchnotfound', 'v1'] as const;
 type Mode = (typeof STATES)[number];
 
 /**
  * Resumo do equipamento via QR Code (Colaborador RF001) com as solicitações já abertas (RF003). Sem login: só dados
- * não sensíveis (nome, foto, código, status, unidade, ambiente, categoria, fabricante, modelo) - nunca valor, custos ou histórico (RGN002).
+ * não sensíveis (nome, foto, código, status, unidade, ambiente, categoria) - nunca valor, custos ou histórico (RGN002). Fabricante e modelo
+ * não aparecem. Aberto por dentro da Área do assinante (leitura de QR Code com a pessoa logada, `?app=1`) mostra também "Ver detalhes".
  */
 function EquipamentoColaboradorScreen() {
   const db = useSubDb();
+  const session = useSubSession();
   const refs = useRefs();
   const [mode] = useHashState<Mode>(STATES, 'idle');
   const [protocol, setProtocol] = useState('');
@@ -66,10 +69,30 @@ function EquipamentoColaboradorScreen() {
     );
   }
 
+  // Aberto por dentro do assinante: só quem tem a unidade do equipamento vinculada ao perfil vê o resumo
+  if (param('app') === '1' && !session.unitIds.includes(eq.unitId)) {
+    return shell(
+      <DevNote note="Leitura de QR Code ou código pela Área do assinante: o resumo só abre para quem tem a unidade do equipamento vinculada ao perfil (unidades vinculadas do usuário); sem permissão, nenhum dado do equipamento aparece. Em desenvolvimento a checagem roda no servidor.">
+        <div className="ext-empty is-center is-error">
+          <EmptyState
+            compact icon={<IconAlertCircle size={32} />} title="Você não tem acesso a este equipamento" headingLevel={1}
+            description="Ele pertence a uma unidade que não está vinculada ao seu perfil. Fale com o administrador da sua empresa"
+            action={<Button onClick={() => goTo('../../assinante/screens/equipamentos.html')}>Voltar para equipamentos</Button>}
+          />
+        </div>
+      </DevNote>,
+    );
+  }
+
   const unit = db.units.find((u) => u.id === eq.unitId);
   const env = db.environments.find((x) => x.id === eq.environmentId);
   const category = refs.category(eq.categoryId)?.name;
   const open = openRequestsOf(db, refs.base, eq.id);
+  // Aberto por dentro do assinante (leitura de QR Code já logado): ganha "Ver detalhes" e abre a solicitação do portal
+  const inApp = param('app') === '1';
+  const v1 = mode === 'v1';
+  const categoryIcon = refs.category(eq.categoryId)?.icon;
+  const newRequestHref = inApp ? `../../assinante/screens/solicitacao-form.html?equipment=${eq.id}` : `solicitar.html?q=${eq.qrToken}`;
   const photo = photoSrc(eq.photoName);
 
   const search = (ev: FormEvent) => {
@@ -103,28 +126,55 @@ function EquipamentoColaboradorScreen() {
         </DevNote>
       )}
 
-      <DevNote note="Colaborador RF001-FLU002 / RGN002 / CTA002: resumo do equipamento sem login. 💡 A confirmar quais dados o solicitante não autenticado pode ver (sugestão: categoria, fabricante, modelo). Valor, custos e histórico completo nunca aparecem aqui.">
-        <Card title="Resumo do equipamento" actions={refs.statusBadge(blocked === 'inactive' ? 'STE-05' : eq.statusId)}>
-          <Stack gap="lg">
-            <div className="ext-eq-photo" role="img" aria-label={photo ? `Foto de ${eq.name}` : 'Equipamento sem foto'}>
-              {photo ? <img src={photo} alt="" /> : <IconPhoto size={32} aria-hidden="true" />}
+      {v1 ? (
+        <DevNote note="Colaborador RF001-FLU002 / RGN002 / CTA002 (v1, resumo anterior): resumo do equipamento sem login. Fabricante e modelo foram retirados. Valor, custos e histórico completo nunca aparecem aqui.">
+          <Card title="Resumo do equipamento" actions={refs.statusBadge(blocked === 'inactive' ? 'STE-05' : eq.statusId)}>
+            <Stack gap="lg">
+              <div className="ext-eq-photo" role="img" aria-label={photo ? `Foto de ${eq.name}` : 'Equipamento sem foto'}>
+                {photo ? <img src={photo} alt="" /> : <IconPhoto size={32} aria-hidden="true" />}
+              </div>
+              <dl className="ext-kv">
+                <div><dt>Código</dt><dd>{eq.code}</dd></div>
+                <div><dt>Categoria</dt><dd>{category ?? '-'}</dd></div>
+                <div><dt>Unidade</dt><dd>{unit?.name ?? '-'}</dd></div>
+                <div><dt>Ambiente</dt><dd>{env?.name ?? '-'}</dd></div>
+              </dl>
+              {!blocked && (
+                <div className="ext-actions">
+                  <Button iconLeft={<IconClipboardPlus size={20} />} onClick={() => goTo(newRequestHref)}>Abrir solicitação</Button>
+                </div>
+              )}
+            </Stack>
+          </Card>
+        </DevNote>
+      ) : (
+        <DevNote note="Colaborador RF001-FLU002 / RGN002 / CTA002 (v2, visual do resumo testado a partir da referência do cliente): título com o nome do equipamento e subtítulo com código e unidade; Card “Resumo do equipamento” com foto, código em destaque com o status ao lado e linhas com ícone (categoria, unidade e ambiente) e os botões no rodapé. Sem login só aparecem dados não sensíveis; fabricante e modelo foram retirados e valor, custos e histórico nunca aparecem aqui. Botões: lendo o QR Code pela câmera (solicitante) só existe Abrir solicitação; lendo por dentro da Área do assinante (já logado) aparece também Ver detalhes, que abre o equipamento completo (dados cadastrais e histórico) conforme as permissões do perfil e as unidades vinculadas.">
+          <Card padding="none" title="Resumo do equipamento">
+            <div className="ext-eq-media">
+              <div className="ext-eq-photo" role="img" aria-label={photo ? `Foto de ${eq.name}` : 'Equipamento sem foto'}>
+                {photo ? <img src={photo} alt="" /> : <IconPhoto size={32} aria-hidden="true" />}
+              </div>
             </div>
-            <dl className="ext-kv">
-              <div><dt>Código</dt><dd>{eq.code}</dd></div>
-              <div><dt>Categoria</dt><dd>{category ?? '-'}</dd></div>
-              <div><dt>Unidade</dt><dd>{unit?.name ?? '-'}</dd></div>
-              <div><dt>Ambiente</dt><dd>{env?.name ?? '-'}</dd></div>
-              <div><dt>Fabricante</dt><dd>{eq.maker || '-'}</dd></div>
-              <div><dt>Modelo</dt><dd>{eq.model || '-'}</dd></div>
+            <div className="ext-eq-head">
+              <div><span className="ext-eq-label">Código</span><span className="ext-eq-code">{eq.code}</span></div>
+              {refs.statusBadge(blocked === 'inactive' ? 'STE-05' : eq.statusId)}
+            </div>
+            <dl className="ext-eq-rows">
+              <div><span className="ext-eq-icon" aria-hidden="true">{categoryIcon ? <CategoryIcon id={categoryIcon} size={20} /> : <IconTool size={20} />}</span><dt>Categoria</dt><dd>{category ?? '-'}</dd></div>
+              <div><span className="ext-eq-icon" aria-hidden="true"><IconMapPin size={20} /></span><dt>Unidade</dt><dd>{unit?.name ?? '-'}</dd></div>
+              <div><span className="ext-eq-icon" aria-hidden="true"><IconToolsKitchen2 size={20} /></span><dt>Ambiente</dt><dd>{env?.name ?? '-'}</dd></div>
             </dl>
-            {!blocked && (
-              <div className="ext-actions">
-                <Button iconLeft={<IconClipboardPlus size={20} />} onClick={() => goTo(`solicitar.html?q=${eq.qrToken}`)}>Abrir solicitação</Button>
+            {(inApp || !blocked) && (
+              <div className="ext-eq-footer">
+                <div className="ext-actions ext-actions--pair">
+                  {inApp && <Button variant="secondary" iconLeft={<IconListDetails size={20} />} onClick={() => goTo(`../../assinante/screens/equipamento.html?id=${eq.id}`)}>Ver detalhes</Button>}
+                  {!blocked && <Button iconLeft={<IconClipboardPlus size={20} />} onClick={() => goTo(newRequestHref)}>Abrir solicitação</Button>}
+                </div>
               </div>
             )}
-          </Stack>
-        </Card>
-      </DevNote>
+          </Card>
+        </DevNote>
+      )}
 
       <DevNote note="Colaborador RF003 / RGN001 / RGN002: solicitações em aberto do equipamento (status simplificado, protocolo, responsável e previsão), sem dados pessoais de outros solicitantes. O sistema avisa da duplicidade, mas nunca impede uma nova solicitação (RF002-RGN005).">
         <Card title="Solicitações em aberto" subtitle={open.length ? 'Confira se o seu problema já foi relatado antes de abrir uma nova solicitação' : undefined}>
