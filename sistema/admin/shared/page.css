@@ -474,3 +474,7 @@ div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(
 
 /* Busca e filtros sem função (módulo sem cadastros): visíveis para manter a estrutura da tabela, mas esmaecidos e inativos */
 .toolbar-gate { opacity: var(--opacity-disabled); }
+
+/* Dashboard · Chamados em aberto: 16px entre o título/subtítulo da seção e o campo de busca (antes 36px na tabela e 20px nos cards do mobile) */
+#chamados-em-aberto header { padding-bottom: 0; }
+#chamados-em-aberto .toolbar-row > * { padding-top: 0; }
