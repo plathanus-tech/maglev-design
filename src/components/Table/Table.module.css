@@ -1,6 +1,6 @@
 /* Table renderiza dentro de <Card padding="none">: container, título e borda vêm do Card. */
 
-.tableWrap { width: 100%; overflow-x: auto; }
+.tableWrap { width: 100%; overflow-x: auto; container-type: inline-size; }
 
 .table {
   width: 100%;
@@ -136,6 +136,8 @@
 
 /* Estado vazio: o EmptyState ocupa a linha inteira, sem zebra nem hover */
 .emptyCell { padding: 0; background: var(--color-bg-surface); }
+/* Estado vazio centralizado na área VISÍVEL da tabela (a célula ocupa todas as colunas, que podem rolar na horizontal): o bloco fica preso à borda esquerda da área rolável e tem a largura dela (100cqw = largura do .tableWrap) */
+.emptyCell > * { position: sticky; inset-inline-start: 0; inline-size: 100cqw; box-sizing: border-box; }
 
 /* ── Loading state ───────────────────────────────────────────────────────*/
 .stateCell {
