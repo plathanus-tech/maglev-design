@@ -3,6 +3,7 @@ import {
   IconAdjustmentsHorizontal, IconAlertTriangle, IconCircleCheck, IconCircleX, IconClipboardList, IconEye, IconFileInvoice,
   IconHourglass, IconPencil, IconPackage, IconSearch, IconThumbUp, IconTool, IconTruck, IconChecklist, IconUserEdit,
 } from '@tabler/icons-react';
+import { ToolbarGate } from '../../admin/shared/list-empty';
 import { Badge, Button, Card, EmptyState, Feedback, Input, Stack, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
@@ -294,6 +295,11 @@ function OrdensScreen() {
   const empty = visible.length === 0
     ? { title: 'Nenhuma ordem de serviço por aqui', description: 'As OS nascem de solicitações aprovadas na triagem ou dos planos de preventiva.' }
     : { title: 'Nenhuma OS encontrada', description: 'Revise a busca ou os filtros aplicados.' };
+  // Sem nenhuma OS: o mesmo ícone, texto e botão de antes, agora no corpo da tabela (com busca, filtros e cabeçalho). Com filtro sem resultado: Limpar filtros
+  const noOs = visible.length === 0;
+  const osEmpty = noOs
+    ? { icon: <IconClipboardList size={32} />, ...empty, headingLevel: 2 as const, action: can('solicitacoes') ? <Button variant="secondary" onClick={() => goTo('solicitacoes.html')}>Ir para Solicitações</Button> : undefined }
+    : { ...empty, action: filtered.length === 0 ? <Button variant="secondary" size="sm" onClick={clearAll}>Limpar filtros</Button> : undefined };
 
   const subtitle = isExecutor ? 'Você vê apenas as OS atribuídas a você' : user.profile === 'solicitante' ? 'Acompanhe as OS das suas unidades' : 'Acompanhe e gerencie as ordens de serviço de manutenção';
 
@@ -310,63 +316,57 @@ function OrdensScreen() {
           </DevNote>
         )}
 
-        {visible.length === 0 ? (
-          <Card>
-            <EmptyState
-              icon={<IconClipboardList size={32} />} title={empty.title} description={empty.description} headingLevel={2}
-              action={can('solicitacoes') ? <Button variant="secondary" onClick={() => goTo('solicitacoes.html')}>Ir para Solicitações</Button> : undefined}
-            />
-          </Card>
-        ) : (
-          <>
-            <DevNote note="RF501: total de OS e quantidade por status, todos nos últimos 30 dias (período identificado uma vez, no cabeçalho). Cada OS conta só no status atual, então a soma dos status é o total. Clicar no total ou num status lista as OS dos últimos 30 dias (e do status), então o número é o total da listagem (CTA001). Status sem OS continuam na relação, com zero.">
-              <Card className="os-summary" title="Resumo das ordens de serviço" subtitle="Últimos 30 dias">
-                <div className="os-summary-body">
-                  <button type="button" className="os-total" onClick={() => applyIndicator(null)}>
-                    <span className="os-total-label">Total de OS</span>
-                    <span className="os-total-value">{formatNumber(total30)}</span>
-                  </button>
-                  <div className="os-dist">
-                    <div
-                      className={`os-bar${hot ? ' has-hot' : ''}`} role="group" aria-label="Distribuição das OS dos últimos 30 dias por status"
-                      style={{ gridTemplateColumns: summary.filter((x) => x.count > 0).map((x) => `${x.count}fr`).join(' ') }}
-                    >
-                      {summary.filter((x) => x.count > 0).map((x) => (
-                        <Tooltip key={x.id} content={`${x.name}: ${x.count} OS · ${pct(x.count)}% do total`}>
-                          <button
-                            type="button" className={`os-seg is-${x.visual}${hot === x.id ? ' is-hot' : ''}`}
-                            aria-label={`${x.name}: ${x.count} OS, ${pct(x.count)}% do total. Listar`}
-                            onMouseEnter={() => setHot(x.id)} onMouseLeave={() => setHot(null)} onFocus={() => setHot(x.id)} onBlur={() => setHot(null)}
-                            onClick={() => applyIndicator(x.id)}
-                          />
-                        </Tooltip>
-                      ))}
+        <>
+            {!noOs && (
+              <DevNote note="RF501: total de OS e quantidade por status, todos nos últimos 30 dias (período identificado uma vez, no cabeçalho). Cada OS conta só no status atual, então a soma dos status é o total. Clicar no total ou num status lista as OS dos últimos 30 dias (e do status), então o número é o total da listagem (CTA001). Status sem OS continuam na relação, com zero.">
+                <Card className="os-summary" title="Resumo das ordens de serviço" subtitle="Últimos 30 dias">
+                  <div className="os-summary-body">
+                    <button type="button" className="os-total" onClick={() => applyIndicator(null)}>
+                      <span className="os-total-label">Total de OS</span>
+                      <span className="os-total-value">{formatNumber(total30)}</span>
+                    </button>
+                    <div className="os-dist">
+                      <div
+                        className={`os-bar${hot ? ' has-hot' : ''}`} role="group" aria-label="Distribuição das OS dos últimos 30 dias por status"
+                        style={{ gridTemplateColumns: summary.filter((x) => x.count > 0).map((x) => `${x.count}fr`).join(' ') }}
+                      >
+                        {summary.filter((x) => x.count > 0).map((x) => (
+                          <Tooltip key={x.id} content={`${x.name}: ${x.count} OS · ${pct(x.count)}% do total`}>
+                            <button
+                              type="button" className={`os-seg is-${x.visual}${hot === x.id ? ' is-hot' : ''}`}
+                              aria-label={`${x.name}: ${x.count} OS, ${pct(x.count)}% do total. Listar`}
+                              onMouseEnter={() => setHot(x.id)} onMouseLeave={() => setHot(null)} onFocus={() => setHot(x.id)} onBlur={() => setHot(null)}
+                              onClick={() => applyIndicator(x.id)}
+                            />
+                          </Tooltip>
+                        ))}
+                      </div>
+                      {total30 === 0 && <p className="os-none">Nenhuma OS criada nos últimos 30 dias</p>}
+                      <ul className="os-legend" aria-label="OS por status">
+                        {summary.map((x) => (
+                          <li key={x.id}>
+                            <button
+                              type="button" className={`os-legend-item${x.count === 0 ? ' is-zero' : ''}${hot === x.id ? ' is-hot' : ''}`} onClick={() => applyIndicator(x.id)}
+                              onMouseEnter={() => x.count > 0 && setHot(x.id)} onMouseLeave={() => setHot(null)} onFocus={() => x.count > 0 && setHot(x.id)} onBlur={() => setHot(null)}
+                            >
+                              <span className={`os-dot is-${x.visual}`} aria-hidden="true" />
+                              <span className="os-legend-name">{x.name}</span>
+                              <span className="os-legend-count">{formatNumber(x.count)}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    {total30 === 0 && <p className="os-none">Nenhuma OS criada nos últimos 30 dias</p>}
-                    <ul className="os-legend" aria-label="OS por status">
-                      {summary.map((x) => (
-                        <li key={x.id}>
-                          <button
-                            type="button" className={`os-legend-item${x.count === 0 ? ' is-zero' : ''}${hot === x.id ? ' is-hot' : ''}`} onClick={() => applyIndicator(x.id)}
-                            onMouseEnter={() => x.count > 0 && setHot(x.id)} onMouseLeave={() => setHot(null)} onFocus={() => x.count > 0 && setHot(x.id)} onBlur={() => setHot(null)}
-                          >
-                            <span className={`os-dot is-${x.visual}`} aria-hidden="true" />
-                            <span className="os-legend-name">{x.name}</span>
-                            <span className="os-legend-count">{formatNumber(x.count)}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
-                </div>
-              </Card>
-            </DevNote>
+                </Card>
+              </DevNote>
+            )}
 
             <DevNote note="RF501: Executor/Prestador e Responsável são colunas separadas. Prazo vencido e não concluído é destacado em vermelho com o atraso (RGN003) - SLA configurável é FE001, fora do escopo. Ações por linha: ícone de olho (Visualizar, RF503, somente leitura, sempre permitido) e menu ⋮ com Editar (abre o formulário de edição), Classificar (diálogo rápido só com tipo de manutenção e prioridade, RF502-FLU006) e Reatribuir (diálogo rápido). O menu só aparece para quem pode editar e enquanto a OS não estiver concluída/cancelada. Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação.">
               {isMobile ? (
                 <MobileCardList
                   onItemClick={(i) => goTo(`os.html?id=${pageRows[i].id}`)}
-                  headingId="os-title" title="Lista de ordens de serviço" titleHidden toolbar={toolbar} emptyTitle={empty.title}
+                  headingId="os-title" title="Lista de ordens de serviço" titleHidden toolbar={<ToolbarGate disabled={noOs}>{toolbar}</ToolbarGate>} emptyTitle={empty.title} empty={osEmpty}
                   page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
                   items={pageRows.map((r) => ({
                     id: r.id, title: r.subject, subtitle: `${r.id} · ${r.equipment}`, badge: refs.statusBadge(r.statusId),
@@ -384,16 +384,15 @@ function OrdensScreen() {
                 />
               ) : (
                 <Table<Row> onRowClick={(r) => goTo(`os.html?id=${r.id}`)}
-                  caption="Lista de ordens de serviço" toolbar={toolbar} columns={shownColumns} rows={pageRows}
+                  caption="Lista de ordens de serviço" toolbar={<ToolbarGate disabled={noOs}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={pageRows}
                   sortKey={sort.key as keyof Row} sortDir={sort.dir}
                   onSort={(k) => setSort((s) => (s.key === k ? (s.dir === 'desc' ? { key: s.key, dir: 'asc' } : { key: 'attention', dir: 'asc' }) : { key: String(k), dir: 'desc' }))}
-                  empty={{ ...empty, action: filtered.length === 0 && visible.length > 0 ? <Button variant="secondary" size="sm" onClick={clearAll}>Limpar filtros</Button> : undefined }}
+                  empty={osEmpty}
                   pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
                 />
               )}
             </DevNote>
-          </>
-        )}
+        </>
       </Stack>
       <ReassignDialog order={reassigning} onClose={() => setReassigning(null)} />
       <ClassifyDialog order={classifying} onClose={() => setClassifying(null)} />

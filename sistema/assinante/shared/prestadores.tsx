@@ -1,7 +1,8 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import { IconCircleCheck, IconCircleOff, IconClipboardList, IconEye, IconPencil, IconPlus, IconTools, IconTruck, IconBuilding } from '@tabler/icons-react';
-import { IconSearch } from '@tabler/icons-react';
+import { IconSearch, IconTool } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Card, EmptyState, Input, KpiCard, Stack, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, formatNumber, formatPhone, noBreak, normalize } from '../../admin/shared/format';
@@ -121,6 +122,13 @@ function PrestadoresScreen() {
     />
   );
 
+  const noRecords = providers.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconTool size={40} />,
+    none: { title: 'Nenhum prestador cadastrado', description: can('prestadores', 'cadastrar') ? 'Cadastre o primeiro prestador para atribuí-lo a OS e planos.' : 'Quando houver prestadores, eles aparecem aqui.', create: can('prestadores', 'cadastrar') ? { label: 'Novo prestador', onClick: () => goTo('prestador-form.html') } : undefined },
+    results: { title: 'Nenhum prestador encontrado', description: 'Revise a busca ou os filtros.', onClear: query.trim() || status !== 'todos' || specialty !== 'todos' || category !== 'todos' || region !== 'todos' ? () => { setQuery(''); setStatus('todos'); setSpecialty('todos'); setCategory('todos'); setRegion('todos'); } : undefined },
+  });
+
   return (
     <AppLayout active="prestadores" screen="prestadores">
       <Stack gap="xl">
@@ -152,30 +160,20 @@ function PrestadoresScreen() {
           </Col>
         </Grid>
 
-        {providers.length === 0 ? (
-          <Card>
-            <EmptyState
-              icon={<IconTruck size={32} />} title="Nenhum prestador cadastrado"
-              description={can('prestadores', 'cadastrar') ? 'Cadastre o primeiro prestador para atribuí-lo a OS e planos.' : 'Quando houver prestadores, eles aparecem aqui.'} headingLevel={2}
-              action={can('prestadores', 'cadastrar') ? <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('prestador-form.html')}>Novo prestador</Button> : undefined}
-            />
-          </Card>
-        ) : (
-          <DevNote note="RF701: listagem paginada (10) com busca (nome, especialidade, cidade) e filtros. Sem ranking nem avaliação de prestadores (RGN002, fora do MVP). Cidade/UF mostra a primeira região + “+N”. Última OS = a mais recente atribuída ao prestador. No mobile vira lista de cards.">
-            <ResponsiveTable<Row> onRowClick={(r) => goTo(`prestador.html?id=${r.id}`)}
-              id="providers-title" title="Lista de prestadores" titleHidden toolbar={toolbar} columns={shownColumns} rows={filtered} resetKey={`${query}|${status}|${specialty}|${category}|${region}`}
-              emptyTitle="Nenhum prestador encontrado" emptyDescription="Revise a busca ou os filtros."
-              card={(r) => ({
-                id: r.id, title: providerName(r.provider), subtitle: phoneOf(r.provider) === '-' ? undefined : formatPhone(mainContact(r.provider).phone), badge: recordStatusBadge(r.provider.status),
-                fields: fieldsFor([
-                  { label: 'Especialidades / categorias', value: [r.provider.specialties.join(', '), r.categories].filter(Boolean).join(' · ') },
-                  { label: 'Cidade/UF', value: regionText(r.provider) }, { label: 'Última OS', value: r.last ? <a className="text-link" href={`os.html?id=${r.last.id}`}>{r.last.id}</a> : '-' },
-                ]),
-                actions: actions(r),
-              })}
-            />
-          </DevNote>
-        )}
+        <DevNote note="RF701: listagem paginada (10) com busca (nome, especialidade, cidade) e filtros. Sem ranking nem avaliação de prestadores (RGN002, fora do MVP). Cidade/UF mostra a primeira região + “+N”. Última OS = a mais recente atribuída ao prestador. No mobile vira lista de cards.">
+          <ResponsiveTable<Row> onRowClick={(r) => goTo(`prestador.html?id=${r.id}`)}
+            id="providers-title" title="Lista de prestadores" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={filtered} resetKey={`${query}|${status}|${specialty}|${category}|${region}`}
+            emptyTitle="Nenhum prestador encontrado" emptyDescription="Revise a busca ou os filtros." empty={empty}
+            card={(r) => ({
+              id: r.id, title: providerName(r.provider), subtitle: phoneOf(r.provider) === '-' ? undefined : formatPhone(mainContact(r.provider).phone), badge: recordStatusBadge(r.provider.status),
+              fields: fieldsFor([
+                { label: 'Especialidades / categorias', value: [r.provider.specialties.join(', '), r.categories].filter(Boolean).join(' · ') },
+                { label: 'Cidade/UF', value: regionText(r.provider) }, { label: 'Última OS', value: r.last ? <a className="text-link" href={`os.html?id=${r.last.id}`}>{r.last.id}</a> : '-' },
+              ]),
+              actions: actions(r),
+            })}
+          />
+        </DevNote>
       </Stack>
       <ProviderStatusDialog provider={toggling} onClose={() => setToggling(null)} />
     </AppLayout>

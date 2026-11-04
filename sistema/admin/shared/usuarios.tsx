@@ -15,9 +15,10 @@ import { formatDate, maskPhone, noBreak } from './format';
 import { maskEmail } from './recovery';
 import { FilterControl } from './FilterControl';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, adminUserStatusBadge, goTo, takeFlash } from './ui';
+import { ToolbarGate, listEmpty } from './list-empty';
 
 /** Estados: idle · noresults · deactivate (confirmação de inativação) · pending (filtro Convite pendente) */
-const STATES = ['idle', 'noresults', 'deactivate', 'columns', 'pending'] as const;
+const STATES = ['idle', 'noresults', 'deactivate', 'columns', 'pending', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
@@ -54,12 +55,13 @@ function UsuariosScreen() {
   useEffect(() => setPage(1), [query, status, profile]);
 
   const profileName = (id: string) => db.profiles.find((p) => p.id === id)?.name ?? '-';
+  const allUsers = mode === 'empty' ? [] : db.adminUsers;
   const filtered = useMemo(() => {
     const t = query.trim().toLowerCase();
-    return db.adminUsers
+    return allUsers
       .filter((u) => (status === 'todos' || u.status === status) && (profile === 'todos' || u.profileId === profile) && (!t || u.name.toLowerCase().includes(t) || u.email.toLowerCase().includes(t)))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [db, query, status, profile]);
+  }, [allUsers, db, query, status, profile]);
   const rows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((u) => ({ ...u, profile: profileName(u.profileId) }));
 
   // Totais do painel: "cadastrado" = todos os registros (inclui convites pendentes e inativos); "ativo" = quem tem acesso hoje
@@ -113,7 +115,13 @@ function UsuariosScreen() {
       columns={withColumns ? control : undefined}
     />
   );
-  const empty = { title: 'Nenhum usuário encontrado', description: 'Revise a busca ou os filtros aplicados.' };
+  const noRecords = allUsers.length === 0;
+  const filtering = !!query.trim() || status !== 'todos' || profile !== 'todos';
+  const empty = listEmpty({
+    noRecords, icon: <IconUsers size={40} />,
+    none: { title: 'Nenhum usuário cadastrado', description: 'Cadastre o primeiro usuário: ele recebe um convite por e-mail para ativar o acesso.', create: can('usuarios', 'cadastrar') ? { label: 'Novo usuário', onClick: () => goTo('usuario-form.html') } : undefined },
+    results: { title: 'Nenhum usuário encontrado', description: 'Revise a busca ou os filtros aplicados.', onClear: filtering ? () => { setQuery(''); setStatus('todos'); setProfile('todos'); } : undefined },
+  });
 
   return (
     <AppLayout active="usuarios" screen="usuarios">
@@ -153,7 +161,7 @@ function UsuariosScreen() {
           {isMobile ? (
             <MobileCardList
               onItemClick={(i) => goTo(`usuario.html?id=${rows[i].id}`)}
-              headingId="users-title" title="Lista de usuários" titleHidden toolbar={toolbarFor(true)} emptyTitle={empty.title}
+              headingId="users-title" title="Lista de usuários" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true)}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((u) => ({
                 id: u.id, title: u.id === me.id ? <Stack direction="horizontal" gap="xs" align="center"><span>{u.name}</span><Badge status="neutral">Você</Badge></Stack> : u.name, subtitle: maskEmail(u.email), badge: adminUserStatusBadge(u.status),
@@ -168,7 +176,7 @@ function UsuariosScreen() {
           ) : (
             <Table<Row> onRowClick={(r) => goTo(`usuario.html?id=${r.id}`)}
               caption="Lista de usuários"
-              toolbar={toolbarFor(true)}
+              toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true)}</ToolbarGate>}
               columns={shownColumns}
               rows={rows}
               empty={empty}

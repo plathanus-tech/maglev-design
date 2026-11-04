@@ -24,6 +24,7 @@ export const journeys: Journey[] = [
           v('eqp-unit', 'Filtro: uma unidade', 'equipamentos.html?unit=UNI-001'),
           v('eqp-inactivate', 'Inativar equipamento', 'equipamentos.html#state=inactivate'),
           v('eqp-noresults', 'Busca sem resultados', 'equipamentos.html#state=noresults'),
+          v('eqp-empty', 'Sem nenhum equipamento cadastrado', 'equipamentos.html#state=empty'),
           v('eqp-qr-list', 'QR Code pela lista', 'equipamentos.html#state=qr'),
           v('eqp-qr-link', 'Cadastrar com QR Code existente (modal de leitura)', 'equipamentos.html#state=qrlink'),
           v('eqp-qr-linked', 'Modal de leitura: QR Code já vinculado a outro equipamento', 'equipamentos.html#state=qrlinked'),

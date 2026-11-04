@@ -101,6 +101,7 @@ export const journeys: Journey[] = [
         variants: [
           v('assinantes-overdue', 'Filtro: inadimplentes', 'assinantes.html#state=overdue'),
           v('assinantes-noresults', 'Busca sem resultados', 'assinantes.html#state=noresults'),
+          v('assinantes-empty', 'Sem nenhum assinante cadastrado', 'assinantes.html#state=empty'),
           v('assinantes-columns', 'Personalizar colunas', 'assinantes.html#state=columns'),
           v('assinantes-suporte', 'Perfil Suporte (sem cadastrar/inativar)', 'assinantes.html?as=USR-0003'),
         ],
@@ -142,6 +143,7 @@ export const journeys: Journey[] = [
         variants: [
           v('usuarios-pending', 'Filtro Convite pendente (reenviar convite)', 'usuarios.html#state=pending'),
           v('usuarios-noresults', 'Busca sem resultados', 'usuarios.html#state=noresults'),
+          v('usuarios-empty', 'Sem nenhum usuário cadastrado', 'usuarios.html#state=empty'),
           v('usuarios-columns', 'Personalizar colunas', 'usuarios.html#state=columns'),
           v('usuarios-deactivate', 'Inativar usuário (confirmação)', 'usuarios.html#state=deactivate'),
         ],

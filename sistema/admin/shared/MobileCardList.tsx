@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { IconInbox } from '@tabler/icons-react';
-import { Card, Checkbox, EmptyState, Pagination, Stack } from '@maglev/ds';
+import { Card, Checkbox, EmptyState, EmptyStateProps, Pagination, Stack } from '@maglev/ds';
 import { Col, Grid, SectionLabel, Text } from './ui';
 
 /**
@@ -21,7 +21,7 @@ export interface MobileCardItem {
 /** Modo de seleção múltipla: cada card ganha um Checkbox, tocar no card marca/desmarca e o rodapé de ações individuais (⋮) some. */
 export interface MobileSelection { selectedIds: Set<string>; onToggle: (id: string) => void; label: (id: string) => string }
 
-export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction, rangeLabel, onItemClick }: {
+export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, emptyTitle, emptyDescription, empty, page, pageSize, total, onPageChange, headingId, selection, stickyFooter, footerAction, rangeLabel, onItemClick }: {
   title: string;
   titleHidden?: boolean;
   subtitle?: string;
@@ -30,6 +30,8 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
   emptyTitle: string;
   /** Texto de apoio do estado vazio (o mesmo que a tabela do desktop mostra). */
   emptyDescription?: string;
+  /** Estado vazio completo (ícone, título, descrição e ação), igual ao da tabela do desktop (`listEmpty`); quando presente, tem prioridade sobre `emptyTitle`/`emptyDescription`. */
+  empty?: Partial<EmptyStateProps>;
   page: number;
   pageSize: number;
   total: number;
@@ -60,7 +62,7 @@ export function MobileCardList({ title, titleHidden, subtitle, toolbar, items, e
       {toolbar}
 
       {items.length === 0 ? (
-        <Card><EmptyState icon={<IconInbox size={40} />} title={emptyTitle} description={emptyDescription} /></Card>
+        <Card><EmptyState icon={<IconInbox size={40} />} title={emptyTitle} description={emptyDescription} {...empty} /></Card>
       ) : items.map((it, idx) => {
         const checked = !!selection?.selectedIds.has(it.id);
         const card = (

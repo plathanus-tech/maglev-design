@@ -1,5 +1,6 @@
 import { ReactElement, useEffect, useMemo, useState } from 'react';
-import { IconCircleCheck, IconCircleOff, IconEye, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconBuildingStore, IconCircleCheck, IconCircleOff, IconEye, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Dropdown, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { useColumnPrefs } from '../../admin/shared/ColumnsControl';
@@ -16,7 +17,7 @@ import { UnitDialogs, demoDeletableUnit } from './unidade-dialogs';
 import { CellPair, RowAction, RowActions, TableToolbar, goTo, recordStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · noresults · deactivate (confirmar inativação) · deleteblocked (excluir com vínculos) · delete (excluir sem vínculos) · menu (menu ⋮ aberto na 1ª linha) */
-const STATES = ['idle', 'noresults', 'deactivate', 'deleteblocked', 'delete', 'menu'] as const;
+const STATES = ['idle', 'noresults', 'deactivate', 'deleteblocked', 'delete', 'menu', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
@@ -43,7 +44,7 @@ function UnidadesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  const visible = db.units.filter((u) => unitIds.includes(u.id));
+  const visible = mode === 'empty' ? [] : db.units.filter((u) => unitIds.includes(u.id));
   const filtered = useMemo(() => {
     const t = normalize(query);
     return visible
@@ -92,7 +93,12 @@ function UnidadesScreen() {
       columns={control}
     />
   );
-  const empty = { title: 'Nenhuma unidade encontrada', description: 'Revise a busca ou o filtro de status' };
+  const noRecords = visible.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconBuildingStore size={40} />,
+    none: { title: 'Nenhuma unidade cadastrada', description: 'Cadastre a primeira unidade para organizar ambientes e equipamentos.', create: can('unidades', 'cadastrar') ? { label: 'Nova unidade', onClick: () => goTo('unidade-form.html') } : undefined },
+    results: { title: 'Nenhuma unidade encontrada', description: 'Revise a busca ou o filtro de status', onClear: query.trim() || status !== 'todos' ? () => { setQuery(''); setStatus('todos'); } : undefined },
+  });
 
   return (
     <AppLayout active="unidades" screen="unidades">
@@ -111,7 +117,7 @@ function UnidadesScreen() {
           {isMobile ? (
             <MobileCardList
               onItemClick={(i) => goTo(`unidade.html?id=${rows[i].id}`)}
-              headingId="units-title" title="Lista de unidades" titleHidden toolbar={toolbar} emptyTitle={empty.title}
+              headingId="units-title" title="Lista de unidades" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((r) => ({
                 id: r.id, title: r.name, subtitle: r.code ? `Código ${r.code}` : undefined, badge: recordStatusBadge(r.status),
@@ -124,7 +130,7 @@ function UnidadesScreen() {
             />
           ) : (
             <Table<Row> onRowClick={(r) => goTo(`unidade.html?id=${r.id}`)}
-              caption="Lista de unidades" toolbar={toolbar} columns={shownColumns} rows={rows} empty={empty}
+              caption="Lista de unidades" toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />
           )}

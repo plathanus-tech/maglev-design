@@ -471,3 +471,6 @@ div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(
 
 /* Lista de avisos no modal de canal de contato */
 .contact-notices { margin: 0; padding-left: var(--spacing-lg); }
+
+/* Busca e filtros sem função (módulo sem cadastros): visíveis para manter a estrutura da tabela, mas esmaecidos e inativos */
+.toolbar-gate { opacity: var(--opacity-disabled); }

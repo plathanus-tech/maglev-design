@@ -1,6 +1,7 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconAdjustmentsHorizontal, IconCircleCheck, IconCircleOff, IconListDetails, IconMicrowave, IconPencil, IconPlus, IconProgressCheck, IconSearch, IconTool, IconTrash, IconUserCog } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from './list-empty';
 import {
   Badge, Button, Dialog, Dropdown, Input, RadioButton, Stack, Table, TableColumn, Textarea, useToast,
 } from '@maglev/ds';
@@ -90,6 +91,13 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
   const filtered = items.filter((i) => matches(query, i.name, i.description ?? ''));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   useEffect(() => { if ((page - 1) * PAGE_SIZE >= filtered.length && page > 1) setPage(1); }, [filtered.length, page]);
+  const SIMPLE_ICON: Record<SimpleKey, ReactNode> = { categories: <IconMicrowave size={40} />, specialties: <IconUserCog size={40} />, requestTypes: <IconListDetails size={40} />, maintenanceTypes: <IconTool size={40} /> };
+  const noRecords = items.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: SIMPLE_ICON[dbKey] ?? <IconAdjustmentsHorizontal size={40} />,
+    none: { title: `Nenhum${meta.newLabel.startsWith('Nova') ? 'a' : ''} ${meta.singular} cadastrad${meta.newLabel.startsWith('Nova') ? 'a' : 'o'}`, description: `Cadastre ${meta.newLabel.startsWith('Nova') ? 'a primeira' : 'o primeiro'} ${meta.singular} para começar.`, create: can('configuracoes', 'cadastrar') ? { label: meta.newLabel, onClick: () => openForm(null) } : undefined },
+    results: { title: 'Nenhum registro encontrado', description: 'Revise a busca.', onClear: query.trim() ? () => setQuery('') : undefined },
+  });
 
   useEffect(() => {
     if (!active) return;
@@ -149,8 +157,8 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
       <DevNote note={`${meta.note} Padrão RF401: inativo deixa de ser oferecido nas listas de seleção, mas continua visível nos registros antigos (RGN002). 💡 Coluna de vínculos: sugestão da spec.`}>
         {isMobile ? (
           <MobileCardList
-            headingId="config-list-title" title={meta.newLabel.replace(/^Nov[oa] /, '')} titleHidden toolbar={toolbar}
-            emptyTitle={items.length ? 'Nenhum registro encontrado' : 'Nenhum registro cadastrado'}
+            headingId="config-list-title" title={meta.newLabel.replace(/^Nov[oa] /, '')} titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>}
+            emptyTitle={empty.title ?? ''} empty={empty}
             page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
             items={pageRows.map((r) => ({
               id: r.id, title: dbKey === 'categories' ? <Stack direction="horizontal" gap="xs" align="center"><CategoryIcon id={r.icon} /><span>{r.name}</span></Stack> : r.name, subtitle: r.description || undefined,
@@ -169,9 +177,9 @@ function SimpleList({ dbKey, mode, active, header }: { dbKey: SimpleKey; mode: M
           />
         ) : (
           <Table<SimpleRow> caption={meta.newLabel.replace(/^Nov[oa] /, '')} columns={shownColumns}
-            toolbar={toolbar}
+            toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>}
             rows={pageRows as SimpleRow[]}
-            empty={items.length ? { title: 'Nenhum registro encontrado', description: 'Revise a busca.' } : { title: 'Nenhum registro cadastrado' }}
+            empty={empty}
             pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
           />
         )}
@@ -460,6 +468,11 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, active]);
 
+  const statusEmpty = listEmpty({
+    noRecords: db.statuses.length === 0, icon: <IconProgressCheck size={40} />,
+    none: { title: 'Nenhum status cadastrado', description: 'Cadastre o primeiro status para acompanhar as etapas de cada módulo.', create: can('configuracoes', 'cadastrar') ? { label: 'Novo status', onClick: () => goTo('configuracoes-status-form.html') } : undefined },
+    results: { title: 'Nenhum status encontrado', description: 'Revise a busca ou o filtro de módulo.', onClear: query.trim() || module !== 'todos' ? () => { setQuery(''); setModule('todos'); } : undefined },
+  });
   const rows = useMemo(() => db.statuses
     .filter((s) => module === 'todos' || s.module === module)
     .filter((s) => matches(query, s.name))
@@ -512,8 +525,8 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
       <DevNote note="RF407: status configuráveis por módulo/etapa (criar, editar, excluir - RGN004), cada um com tipo visual da paleta fixa de 5 (RGN005, sem cor livre) e situação-base fixa do sistema (💡 proposta técnica): as regras automáticas usam a situação-base, não o nome - criar status não quebra o fluxo (CTA005). Status aparecem só no módulo a que pertencem (CTA004). Crítico e Atenção alimentam os alertas dos dashboards (RGN007). Carga inicial: RGN001–RGN003. 💡 Preventiva como módulo: a confirmar, não incluída. 💡 P13: a cliente enviará os tipos visuais de cada status.">
         {isMobile ? (
           <MobileCardList
-            headingId="status-list-title" title="Status" titleHidden toolbar={toolbar}
-            emptyTitle="Nenhum status encontrado"
+            headingId="status-list-title" title="Status" titleHidden toolbar={<ToolbarGate disabled={db.statuses.length === 0}>{toolbar}</ToolbarGate>}
+            emptyTitle={statusEmpty.title ?? ''} empty={statusEmpty}
             page={page} pageSize={PAGE_SIZE} total={rows.length} onPageChange={setPage}
             items={pageRows.map((r) => ({
               id: r.id, title: r.name, subtitle: moduleLabel(r.module),
@@ -538,9 +551,9 @@ function StatusList({ mode, active, header }: { mode: Mode; active: boolean; hea
           />
         ) : (
           <Table<StatusRow> caption="Status" columns={shownColumns}
-            toolbar={toolbar}
+            toolbar={<ToolbarGate disabled={db.statuses.length === 0}>{toolbar}</ToolbarGate>}
             rows={pageRows as StatusRow[]}
-            empty={{ title: 'Nenhum status encontrado', description: 'Revise a busca ou o filtro de módulo.' }}
+            empty={statusEmpty}
             pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage }}
           />
         )}

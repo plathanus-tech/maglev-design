@@ -2,8 +2,9 @@ import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
 import {
   IconCircleCheck, IconCircleOff, IconEye, IconMessageReport, IconPencil, IconPlus, IconReportMoney, IconSearch,
-  IconUserCheck, IconUserExclamation,
+  IconToolsKitchen2, IconUserCheck, IconUserExclamation,
 } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from './list-empty';
 import { Button, Input, KpiCard, KpiTrend, Stack, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
@@ -21,7 +22,7 @@ import { formatCnpj, formatDate, formatMoney, formatMoneyCompact, formatNumber, 
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, onboardingStateBadge, subscriberStatusBadge, takeFlash } from './ui';
 
 /** Estados: idle · overdue (filtro Inadimplente) · noresults (busca sem resultados) · deactivate (RF204 pela listagem) */
-const STATES = ['idle', 'overdue', 'noresults', 'deactivate', 'columns'] as const;
+const STATES = ['idle', 'overdue', 'noresults', 'deactivate', 'columns', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
@@ -102,9 +103,10 @@ function AssinantesScreen() {
     };
   }, [db]);
 
-  const filtered = useMemo(() => db.subscribers
+  const allSubscribers = mode === 'empty' ? [] : db.subscribers;
+  const filtered = useMemo(() => allSubscribers
     .filter((s) => (status === 'todos' || s.status === status) && (plan === 'todos' || s.plan === plan) && matches(s, query))
-    .sort((a, b) => subscriberName(a).localeCompare(subscriberName(b), 'pt-BR') * (sortDir === 'asc' ? 1 : -1)), [db, query, status, plan, sortDir]);
+    .sort((a, b) => subscriberName(a).localeCompare(subscriberName(b), 'pt-BR') * (sortDir === 'asc' ? 1 : -1)), [db, allSubscribers, query, status, plan, sortDir]);
   const pageRows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((s) => ({ ...s, activeUsers: activeUsersCount(s) }));
 
   const actions = (s: Subscriber) => {
@@ -172,7 +174,13 @@ function AssinantesScreen() {
       )}
     />
   );
-  const empty = { title: 'Nenhum assinante encontrado', description: 'Revise a busca ou os filtros aplicados.' };
+  const noRecords = allSubscribers.length === 0;
+  const filtering = !!query.trim() || status !== 'todos' || plan !== 'todos';
+  const empty = listEmpty({
+    noRecords, icon: <IconToolsKitchen2 size={40} />,
+    none: { title: 'Nenhum assinante cadastrado', description: 'Cadastre o primeiro assinante para começar a acompanhar a operação.', create: can('assinantes', 'cadastrar') ? { label: 'Novo assinante', onClick: () => goTo('assinante-form.html') } : undefined },
+    results: { title: 'Nenhum assinante encontrado', description: 'Revise a busca ou os filtros aplicados.', onClear: filtering ? () => { setQuery(''); setStatus('todos'); setPlan('todos'); } : undefined },
+  });
 
   return (
     <AppLayout active="assinantes" screen="assinantes">
@@ -217,8 +225,8 @@ function AssinantesScreen() {
               headingId="subscribers-title"
               title="Lista de assinantes"
               titleHidden
-              toolbar={toolbarFor(true)}
-              emptyTitle={empty.title}
+              toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true)}</ToolbarGate>}
+              emptyTitle={empty.title ?? ''} empty={empty}
               page={page}
               pageSize={PAGE_SIZE}
               total={filtered.length}
@@ -245,7 +253,7 @@ function AssinantesScreen() {
           ) : (
             <Table<Row> onRowClick={(r) => goTo(`assinante.html?id=${r.id}`)}
               caption="Lista de assinantes"
-              toolbar={toolbarFor(true)}
+              toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true)}</ToolbarGate>}
               columns={shownColumns}
               rows={pageRows}
               sortKey="tradeName"

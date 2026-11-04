@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconAlertTriangle, IconCalendarEvent, IconCalendarRepeat, IconCircleCheck, IconCircleOff, IconCopy, IconEye, IconChecks, IconPencil, IconPlayerPause, IconPlus } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Badge, Button, Card, EmptyState, KpiCard, Stack, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { formatDate, formatNumber, normalize } from '../../admin/shared/format';
@@ -139,7 +140,12 @@ function PlanosScreen() {
       <ExportButton company={company.tradeName || company.legalName} columns={shownColumns} rows={filtered} file="planos-de-manutencao" sheet="Planos" noun={['plano', 'planos']} label="Exportar planos" overrides={{ equipments: (r) => r.equipments.join('; '), units: (r) => r.units.join('; ') }} />
     </DevNote>
   )} /></div>;
-  const noPlans = plans.length === 0;
+  const noRecords = plans.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconCalendarRepeat size={40} />,
+    none: { title: 'Nenhum plano de manutenção cadastrado', description: can('planos', 'cadastrar') ? 'Crie o primeiro plano para gerar as preventivas automaticamente.' : 'Quando houver planos, eles aparecem aqui.', create: can('planos', 'cadastrar') ? { label: 'Novo plano', onClick: () => goTo('plano-form.html') } : undefined },
+    results: { title: 'Nenhum plano encontrado', description: 'Revise a busca ou os filtros.', onClear: query.trim() || status !== 'todos' || situation !== 'todos' || executor !== 'todos' || unit !== 'todos' || period !== 'todos' ? () => { setQuery(''); setStatus('todos'); setSituation('todos'); setExecutor('todos'); setUnit('todos'); setPeriod('todos'); setFrom(''); setTo(''); } : undefined },
+  });
 
   return (
     <AppLayout active="planos" screen="planos">
@@ -180,35 +186,24 @@ function PlanosScreen() {
           </Col>
         </Grid>
 
-        {noPlans ? (
-          <Card>
-            <EmptyState
-              icon={<IconCircleOff size={32} />} title="Nenhum plano de manutenção cadastrado"
-              description={can('planos', 'cadastrar') ? 'Crie o primeiro plano para gerar as preventivas automaticamente.' : 'Quando houver planos, eles aparecem aqui.'}
-              headingLevel={2}
-              action={can('planos', 'cadastrar') ? <Button iconLeft={<IconPlus size={20} />} onClick={() => goTo('plano-form.html')}>Novo plano</Button> : undefined}
-            />
-          </Card>
-        ) : (
-          <DevNote note="RF602: listagem paginada (10) com busca e filtros combinados (status, situação, executor, unidade). Equipamento(s) e Unidade(s) mostram o primeiro + “+N”. Clique no plano abre o histórico (plano.html). “Salvar visualização” é FE010 (fora do escopo). Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação. Executor só vê os planos em que é o executor. No mobile vira lista de cards.">
-            <ResponsiveTable<Row> onRowClick={(r) => goTo(`plano.html?id=${r.id}`)}
-              id="plans-title" title="Lista de planos de manutenção" titleHidden toolbar={toolbar} columns={shownColumns} rows={filtered} resetKey={resetKey}
-              emptyTitle="Nenhum plano encontrado" emptyDescription="Revise a busca ou os filtros."
-              card={(r) => {
-                const e = executorOf(db, r.plan.executor);
-                return {
-                  id: r.id, title: r.plan.name, subtitle: `${e.primary} · ${e.secondary}`, badge: situationBadge(r.stats.situation),
-                  fields: fieldsFor([
-                    { label: 'Status', value: statusBadge(r.plan) }, { label: 'Frequência', value: describeFrequency(r.plan) },
-                    { label: 'Equipamento(s)', value: withMore(r.equipments) }, { label: 'Unidade(s)', value: withMore(r.units) },
-                    { label: 'Última execução', value: dateOrDash(r.stats.last?.doneAt ?? r.stats.last?.dueDate) }, { label: 'Próxima execução', value: dateOrDash(r.stats.next?.dueDate) },
-                  ]),
-                  actions: actions(r),
-                };
-              }}
-            />
-          </DevNote>
-        )}
+        <DevNote note="RF602: listagem paginada (10) com busca e filtros combinados (status, situação, executor, unidade). Equipamento(s) e Unidade(s) mostram o primeiro + “+N”. Clique no plano abre o histórico (plano.html). “Salvar visualização” é FE010 (fora do escopo). Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação. Executor só vê os planos em que é o executor. No mobile vira lista de cards.">
+          <ResponsiveTable<Row> onRowClick={(r) => goTo(`plano.html?id=${r.id}`)}
+            id="plans-title" title="Lista de planos de manutenção" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={filtered} resetKey={resetKey}
+            emptyTitle="Nenhum plano encontrado" emptyDescription="Revise a busca ou os filtros." empty={empty}
+            card={(r) => {
+              const e = executorOf(db, r.plan.executor);
+              return {
+                id: r.id, title: r.plan.name, subtitle: `${e.primary} · ${e.secondary}`, badge: situationBadge(r.stats.situation),
+                fields: fieldsFor([
+                  { label: 'Status', value: statusBadge(r.plan) }, { label: 'Frequência', value: describeFrequency(r.plan) },
+                  { label: 'Equipamento(s)', value: withMore(r.equipments) }, { label: 'Unidade(s)', value: withMore(r.units) },
+                  { label: 'Última execução', value: dateOrDash(r.stats.last?.doneAt ?? r.stats.last?.dueDate) }, { label: 'Próxima execução', value: dateOrDash(r.stats.next?.dueDate) },
+                ]),
+                actions: actions(r),
+              };
+            }}
+          />
+        </DevNote>
       </Stack>
       <PlanStatusDialog plan={toggling} onClose={() => setToggling(null)} />
     </AppLayout>

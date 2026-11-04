@@ -1,6 +1,7 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
-import { IconEye, IconPrinter, IconQrcodeOff, IconSearch } from '@tabler/icons-react';
+import { IconEye, IconMicrowave, IconPrinter, IconQrcodeOff, IconSearch } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from './list-empty';
 import { Badge, Button, Checkbox, Dialog, Dropdown, Feedback, Input, Stack, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
 import { BatchLabelDialog, QrDialogs } from '../../assinante/shared/equipamento-lib';
 import { QrCode } from '../../assinante/shared/QrCode';
@@ -213,7 +214,13 @@ export function SubscriberEquipmentsTab({ subscriber }: { subscriber: Subscriber
       {selectionBar}
     </>
   );
-  const empty = { title: 'Nenhum equipamento encontrado', description: 'Revise a busca ou os filtros aplicados.' };
+  const noRecords = all.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconMicrowave size={40} />,
+    // Sem ação de criação: no Admin o equipamento é cadastrado pelo próprio assinante
+    none: { title: 'Nenhum equipamento cadastrado', description: 'Os equipamentos são cadastrados pelo próprio assinante e aparecem aqui com o código QR de cada um.' },
+    results: { title: 'Nenhum equipamento encontrado', description: 'Revise a busca ou os filtros aplicados.', onClear: query.trim() || unit !== ALL || changed !== ALL ? () => { setQuery(''); setUnit(ALL); setChanged(ALL); } : undefined },
+  });
   const detailEvents = events;
 
   return (
@@ -221,7 +228,7 @@ export function SubscriberEquipmentsTab({ subscriber }: { subscriber: Subscriber
       <DevNote note="Aba Equipamentos (visão do Admin sobre os QR Codes do assinante): lista só para consulta, sem cadastrar nem editar equipamento (a gestão é do assinante). Ações: Visualizar (QR atual + histórico de códigos), Imprimir QR Code (reimpressão, mesmo código, sem motivo) e Inativar código QR (pede o motivo e gera o novo código na hora; o antigo fica no histórico, nada é excluído). A quantidade de QR Codes ativos é igual à de equipamentos, por isso não há indicador separado. Inativar exige a permissão “Ativar/Inativar” em Assinantes.">
         {isMobile ? (
           <MobileCardList
-            headingId="sub-equipments-title" title="Equipamentos" titleHidden toolbar={toolbar} emptyTitle={empty.title}
+            headingId="sub-equipments-title" title="Equipamentos" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
             page={page} pageSize={PAGE_SIZE} total={rows.length} onPageChange={setPage}
             items={pageRows.map((r) => ({
               id: r.id, title: r.name, subtitle: r.code,
@@ -238,7 +245,7 @@ export function SubscriberEquipmentsTab({ subscriber }: { subscriber: Subscriber
         ) : (
           <Table<Row>
             title="Equipamentos" subtitle="Equipamentos do assinante e o código QR de cada um"
-            toolbar={toolbar} columns={columns} rows={pageRows} empty={empty}
+            toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={columns} rows={pageRows} empty={empty}
             pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage }}
           />
         )}

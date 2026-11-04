@@ -30,6 +30,7 @@ export const journeys: Journey[] = [
             id: 'sub-unidades', label: 'Listagem de unidades', path: `${s}/unidades.html`,
             variants: [
               v('sub-unidades-noresults', 'Busca sem resultados', 'unidades.html#state=noresults'),
+              v('sub-unidades-empty', 'Sem nenhuma unidade cadastrada', 'unidades.html#state=empty'),
               v('sub-unidades-deactivate', 'Inativar (confirmação)', 'unidades.html#state=deactivate'),
               v('sub-unidades-deleteblocked', 'Excluir com vínculos (bloqueado)', 'unidades.html#state=deleteblocked'),
               v('sub-unidades-delete', 'Excluir sem vínculos (confirmação)', 'unidades.html#state=delete'),
@@ -64,6 +65,7 @@ export const journeys: Journey[] = [
         variants: [
           v('sub-ambientes-unit', 'A partir da unidade (filtrada)', 'ambientes.html?unit=UNI-001'),
           v('sub-ambientes-noresults', 'Busca sem resultados', 'ambientes.html#state=noresults'),
+          v('sub-ambientes-empty', 'Sem nenhum ambiente cadastrado', 'ambientes.html#state=empty'),
           v('sub-ambientes-new', 'Novo ambiente (modal)', 'ambientes.html#state=new'),
           v('sub-ambientes-view', 'Visualizar ambiente (modal)', 'ambientes.html#state=view'),
           v('sub-ambientes-menu', 'Menu de ações aberto', 'ambientes.html#state=menu'),
@@ -81,6 +83,7 @@ export const journeys: Journey[] = [
             id: 'sub-equipe', label: 'Listagem de usuários', path: `${s}/equipe.html`,
             variants: [
               v('sub-equipe-noresults', 'Busca sem resultados', 'equipe.html#state=noresults'),
+              v('sub-equipe-empty', 'Sem nenhum usuário cadastrado', 'equipe.html#state=empty'),
               v('sub-equipe-deactivate', 'Inativar membro (confirmação)', 'equipe.html#state=deactivate'),
               v('sub-equipe-activate', 'Ativar membro (confirmação)', 'equipe.html#state=activate'),
               v('sub-equipe-selfdeactivate', 'Inativar a si mesmo (bloqueado)', 'equipe.html#state=selfdeactivate'),

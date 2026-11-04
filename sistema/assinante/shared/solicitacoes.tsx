@@ -1,6 +1,7 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
-import { IconCircleCheck, IconClipboardList, IconClockHour4, IconEye, IconInbox, IconListCheck, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconCircleCheck, IconClipboardList, IconClockHour4, IconEye, IconInbox, IconListCheck, IconMessageReport, IconPlus, IconSearch } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Feedback, Input, KpiCard, Stack, Table, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
@@ -19,7 +20,7 @@ import { SafetyRiskFlag } from './solicitacao-details';
 import { ConcludeDialog, STS, canConclude, hoursSince, isOpenBase } from './solicitacoes-shared';
 
 /** Estados: idle · noresults (busca sem resultado) · conclude (RF401-FLU006: abre "Concluir sem OS" da primeira solicitação elegível) */
-const STATES = ['idle', 'noresults', 'conclude'] as const;
+const STATES = ['idle', 'noresults', 'conclude', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
@@ -68,7 +69,7 @@ function SolicitacoesScreen() {
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [query, status, priority, unit, equipment, requester, assign, period, from, to]);
 
-  const views: View[] = useMemo(() => requestsVisible(db, unitIds).map((r) => ({ r, unitId: unitIdOfEquipment(db, r.equipmentId), base: refs.base(r.statusId) })),
+  const views: View[] = useMemo(() => (mode === 'empty' ? [] : requestsVisible(db, unitIds)).map((r) => ({ r, unitId: unitIdOfEquipment(db, r.equipmentId), base: refs.base(r.statusId) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [db, unitIds, refs.admin]);
 
@@ -199,7 +200,12 @@ function SolicitacoesScreen() {
       )}
     </Stack>
   );
-  const empty = { title: 'Nenhuma solicitação encontrada', description: 'Revise a busca e os filtros, ou escolha Todo o histórico no período' };
+  const noRecords = views.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconMessageReport size={40} />,
+    none: { title: 'Nenhuma solicitação cadastrada', description: 'Abra a primeira solicitação para registrar um problema em um equipamento.', create: can('solicitacoes', 'cadastrar') ? { label: 'Nova solicitação', onClick: () => goTo('solicitacao-form.html') } : undefined },
+    results: { title: 'Nenhuma solicitação encontrada', description: 'Revise a busca e os filtros, ou escolha Todo o histórico no período', onClear: filtersActive ? clearFilters : undefined },
+  });
 
   return (
     <AppLayout active="solicitacoes" screen="solicitacoes">
@@ -232,7 +238,7 @@ function SolicitacoesScreen() {
           {isMobile ? (
             <MobileCardList
               onItemClick={(i) => goTo(`solicitacao.html?id=${pageViews[i].r.id}`)}
-              headingId="requests-title" title="Lista de solicitações" titleHidden toolbar={toolbar} emptyTitle={empty.title}
+              headingId="requests-title" title="Lista de solicitações" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={pageViews.map((v) => {
                 const e = equipmentOf(v.r.equipmentId);
@@ -253,7 +259,7 @@ function SolicitacoesScreen() {
             />
           ) : (
             <Table<Row> onRowClick={(r) => goTo(`solicitacao.html?id=${r.v.r.id}`)}
-              caption="Lista de solicitações" toolbar={toolbar} columns={shownColumns} rows={rows} empty={empty}
+              caption="Lista de solicitações" toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />
           )}

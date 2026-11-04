@@ -1,5 +1,6 @@
 import { FormEvent, ReactElement, useEffect, useMemo, useState } from 'react';
-import { IconCircleCheck, IconCircleOff, IconEye, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconCircleCheck, IconCircleOff, IconEye, IconLayoutGrid, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Dialog, Dropdown, Feedback, Input, RadioButton, Stack, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
@@ -17,7 +18,7 @@ import { CellPair, ReadField, RowAction, RowActions, TableToolbar, Text, param, 
 import { RowMenu, RowMenuItem } from './RowMenu';
 
 /** Estados: idle · noresults · new (cadastro aberto) · view (visualizar) · menu (⋮ aberto) · required · duplicate (CTA002) · deactivate · deleteblocked (CTA003) · delete */
-const STATES = ['idle', 'noresults', 'new', 'view', 'menu', 'required', 'duplicate', 'deactivate', 'deleteblocked', 'delete'] as const;
+const STATES = ['idle', 'noresults', 'new', 'view', 'menu', 'required', 'duplicate', 'deactivate', 'deleteblocked', 'delete', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
@@ -124,7 +125,7 @@ function AmbientesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  const visible = db.environments.filter((e) => unitIds.includes(e.unitId));
+  const visible = mode === 'empty' ? [] : db.environments.filter((e) => unitIds.includes(e.unitId));
   const filtered = useMemo(() => {
     const t = normalize(query);
     return visible
@@ -175,7 +176,12 @@ function AmbientesScreen() {
       columns={control}
     />
   );
-  const empty = { title: 'Nenhum ambiente encontrado', description: 'Revise a busca ou os filtros' };
+  const noRecords = visible.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconLayoutGrid size={40} />,
+    none: { title: 'Nenhum ambiente cadastrado', description: 'Cadastre o primeiro ambiente para localizar os equipamentos dentro de cada unidade.', create: can('ambientes', 'cadastrar') ? { label: 'Novo ambiente', onClick: () => setDialog({ kind: 'form' }) } : undefined },
+    results: { title: 'Nenhum ambiente encontrado', description: 'Revise a busca ou os filtros', onClear: query.trim() || unit !== 'todos' || status !== 'todos' ? () => { setQuery(''); setUnit('todos'); setStatus('todos'); } : undefined },
+  });
 
   const close = () => setDialog(null);
   const toggle = (env: Environment) => {
@@ -208,7 +214,7 @@ function AmbientesScreen() {
         <DevNote note="RF203-FLU001: acessível pelo menu Ambientes com filtro de unidade e, a partir da unidade, com `?unit=` já aplicado. Cadastro e edição em modal. 💡 RGN003: ambientes-modelo reaproveitáveis entre unidades, a confirmar.">
           {isMobile ? (
             <MobileCardList
-              headingId="envs-title" title="Lista de ambientes" titleHidden toolbar={toolbar} emptyTitle={empty.title}
+              headingId="envs-title" title="Lista de ambientes" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((r) => ({
                 id: r.id, title: r.name, subtitle: r.description || undefined, badge: recordStatusBadge(r.status),
@@ -218,7 +224,7 @@ function AmbientesScreen() {
             />
           ) : (
             <Table<Row>
-              caption="Lista de ambientes" toolbar={toolbar} columns={shownColumns} rows={rows} empty={empty}
+              caption="Lista de ambientes" toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />
           )}

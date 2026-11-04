@@ -1,6 +1,7 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useState } from 'react';
-import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconCircleCheck, IconCircleOff, IconPencil, IconPlus, IconShieldLock, IconTrash } from '@tabler/icons-react';
+import { listEmpty } from './list-empty';
 import { Badge, Button, Dialog, Stack, Table, TableColumn, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { DevNote } from './dev-notes/DevNote';
@@ -30,6 +31,11 @@ function PerfisScreen() {
   const [page, setPage] = useState(1);
   const allRows: Row[] = db.profiles.map((p) => ({ ...p, users: db.adminUsers.filter((u) => u.profileId === p.id).length }));
   const rows = allRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const empty = listEmpty({
+    noRecords: true, icon: <IconShieldLock size={40} />,
+    none: { title: 'Nenhum perfil cadastrado', description: 'Crie o primeiro perfil para definir o que cada pessoa pode ver e fazer.', create: can('perfis', 'cadastrar') ? { label: 'Novo perfil', onClick: () => goTo('perfil-form.html') } : undefined },
+    results: { title: 'Nenhum perfil encontrado' },
+  });
   useEffect(() => { if (mode === 'deleteblocked') setPending({ kind: 'blocked', profile: allRows.find((r) => r.id === 'PER-SUP')! }); }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -86,7 +92,7 @@ function PerfisScreen() {
         <DevNote note="RF303: perfis com matriz de permissões tela × ação. O perfil Administrador é fixo (acesso total) - não pode ser excluído, inativado nem ter permissões removidas (RGN001 / CTA003). Perfil com usuários vinculados não pode ser excluído, apenas inativado (RGN002). ⚠️ ZC005: perfis configuráveis estão na zona cinzenta - validar com o comercial; alternativa de menor esforço é perfis fixos (P18).">
           {isMobile ? (
             <MobileCardList
-              headingId="profiles-title" title="Lista de perfis" titleHidden emptyTitle="Nenhum perfil cadastrado"
+              headingId="profiles-title" title="Lista de perfis" titleHidden emptyTitle="Nenhum perfil cadastrado" empty={empty}
               page={page} pageSize={PAGE_SIZE} total={allRows.length} onPageChange={setPage}
               items={rows.map((r) => ({
                 id: r.id, title: r.name, subtitle: r.description, badge: recordStatusBadge(r.status),
@@ -95,7 +101,7 @@ function PerfisScreen() {
               }))}
             />
           ) : (
-            <Table<Row> caption="Lista de perfis de acesso" columns={shownColumns} rows={rows} empty={{ title: 'Nenhum perfil cadastrado' }} pagination={{ page, pageSize: PAGE_SIZE, total: allRows.length, onPageChange: setPage }} />
+            <Table<Row> caption="Lista de perfis de acesso" columns={shownColumns} rows={rows} empty={empty} pagination={{ page, pageSize: PAGE_SIZE, total: allRows.length, onPageChange: setPage }} />
           )}
         </DevNote>
       </Stack>

@@ -36,6 +36,7 @@ export const journeys: Journey[] = [
           v('sol-lista-converted', 'Filtro: convertidas em OS (histórico)', 'solicitacoes.html?filter=converted'),
           v('sol-lista-equipment', 'Filtro: por equipamento (histórico)', 'solicitacoes.html?equipment=EQP-0001'),
           v('sol-lista-noresults', 'Busca sem resultados', 'solicitacoes.html#state=noresults'),
+          v('sol-lista-empty', 'Sem nenhuma solicitação cadastrada', 'solicitacoes.html#state=empty'),
           v('sol-lista-conclude', 'Concluir sem OS (motivo obrigatório)', 'solicitacoes.html#state=conclude'),
           v('sol-lista-executor', 'Perfil Executor (somente leitura)', `solicitacoes.html?as=${executor}`),
         ],

@@ -4,6 +4,7 @@ import {
   IconAlertTriangle, IconChevronDown, IconClipboardList, IconChecklist, IconChevronRight, IconCircleCheck, IconCircleOff, IconEye, IconMicrowave,
   IconPencil, IconPlayerStop, IconPlus, IconQrcode, IconReportMoney, IconSearch, IconTool, IconBuildingStore, IconLayoutGrid, IconPhoto, IconPrinter,
 } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Card, Checkbox, Dialog, EmptyState, Feedback, Input, KpiCard, Pagination, Stack, Tab, Table, TableColumn, Tooltip, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
 import { WarrantyFlag } from './warranty-ui';
@@ -31,7 +32,7 @@ import './equipamento.css';
 /** Última aba aberta (Hierárquica ou Lista): ao voltar do detalhe do equipamento pelo breadcrumb, a lista reabre nela. */
 const TAB_KEY = 'maglev.sub.equipamentos.tab';
 const savedTab = () => { try { return sessionStorage.getItem(TAB_KEY); } catch { return null; } };
-const STATES = ['idle', 'hierarchical', 'expanded', 'list', 'noresults', 'inactivate', 'qr', 'qrlink', 'qrlinked'] as const;
+const STATES = ['idle', 'hierarchical', 'expanded', 'list', 'noresults', 'inactivate', 'qr', 'qrlink', 'qrlinked', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
@@ -82,7 +83,7 @@ function EquipamentosScreen() {
   const [qr, setQr] = useState<{ id: string; mode: 'qr' | 'label' } | null>(null);
 
   const visibleUnits = useMemo(() => db.units.filter((u) => unitIds.includes(u.id)), [db.units, unitIds]);
-  const visible = useMemo(() => db.equipments.filter((e) => unitIds.includes(e.unitId)), [db.equipments, unitIds]);
+  const visible = useMemo(() => (mode === 'empty' ? [] : db.equipments.filter((e) => unitIds.includes(e.unitId))), [db.equipments, unitIds, mode]);
   const unitOf = (id: string) => db.units.find((u) => u.id === id);
   const envOf = (id: string) => db.environments.find((e) => e.id === id);
 
@@ -246,11 +247,13 @@ function EquipamentosScreen() {
 
   const statusFilterOptions = [{ value: ALL, label: 'Todos os status' }, ...eqStatuses.map((s) => ({ value: s.id, label: s.name }))];
   const envNames = [...new Set(db.environments.filter((x) => unitIds.includes(x.unitId)).map((x) => x.name))];
-  const empty = {
-    title: 'Nenhum equipamento encontrado',
-    description: filtering ? 'Revise a busca ou os filtros aplicados.' : 'Cadastre o primeiro equipamento para começar.',
-    action: filtering ? <Button variant="secondary" size="sm" onClick={clearFilters}>Limpar filtros</Button> : undefined,
-  };
+  const noRecords = visible.length === 0;
+  const createEquipment = can('equipamentos', 'cadastrar') ? { label: 'Novo equipamento', onClick: () => goTo('equipamento-form.html') } : undefined;
+  const empty = listEmpty({
+    noRecords, icon: <IconMicrowave size={40} />,
+    none: { title: 'Nenhum equipamento cadastrado', description: 'Cadastre o primeiro equipamento para acompanhar manutenções, custos e solicitações.', create: createEquipment },
+    results: { title: 'Nenhum equipamento encontrado', description: 'Revise a busca ou os filtros aplicados.', onClear: filtering ? clearFilters : undefined, clearLabel: 'Limpar filtros' },
+  });
 
   const request = (e: Equipment) => goTo(`solicitacao-form.html?equipment=${e.id}`);
   const canRequest = can('solicitacoes', 'cadastrar');
@@ -339,7 +342,7 @@ function EquipamentosScreen() {
   const listView = isMobile ? (
     <MobileCardList
       onItemClick={(i) => goTo(`equipamento.html?id=${pageRows[i].equipment.id}`)}
-      headingId="equipments-title" rangeLabel={listRange} title="Lista de equipamentos" titleHidden toolbar={toolbarFor(true, mobileSelectBar)} emptyTitle={empty.title}
+      headingId="equipments-title" rangeLabel={listRange} title="Lista de equipamentos" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true, mobileSelectBar)}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
       selection={selectMode ? { selectedIds: selected, onToggle: toggleOne, label: (id) => `Selecionar ${rows.find((r) => r.id === id)?.name ?? 'equipamento'}` } : undefined}
       stickyFooter={selectMode && selectedCount > 0 ? <Button iconLeft={<IconPrinter size={20} />} onClick={() => setBatchOpen(true)}>{selectedCount === 1 ? 'Imprimir 1 etiqueta' : `Imprimir ${selectedCount} etiquetas`}</Button> : undefined}
       page={page} pageSize={PAGE_SIZE} total={rows.length} onPageChange={setPage}
@@ -356,7 +359,7 @@ function EquipamentosScreen() {
     />
   ) : (
     <Table<Row> onRowClick={(r) => goTo(`equipamento.html?id=${r.equipment.id}`)}
-      caption="Lista de equipamentos" toolbar={toolbarFor(true, selectionBar)} columns={[selectColumn, ...shownColumns]} rows={pageRows}
+      caption="Lista de equipamentos" toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true, selectionBar)}</ToolbarGate>} columns={[selectColumn, ...shownColumns]} rows={pageRows}
       sortKey="name" sortDir={sortDir} onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
       empty={empty} pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage, rangeLabel: listRange }}
     />
@@ -412,7 +415,11 @@ function EquipamentosScreen() {
     { key: 'open', label: 'OS abertas', align: 'right' },
     { key: 'rowId', label: 'Ações', sticky: 'right', render: (_, r) => treeActions(r) },
   ];
-  const treeEmpty = { title: 'Nenhuma unidade encontrada', description: filtering ? 'Revise a busca ou os filtros aplicados.' : undefined, action: empty.action };
+  const treeEmpty = listEmpty({
+    noRecords, icon: <IconMicrowave size={40} />,
+    none: { title: 'Nenhum equipamento cadastrado', description: 'Cadastre o primeiro equipamento para acompanhar manutenções, custos e solicitações.', create: createEquipment },
+    results: { title: 'Nenhuma unidade encontrada', description: 'Revise a busca ou os filtros aplicados.', onClear: filtering ? clearFilters : undefined, clearLabel: 'Limpar filtros' },
+  });
   // Mobile: a hierarquia vira uma única árvore por unidade (sem um card por nível): Unidade → Ambiente → Equipamento, com indentação,
   // chevrons só em Unidade e Ambiente, resumo compacto e menu ⋮ nos equipamentos.
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -433,9 +440,9 @@ function EquipamentosScreen() {
   const mobileTree = (
     <Stack gap="md" as="section">
       <h2 id="tree-title" className="sr-only">Equipamentos por unidade e ambiente</h2>
-      {toolbarFor(false)}
+      <ToolbarGate disabled={noRecords}>{toolbarFor(false)}</ToolbarGate>
       {treeUnits.length === 0 ? (
-        <Card><EmptyState title={treeEmpty.title} description={treeEmpty.description} action={treeEmpty.action} /></Card>
+        <Card><EmptyState icon={treeEmpty.icon} title={treeEmpty.title ?? ''} description={treeEmpty.description} action={treeEmpty.action} /></Card>
       ) : treeUnits.slice((treePage - 1) * TREE_PAGE_SIZE, treePage * TREE_PAGE_SIZE).map(({ unit: u, envs }) => {
         const unitOpen = expanded.has(u.id);
         const uRow = { rowId: u.id, kind: 'unit', name: u.name, unitId: u.id } as unknown as TreeRow;
@@ -498,7 +505,7 @@ function EquipamentosScreen() {
     mobileTree
   ) : (
     <Table<TreeRow> onRowClick={(r) => { if (r.kind === 'eq' && r.equipment) goTo(`equipamento.html?id=${r.equipment.id}`); else if (r.expandable) toggleExpand(r.rowId); }} isRowClickable={(r) => (r.kind === 'eq' && !!r.equipment) || !!r.expandable}
-      caption="Equipamentos por unidade e ambiente" toolbar={toolbarFor(false)} columns={treeColumns} rows={treeRows} empty={treeEmpty}
+      caption="Equipamentos por unidade e ambiente" toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(false)}</ToolbarGate>} columns={treeColumns} rows={treeRows} empty={treeEmpty}
       pagination={{ page: treePage, pageSize: TREE_PAGE_SIZE, total: treeUnits.length, onPageChange: setTreePage, rangeLabel: (from, to, total) => `Mostrando ${from}–${to} de ${total} unidades` }}
     />
   );

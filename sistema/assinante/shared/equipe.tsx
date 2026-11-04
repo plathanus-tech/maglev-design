@@ -1,6 +1,7 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
-import { IconCircleCheck, IconCircleOff, IconMailForward, IconPencil, IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconCircleCheck, IconCircleOff, IconMailForward, IconPencil, IconPlus, IconSearch, IconUsers } from '@tabler/icons-react';
+import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Badge, Button, Dialog, Feedback, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { FilterControl } from '../../admin/shared/FilterControl';
@@ -15,7 +16,7 @@ import { unitName, updateSubDb, useSubSession } from './store';
 import { CellPair, RowAction, RowActions, TableToolbar, Text, goTo, takeFlash } from './ui';
 
 /** Estados: idle · noresults · deactivate (confirmar inativação) · activate · selfdeactivate (tentar inativar a si mesmo) */
-const STATES = ['idle', 'noresults', 'deactivate', 'activate', 'selfdeactivate'] as const;
+const STATES = ['idle', 'noresults', 'deactivate', 'activate', 'selfdeactivate', 'empty'] as const;
 type Mode = (typeof STATES)[number];
 const PAGE_SIZE = 10;
 
@@ -59,12 +60,13 @@ function EquipeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
+  const members = mode === 'empty' ? [] : db.users;
   const filtered = useMemo(() => {
     const t = normalize(query);
-    return db.users
+    return members
       .filter((u) => (profile === 'todos' || u.profile === profile) && (status === 'todos' || u.status === status) && (!t || normalize(`${u.name} ${u.email}`).includes(t)))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-  }, [db.users, query, profile, status]);
+  }, [members, query, profile, status]);
   const rows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((u) => ({
     id: u.id, name: u.name, email: u.email, profile: PROFILE_LABEL[u.profile], units: unitsText(db, u), status: u.status, lastActivity: activityText(u), member: u,
   }));
@@ -121,7 +123,12 @@ function EquipeScreen() {
       columns={control}
     />
   );
-  const empty = { title: 'Nenhum membro encontrado', description: 'Revise a busca ou os filtros' };
+  const noRecords = members.length === 0;
+  const empty = listEmpty({
+    noRecords, icon: <IconUsers size={40} />,
+    none: { title: 'Nenhum usuário cadastrado', description: 'Convide o primeiro membro: ele recebe um e-mail para ativar o acesso.', create: can('equipe', 'cadastrar') ? { label: 'Convidar novo membro', onClick: () => goTo('membro-form.html') } : undefined },
+    results: { title: 'Nenhum membro encontrado', description: 'Revise a busca ou os filtros', onClear: query.trim() || profile !== 'todos' || status !== 'todos' ? () => { setQuery(''); setProfile('todos'); setStatus('todos'); } : undefined },
+  });
 
   const deactivating = toggling ? toggling.status !== 'inativo' : false;
 
@@ -141,7 +148,7 @@ function EquipeScreen() {
         <DevNote note="RF204-RGN002: apenas o perfil Administrador gerencia a equipe (o item some do menu para os demais). RGN001: perfis fixos no MVP. Colunas da spec: nome, perfil, unidade(s), status e última atividade. CTA003: usuário inativado perde o acesso imediatamente. Ninguém inativa a si próprio (decisão do protótipo, igual ao Admin).">
           {isMobile ? (
             <MobileCardList
-              headingId="team-title" title="Lista de membros" titleHidden toolbar={toolbar} emptyTitle={empty.title}
+              headingId="team-title" title="Lista de membros" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={rows.map((r) => ({
                 id: r.id, title: nameCell(r.member), subtitle: r.email, badge: <Badge status={USER_STATUS[r.status].badge} dot>{USER_STATUS[r.status].label}</Badge>,
@@ -151,7 +158,7 @@ function EquipeScreen() {
             />
           ) : (
             <Table<Row>
-              caption="Lista de membros da equipe" toolbar={toolbar} columns={shownColumns} rows={rows} empty={empty}
+              caption="Lista de membros da equipe" toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />
           )}
