@@ -475,6 +475,5 @@ div:has(> .session-dialog) { backdrop-filter: blur(calc(var(--spacing-sm) + var(
 /* Busca e filtros sem função (módulo sem cadastros): visíveis para manter a estrutura da tabela, mas esmaecidos e inativos */
 .toolbar-gate { opacity: var(--opacity-disabled); }
 
-/* Dashboard · Chamados em aberto: 16px entre o título/subtítulo da seção e o campo de busca (antes 36px na tabela e 20px nos cards do mobile) */
-#chamados-em-aberto header { padding-bottom: 0; }
-#chamados-em-aberto .toolbar-row > * { padding-top: 0; }
+/* Tabelas com título/subtítulo visível: 16px entre o título e o campo de busca (padrão). Desktop: o Table do DS zera o próprio padding superior da toolbar (`header + .toolbar`); aqui sai o respiro de 4px das células da barra. Mobile: o bloco do título vem logo antes da barra, no mesmo Stack (gap 16px) */
+header + div > div:first-child > .toolbar-row > *, section > div:has(> h2) + .toolbar-row > * { padding-top: 0; }

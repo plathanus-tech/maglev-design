@@ -173,6 +173,9 @@
   padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: var(--border-width-thin) solid var(--color-border-subtle);
 }
+/* Com título/subtítulo acima, a distância até a busca é de 16px (o respiro do cabeçalho do card): a toolbar não soma o próprio padding superior */
+header + div > .toolbar:first-child { padding-top: 0; }
+
 /* Controles da toolbar: 36px visíveis dentro de área clicável de 44px, texto Body/S (token --text-body-s) */
 .toolbar input, .toolbar button {
   height: calc(var(--control-height-md) - var(--spacing-sm));

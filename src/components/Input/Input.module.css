@@ -28,3 +28,16 @@
   color: var(--color-text-tertiary);
 }
 
+
+/* Campo de busca: o botão de limpar do navegador (seta/x azul) vira um X na cor de link do sistema */
+.input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  inline-size: var(--spacing-md);
+  block-size: var(--spacing-md);
+  cursor: pointer;
+  background-color: var(--color-text-link);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.input[type='search']::-webkit-search-cancel-button:hover { background-color: var(--color-text-link-hover); }
