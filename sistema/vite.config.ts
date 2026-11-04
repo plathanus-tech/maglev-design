@@ -17,7 +17,7 @@ export const SCREENS = [
   'assinantes', 'assinante', 'assinante-form',
   'usuarios', 'usuario', 'usuario-form',
   'perfis', 'perfil-form',
-  'configuracoes-categorias', 'configuracoes-especialidades', 'configuracoes-tipos-solicitacao', 'configuracoes-tipos-manutencao',
+  'configuracoes-categorias', 'configuracoes-categoria-form', 'configuracoes-tipo-solicitacao-form', 'configuracoes-tipo-manutencao-form', 'configuracoes-status-form', 'configuracoes-especialidades', 'configuracoes-tipos-solicitacao', 'configuracoes-tipos-manutencao',
   'configuracoes-prioridades', 'configuracoes-criticidades', 'configuracoes-status',
 ];
 
