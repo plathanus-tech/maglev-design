@@ -14,7 +14,7 @@ import { COST_KIND_LABEL, CostKind, WorkOrder, nowLocal } from '../../assinante/
 import { CopyCode } from '../../assinante/shared/copy-code';
 import { ShareButton } from '../../assinante/shared/share-button';
 import { AttachmentsField, AttachmentsStack, AttachmentsView, EvidenceGallery, namesOf, Picked, rememberPicked } from '../../assinante/shared/attachments';
-import { AttachmentField, STO, applyOrderConclusion, dueCell, hoursText, overdueDays, parseCents, patchOrder, totalHours } from '../../assinante/shared/os-common';
+import { AttachmentField, STO, applyOrderConclusion, dueCell, hoursText, overdueDays, executionHours, parseCents, patchOrder, totalHours } from '../../assinante/shared/os-common';
 import { getSubDb, notify } from '../../assinante/shared/store';
 import { goTo, param, useRefs } from '../../assinante/shared/ui';
 import { AddressLink, BlockedAccess, dueInfo, linkTo, unitAddress, useProviderLink } from './lib';
@@ -23,8 +23,8 @@ import '../../assinante/shared/equipamento.css';
 import '../../assinante/shared/os.css';
 import '../../assinante/shared/solicitacao.css';
 
-/** Estados: idle · expired (OS encerrada: link expirado) · budget (aguardando aprovação do orçamento) · budgetform (diagnóstico com o formulário de orçamento aberto) · validation (aguardando validação) */
-const STATES = ['idle', 'expired', 'budget', 'budgetform', 'validation'] as const;
+/** Estados: idle · budget (aguardando aprovação do orçamento) · budgetform (diagnóstico com o formulário de orçamento aberto) · validation (aguardando validação) */
+const STATES = ['idle', 'budget', 'budgetform', 'validation'] as const;
 type Mode = (typeof STATES)[number];
 
 const FOTO_LABEL: Record<string, string> = { antes: 'Foto antes', depois: 'Foto depois', anexo: 'Anexo' };
@@ -44,6 +44,7 @@ function AtendimentoScreen() {
 
   if (!provider || state === 'invalid') return shell(<BlockedAccess state="invalid" />);
   if (state === 'inactive') return shell(<BlockedAccess state="inactive" />);
+  if (state === 'auth') return null;   // sem sessão: redireciona para o acesso (celular + código)
 
   // RGN002: só OS atribuídas a ele (e, no link individual, ao técnico)
   const order = db.orders.find((o) => o.id === param('os')
@@ -51,30 +52,13 @@ function AtendimentoScreen() {
     && (!technician || o.executor.technician === technician.name));
   const back = (
     <div>
-      <Button variant="ghost" size="sm" iconLeft={<IconArrowLeft size={16} />} onClick={() => goTo(linkTo('minhas-os.html', provider, technician))}>Minhas OS</Button>
+      <Button variant="ghost" size="sm" iconLeft={<IconArrowLeft size={16} />} onClick={() => goTo(`${linkTo('minhas-os.html', provider, technician)}${order && ['concluido', 'cancelado'].includes(refs.base(order.statusId) ?? '') ? '#state=history' : ''}`)}>Minhas OS</Button>
     </div>
   );
   if (!order) {
     return shell(
       <Stack gap="lg">
         <div className="ext-empty is-page"><EmptyState compact icon={<IconClipboardList size={32} />} headingLevel={1} title="OS não encontrada" description="Esta OS não está atribuída a você ou o link não vale mais" /></div>
-        {back}
-      </Stack>,
-    );
-  }
-  const base = refs.base(order.statusId);
-  const closed = base === 'concluido' || base === 'cancelado' || mode === 'expired';
-  if (closed && !(order.kind === 'preventiva' && base === 'concluido')) {
-    return shell(
-      <Stack gap="lg">
-        <DevNote note="Prestador RF001-RGN004 (💡 sugestão): o link expira quando a OS é encerrada ou cancelada, ou quando o prestador é inativado.">
-          <div className="ext-empty is-page">
-            <EmptyState
-              compact icon={base === 'cancelado' ? <IconCircleX size={32} /> : <IconCircleCheck size={32} />} headingLevel={1} title={base === 'cancelado' ? 'OS cancelada' : 'Atendimento encerrado'}
-              description={base === 'cancelado' ? 'Esta OS foi cancelada e não precisa mais de atendimento' : 'Esta OS já foi concluída e validada pelo cliente. O acesso a ela foi encerrado'}
-            />
-          </div>
-        </DevNote>
         {back}
       </Stack>,
     );
@@ -100,9 +84,12 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
   const accepted = !!order.accepted || (order.statusId !== STO.ABERTA && order.statusId !== STO.PRESTADOR);
   const budgetPending = !!order.budget && order.budget.decision !== 'aprovado';
   const waitingApproval = order.statusId === STO.APROVACAO || (mode === 'budget' && !!order.budget);
+  // OS encerrada (concluída ou cancelada): continua acessível pelo Histórico de Minhas OS, só para consulta
+  const finished = base === 'concluido' || base === 'cancelado';
   const waitingValidation = order.statusId === STO.VALIDACAO || mode === 'validation';
+  const locked = waitingValidation || finished;
   const rejected = order.budget?.decision === 'reprovado';
-  const canExecute = accepted && !budgetPending && !waitingValidation;
+  const canExecute = accepted && !budgetPending && !locked;
   // Concluir exige: chegada registrada em uma visita agendada, solução aplicada (obrigatória na execução) e ao menos uma foto anexada
   const arrived = order.visits.some((v) => !!v.arrivedAt);
   const hasSolution = !!order.solution?.trim();
@@ -160,6 +147,11 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
       </Stack>
 
       {rejected && !waitingApproval && <Feedback type="warning" title="Orçamento reprovado" message={`${order.budget?.justification ? `Motivo: ${order.budget.justification}. ` : ''}Envie um novo orçamento para continuar`} />}
+      {finished && (
+        <DevNote note="Prestador RF001-RGN004 (revisado com o acesso por código): antes o link expirava quando a OS era encerrada; agora a OS encerrada continua acessível, só para consulta, na aba Histórico de Minhas OS (o acesso já é protegido por celular + código). Nada pode ser alterado. 💡 Definir por quanto tempo o histórico fica disponível ao prestador.">
+          <Feedback type="info" title={base === 'cancelado' ? 'OS cancelada' : 'OS concluída'} message={base === 'cancelado' ? 'Esta OS foi cancelada e não precisa mais de atendimento. Os registros ficam só para consulta' : 'Esta OS foi concluída e validada pelo cliente. Os registros ficam só para consulta'} />
+        </DevNote>
+      )}
       {waitingValidation && (
         <DevNote note="Prestador RF102-RGN003 / CTA003: o prestador só indica a conclusão. A OS fica em “Aguardando validação” e quem valida e encerra é o assinante (o solicitante responde “O problema foi resolvido?”).">
           <Feedback type="success" title="Conclusão indicada" message="Aguardando confirmação do cliente para encerrar a OS." />
@@ -270,13 +262,14 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
         <DevNote note="Prestador RF102 + Assinante RF603: a OS preventiva é executada com a mesma tela de execução da Área do assinante (checklist, leituras, fotos antes/depois, relatório, anomalia e confirmação), adaptada ao prestador. Preventiva conclui direto, sem validação do solicitante.">
           <Card className="card-open" title="Execução da preventiva" subtitle={base === 'concluido' ? 'Execução concluída' : 'Checklist, leituras e evidências do plano'}>
 <div className="card-body-tight">            <div className="ext-actions">
-              <Button size="lg" iconLeft={<IconTool size={20} />} onClick={() => goTo(link('execucao-preventiva.html'))}>{base === 'concluido' ? 'Ver execução' : 'Executar preventiva'}</Button>
+              {base !== 'cancelado' && <Button size="lg" iconLeft={<IconTool size={20} />} onClick={() => goTo(link('execucao-preventiva.html'))}>{base === 'concluido' ? 'Ver execução' : 'Executar preventiva'}</Button>}
+              {base === 'cancelado' && <p className="ext-note">Execução não realizada: a OS foi cancelada.</p>}
             </div></div>
           </Card>
         </DevNote>
       ) : (
         <>
-          {!accepted && (
+          {!accepted && !finished && (
             <DevNote note="Prestador RF102-FLU002: aceitar o atendimento. 💡 P09: confirmar quem aceita (prestador ou contato da unidade). Aceitar muda a OS para Em andamento.">
               <Card className="card-open" title="Atendimento" subtitle="Confirme que vai atender esta OS">
 <div className="card-body-tight">                <div className="ext-actions"><Button size="lg" iconLeft={<IconCheck size={20} />} onClick={accept}>Aceitar atendimento</Button></div></div>
@@ -313,16 +306,16 @@ function Atendimento({ order, mode, back, actorName, technicianId, providerId }:
           )}
 
           {accepted && (
-            <DiagnosisCard order={order} actorName={actorName} disabled={waitingValidation} defaultBudgetOpen={mode === 'budgetform'} />
+            <DiagnosisCard order={order} actorName={actorName} disabled={locked} defaultBudgetOpen={mode === 'budgetform'} />
           )}
 
           {accepted && (
             <DevNote note="Prestador RF102-FLU006 / RGN005 (29/09): solução, atividades, fotos antes/depois (só quando o checklist/regra exigir - RGN005 de 30/09), anexos, materiais, horas trabalhadas, custos e observações. Check-in e fotos não bloqueiam a conclusão (CTA004). O valor dos custos alimenta o gasto do equipamento.">
-              <ExecutionCard order={order} actorName={actorName} enabled={canExecute} awaitingApproval={waitingApproval} validation={waitingValidation} onCost={() => setDlg('cost')} onFile={() => setDlg('file')} />
+              <ExecutionCard order={order} actorName={actorName} enabled={canExecute} awaitingApproval={waitingApproval} validation={locked} onCost={() => setDlg('cost')} onFile={() => setDlg('file')} />
             </DevNote>
           )}
 
-          {accepted && !waitingValidation && !waitingApproval && (
+          {accepted && !locked && !waitingApproval && (
             <Card className="card-open" title="Concluir atendimento" subtitle="Ao finalizar o serviço, envie para validação do solicitante">
 <div className="card-body-tight">              <Stack gap="md">
                 {!canExecute && <Feedback type="info" message="Conclua a etapa de orçamento antes de indicar a conclusão" />}
@@ -372,12 +365,15 @@ function DiagnosisCard({ order, actorName, disabled, defaultBudgetOpen }: { orde
   const [val, setVal] = useState('');
   const [desc, setDesc] = useState('');
   const [files, setFiles] = useState<Picked[]>([]);
+  const [dHours, setDHours] = useState('');
   const sent = useRef(false);
+  const dHoursNum = dHours.trim() ? Number(dHours.replace(',', '.')) : undefined;
   const cents = parseCents(val);
   const err = {
     diag: tried && !text.trim() ? requiredMessage('Diagnóstico') : undefined,
     val: tried && open && cents === null ? (val.trim() ? 'Informe um valor maior que zero' : requiredMessage('Valor do orçamento')) : undefined,
     desc: tried && open && !desc.trim() ? requiredMessage('Descrição') : undefined,
+    hours: tried && open && dHours.trim() && (!Number.isFinite(dHoursNum) || (dHoursNum ?? 0) <= 0) ? 'Informe as horas com um número maior que zero' : undefined,
   };
   const diagLog = order.diagnosis ? 'Atualizou o diagnóstico' : 'Registrou o diagnóstico';
   const saveDiagnosis = () => {
@@ -388,15 +384,18 @@ function DiagnosisCard({ order, actorName, disabled, defaultBudgetOpen }: { orde
   };
   const sendForApproval = () => {
     setTried(true);
-    if (sent.current || !text.trim() || cents === null || !desc.trim()) return;
+    if (sent.current || !text.trim() || cents === null || !desc.trim() || err.hours) return;
+    if (dHours.trim() && (!Number.isFinite(dHoursNum) || (dHoursNum ?? 0) <= 0)) return;
     sent.current = true;   // evita novo envio acidental do mesmo orçamento
     const now = nowLocal();
     const names = files.map((f) => f.name);
     const logs = [] as string[];
     if (text.trim() !== (order.diagnosis ?? '').trim()) logs.push(diagLog);
     logs.push(`Anexou o orçamento de ${formatMoney(cents)} - status: Aguardando aprovação`);
+    const diagTotal = (order.diagnosisHours ?? 0) + (dHoursNum ?? 0);
+    if (dHoursNum) logs.push(`Horas trabalhadas no diagnóstico: ${hoursText(dHoursNum)} (total na OS: ${hoursText(totalHours({ visits: order.visits, workedHours: order.workedHours, diagnosisHours: diagTotal }))})`);
     patchOrder(order.id, actorName, (o) => ({
-      ...o, diagnosis: text.trim(), statusId: STO.APROVACAO, budget: { cents, description: desc.trim(), attachment: names[0] ?? '', attachments: names, registeredAt: now, by: actorName },
+      ...o, diagnosis: text.trim(), statusId: STO.APROVACAO, ...(dHoursNum ? { diagnosisHours: (o.diagnosisHours ?? 0) + dHoursNum } : {}), budget: { cents, description: desc.trim(), attachment: names[0] ?? '', attachments: names, registeredAt: now, by: actorName },
       costs: [...o.costs.filter((c) => c.kind !== 'orcamento'), { id: `C${Date.now().toString(36)}`, kind: 'orcamento', description: desc.trim(), cents, attachment: names[0], attachments: names }],
       files: [...o.files, ...names.map((name, i) => ({ id: `F${Date.now().toString(36)}${i}`, name, kind: 'orcamento' as const, at: now, by: actorName }))],
     }), logs);
@@ -409,9 +408,9 @@ function DiagnosisCard({ order, actorName, disabled, defaultBudgetOpen }: { orde
   useEffect(() => {
     if (!rejectedAt) return;
     sent.current = false;
-    setVal(''); setDesc(''); setFiles([]); setTried(false);
+    setVal(''); setDesc(''); setFiles([]); setDHours(''); setTried(false);
   }, [rejectedAt]);
-  const cancelBudget = () => { setOpen(false); setVal(''); setDesc(''); setFiles([]); setTried(false); };
+  const cancelBudget = () => { setOpen(false); setVal(''); setDesc(''); setFiles([]); setDHours(''); setTried(false); };
   return (
     <DevNote note="Prestador RF102-FLU005 / RGN005 (29/09): o diagnóstico é obrigatório e pode ser salvo sozinho; o orçamento (valor + descrição + documento) é condicional. Com orçamento, diagnóstico e orçamento são enviados juntos para aprovação do assinante, que vê o diagnóstico junto do orçamento. Orçamento pendente bloqueia a execução (CTA002); reprovado permite enviar um novo, sem sobrescrever o anterior no histórico. 💡 A regra de quais custos exigem aprovação (todos ou acima de um limite) está pendente de validação.">
       <Card className="card-open" title="Diagnóstico e orçamento" subtitle={awaiting ? "Orçamento enviado para aprovação" : "Registre o diagnóstico e, se necessário, envie um orçamento para aprovação"}>
@@ -419,6 +418,7 @@ function DiagnosisCard({ order, actorName, disabled, defaultBudgetOpen }: { orde
           {readOnly ? (
             <>
               <ReadField label="Diagnóstico" value={order.diagnosis ? <span className="ext-pre">{order.diagnosis}</span> : undefined} />
+              {order.diagnosisHours ? <ReadField label="Horas no diagnóstico" value={hoursText(order.diagnosisHours)} /> : null}
               {b && (
                 <>
                   <ReadField label="Orçamento" value={<><strong className="ext-money">{formatMoney(b.cents)}</strong><span className="ext-pre ext-money-desc">{b.description}</span></>} />
@@ -442,6 +442,9 @@ function DiagnosisCard({ order, actorName, disabled, defaultBudgetOpen }: { orde
               <Input label="Valor do orçamento (R$)" required inputMode="numeric" autoComplete="off" placeholder="0,00" value={val} onChange={(ev) => setVal(maskMoney(ev.target.value))} error={err.val} />
               <Textarea label="Descrição do orçamento" required rows={3} value={desc} onChange={(ev) => setDesc(ev.target.value)} error={err.desc} />
               <AttachmentsField label="Anexos" items={files} onChange={setFiles} />
+              <DevNote note="Horas do diagnóstico (OrdemServiço.diagnosisHours): lançadas ao registrar o orçamento, porque com orçamento pendente a execução fica bloqueada e o prestador não teria onde informar o tempo gasto. Opcionais, informativas (sem valor-hora) e somadas às horas da execução no total da OS; um novo orçamento após reprovação soma mais horas. Vão ao histórico da OS.">
+                <Input label="Horas trabalhadas no diagnóstico" optional inputMode="decimal" placeholder="Ex.: 1,5" value={dHours} onChange={(ev) => setDHours(ev.target.value)} error={err.hours} helperText={order.diagnosisHours ? `Já lançado no diagnóstico: ${hoursText(order.diagnosisHours)}. As horas informadas se somam a ele` : 'Tempo gasto avaliando o problema, antes da execução'} />
+              </DevNote>
             </>
           )}
           {open && <p className="ext-hint">Após enviar o orçamento, a execução ficará indisponível até a aprovação.</p>}
@@ -479,7 +482,7 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
   const [hours, setHours] = useState('');
   const currentVisit = [...order.visits].reverse().find((v) => !!v.arrivedAt);
   const visitLocked = !!currentVisit?.hours;
-  const hoursTotal = totalHours(order);
+  const hoursTotal = executionHours(order);
   const visitsWithHours = order.visits.filter((v) => v.hours);
   const [notes, setNotes] = useState('');
   const [tried, setTried] = useState(false);
@@ -496,8 +499,8 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
     const lines = toLines(activities);
     const activitiesChanged = lines.join('\n') !== savedActivities.join('\n');
     const newVisits = (o: WorkOrder) => (hoursNum && currentVisit && !currentVisit.hours ? o.visits.map((v) => (v.id === currentVisit.id ? { ...v, hours: hoursNum } : v)) : o.visits);
-    const nextTotal = totalHours({ visits: newVisits(order), workedHours: order.workedHours });
-    patchOrder(order.id, actorName, (o) => ({ ...o, solution: solution.trim() || o.solution, visits: newVisits(o), workedHours: totalHours({ visits: newVisits(o), workedHours: o.workedHours }), ...(activitiesChanged ? { activityList: lines } : {}) }),
+    const nextTotal = totalHours({ visits: newVisits(order), workedHours: order.workedHours, diagnosisHours: order.diagnosisHours });
+    patchOrder(order.id, actorName, (o) => ({ ...o, solution: solution.trim() || o.solution, visits: newVisits(o), workedHours: executionHours({ visits: newVisits(o), workedHours: o.workedHours }), ...(activitiesChanged ? { activityList: lines } : {}) }),
       ['Registrou a execução', ...(activitiesChanged ? [lines.length ? `Atividades realizadas: ${lines.join('; ')}` : 'Removeu as atividades realizadas'] : []), ...(hoursNum && currentVisit && !currentVisit.hours ? [`Horas trabalhadas na visita de ${formatDate(currentVisit.date)}: ${hoursText(hoursNum)} (total na OS: ${hoursText(nextTotal)})`] : []), ...(notes.trim() ? [`Observação: ${notes.trim()}`] : [])]);
     setNotes('');
     toast.show({ type: 'success', title: 'Execução salva', message: 'Os registros ficaram no histórico da OS e do equipamento.' });
@@ -539,7 +542,7 @@ function ExecutionCard({ order, actorName, enabled, awaitingApproval, validation
         </Stack>
 
         <Textarea label="Observações" optional rows={3} disabled={!enabled} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        <DevNote note="Horas trabalhadas são lançadas POR VISITA: o campo vale para a visita em que o prestador chegou e, depois de salvas, ficam travadas; só é possível lançar de novo em outra visita (nova chegada), e o total da OS é a soma das visitas. Não há valor-hora: as horas são informativas e não viram custo (a confirmar se também devem poder ser lançadas no diagnóstico, para quando não houver execução).">
+        <DevNote note="Horas trabalhadas são lançadas POR VISITA: o campo vale para a visita em que o prestador chegou e, depois de salvas, ficam travadas; só é possível lançar de novo em outra visita (nova chegada), e o total da OS é a soma das visitas. Não há valor-hora: as horas são informativas e não viram custo as horas do diagnóstico são lançadas à parte, no formulário do orçamento, e o total da OS soma as duas.">
           {visitLocked ? (
             <ReadField label="Horas trabalhadas" value={<span className="ext-pre">{`Visita de ${formatDate(currentVisit!.date)}: ${hoursText(currentVisit!.hours!)}${visitsWithHours.length > 1 ? `\nTotal na OS: ${hoursText(hoursTotal)} (${visitsWithHours.map((v) => `${formatDate(v.date)}: ${hoursText(v.hours!)}`).join('; ')})` : ''}\nPara lançar mais horas, é preciso uma nova visita`}</span>} />
           ) : (

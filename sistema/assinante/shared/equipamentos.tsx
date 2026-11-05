@@ -76,6 +76,7 @@ function EquipamentosScreen() {
   });
   const [criticality, setCriticality] = useState(ALL);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortKey, setSortKey] = useState<'name' | 'statusId' | 'criticalityId' | 'cost' | null>(null);
   const [page, setPage] = useState(1);
   const [treePage, setTreePage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -116,9 +117,22 @@ function EquipamentosScreen() {
   const rows: Row[] = useMemo(() => filtered.map((e) => ({
     id: e.id, name: e.name, code: e.code, categoryName: refs.category(e.categoryId)?.name ?? '-', unitName: unitOf(e.unitId)?.name ?? '-', envName: envOf(e.environmentId)?.name ?? '-',
     statusId: e.statusId, criticalityId: e.criticalityId, open: openOrdersOf(db, refs, e.id).length, next: nextPreventive(db, e.id), cost: spentOf(db, refs, e.id), equipment: e,
-  })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR') * (sortDir === 'asc' ? 1 : -1)),
+  })).sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const byName = a.name.localeCompare(b.name, 'pt-BR');
+    if (sortKey === 'cost') return (a.cost - b.cost || byName) * dir;
+    if (sortKey === 'statusId') {
+      const ix = (id: string) => eqStatuses.findIndex((x) => x.id === id);
+      return (ix(a.statusId) - ix(b.statusId) || byName) * dir;
+    }
+    if (sortKey === 'criticalityId') {
+      const ix = (id: string) => refs.admin.criticalities.findIndex((x) => x.id === id);
+      return (ix(a.criticalityId) - ix(b.criticalityId) || byName) * dir;
+    }
+    return byName * dir;
+  }),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [filtered, db, refs.admin, sortDir]);
+  [filtered, db, refs.admin, sortDir, sortKey]);
   const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── Árvore (RF302): totalizadores somam os equipamentos abaixo de cada nível (RGN001) ──
@@ -168,7 +182,7 @@ function EquipamentosScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treeUnits, treePage, expanded, db, refs.admin]);
 
-  useEffect(() => setPage(1), [query, unit, env, category, status, criticality, sortDir]);
+  useEffect(() => setPage(1), [query, unit, env, category, status, criticality, sortDir, sortKey]);
   useEffect(() => setTreePage(1), [query, unit, env, category, status, criticality]);
   // Com busca ou filtro ativos, a árvore abre sozinha nos níveis com resultado (CTA002 segue valendo: dá para recolher)
   useEffect(() => {
@@ -291,11 +305,11 @@ function EquipamentosScreen() {
     { key: 'categoryName', label: 'Categoria', render: (v, r) => <WithIcon e={r.equipment}>{String(v)}</WithIcon> },
     { key: 'unitName', label: 'Unidade' },
     { key: 'envName', label: 'Ambiente' },
-    { key: 'statusId', label: 'Status', render: (v) => refs.statusBadge(String(v)) },
-    { key: 'criticalityId', label: 'Criticidade', render: (v) => refs.criticalityBadge(String(v)) },
+    { key: 'statusId', label: 'Status', sortable: true, render: (v) => refs.statusBadge(String(v)) },
+    { key: 'criticalityId', label: 'Criticidade', sortable: true, render: (v) => refs.criticalityBadge(String(v)) },
     { key: 'open', label: 'OS abertas', align: 'right' },
     { key: 'next', label: 'Próxima preventiva', render: (v) => nextCell(v as string | undefined) },
-    ...(canSeeCosts ? [{ key: 'cost', label: 'Gasto acumulado', align: 'right' as const, render: (v: unknown) => formatMoney(Number(v)) }] : []),
+    ...(canSeeCosts ? [{ key: 'cost', label: 'Gasto acumulado', sortable: true, align: 'right' as const, render: (v: unknown) => formatMoney(Number(v)) }] : []),
     { key: 'id', label: 'Ações', sticky: 'right', render: (_, r) => <RowActions>{rowActions(r.equipment, true)}</RowActions> },
   ];
 
@@ -360,7 +374,12 @@ function EquipamentosScreen() {
   ) : (
     <Table<Row> onRowClick={(r) => goTo(`equipamento.html?id=${r.equipment.id}`)}
       caption="Lista de equipamentos" toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true, selectionBar)}</ToolbarGate>} columns={[selectColumn, ...shownColumns]} rows={pageRows}
-      sortKey="name" sortDir={sortDir} onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+      sortKey={sortKey ?? undefined} sortDir={sortDir} onSort={(k) => {
+        const first = k === 'cost' ? 'desc' : 'asc';
+        if (k !== sortKey) { setSortKey(k as typeof sortKey); setSortDir(first); }
+        else if (sortDir === first) setSortDir(first === 'asc' ? 'desc' : 'asc');
+        else { setSortKey(null); setSortDir('asc'); }
+      }}
       empty={empty} pagination={{ page, pageSize: PAGE_SIZE, total: rows.length, onPageChange: setPage, rangeLabel: listRange }}
     />
   );

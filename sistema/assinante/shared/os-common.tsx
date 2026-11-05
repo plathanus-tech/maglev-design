@@ -324,8 +324,11 @@ export function ClassifyDialog({ order, onClose }: { order: WorkOrder | null; on
 export const Inline = ({ children }: { children: ReactNode }) => <Stack direction="horizontal" align="center" gap="xs" wrap>{children}</Stack>;
 
 /** Horas trabalhadas da OS: soma das horas lançadas em cada visita (OS antigas, com um valor único em `workedHours`, usam esse valor). */
-export const totalHours = (o: Pick<WorkOrder, 'visits' | 'workedHours'>) => {
+/** Horas da execução (por visita; OS antigas com valor único valem). */
+export const executionHours = (o: Pick<WorkOrder, 'visits' | 'workedHours'>) => {
   const sum = o.visits.reduce((n, v) => n + (v.hours ?? 0), 0);
   return sum > 0 ? sum : o.workedHours ?? 0;
 };
+/** Total da OS = execução + diagnóstico. */
+export const totalHours = (o: Pick<WorkOrder, 'visits' | 'workedHours' | 'diagnosisHours'>) => executionHours(o) + (o.diagnosisHours ?? 0);
 export const hoursText = (h: number) => `${String(Math.round(h * 100) / 100).replace('.', ',')} h`;

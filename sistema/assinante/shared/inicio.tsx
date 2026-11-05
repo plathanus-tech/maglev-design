@@ -15,6 +15,7 @@ import { formatMoney, formatNumber, formatPhone, noBreak } from '../../admin/sha
 import { executorPhone } from './preventivas';
 import { KpiMoney } from '../../admin/shared/kpi-value';
 import { greeting, todayText } from './saudacao';
+import { attendanceAlerts } from './os-alerts';
 import { DEMO_NOW, Equipment, Request, WorkOrder, dayOnly, orderRealizedCents } from './data';
 import { equipmentOf, ordersVisible, requestsVisible, unitName, updateSubDb, userName, useSubSession } from './store';
 import { ContactChannelDialog } from '../../admin/shared/ContactChannelDialog';
@@ -48,15 +49,16 @@ interface ActionLink { label: string; href: string }
  * Indicador de ação. `hero` = primeiro indicador do card (número maior, ícone e fundo do tom); os demais ficam em
  * hierarquia secundária (só ícone e número com a cor do tom, sem fundo). O tom vem da criticidade (CTA004) e some com 0.
  */
-function ActionItem({ tone, value, label, links, hero }: { tone: Tone; value: number; label: string; links: ActionLink[]; hero?: boolean }) {
+function ActionItem({ tone, value, label, links, hero, badge, onSeen }: { tone: Tone; value: number; label: string; links: ActionLink[]; hero?: boolean; badge?: boolean; onSeen?: () => void }) {
   const shown = value === 0 ? 'neutral' : tone;
   const single = links.length === 1;
   return (
-    <div className={`ag-item ag-${shown}${hero ? ' ag-hero' : ''}`}>
+    <div className={`ag-item ag-${shown}${hero ? ' ag-hero' : ''}`} onClick={onSeen}>
       <div className="ag-text">
+        {/* O ponto fica DENTRO do rótulo, inline, para acompanhar o fim do texto mesmo quando ele quebra em duas linhas */}
         {single
-          ? <a className="action-link is-stretched" href={links[0].href}>{label}</a>
-          : <span className="ag-label">{label}</span>}
+          ? <a className="action-link is-stretched" href={links[0].href}>{label}{badge && <span className="ag-dot" role="img" aria-label="Novo: requer ação" />}</a>
+          : <span className="ag-label">{label}{badge && <span className="ag-dot" role="img" aria-label="Novo: requer ação" />}</span>}
         {!single && links.length > 1 && (
           <span className="action-links">
             {links.map((l) => <a key={l.label} className="action-link" href={l.href}>{l.label}</a>)}
@@ -104,6 +106,8 @@ function SectionToggle({ open, onToggle, panelId, name }: { open: boolean; onTog
   );
 }
 
+const SEEN_KEY = 'maglev.sub.inicio.seen';
+const readSeen = (): Record<string, number> => { try { return JSON.parse(sessionStorage.getItem(SEEN_KEY) ?? '{}'); } catch { return {}; } };
 const SECTIONS_KEY = 'maglev.sub.inicio.sections';
 const readSections = (): Record<string, boolean> => { try { return JSON.parse(sessionStorage.getItem(SECTIONS_KEY) ?? '{}'); } catch { return {}; } };
 
@@ -235,6 +239,9 @@ function InicioScreen() {
   const osAtivas = activeOrders.length;
   const osAcao = activeOrders.filter((o) => ['STO-04', 'STO-05', 'STO-07'].includes(o.statusId)).length;
   const osValid = activeOrders.filter((o) => o.statusId === 'STO-07').length;
+  // Prestador não compareceu: visita agendada em data passada sem registro de chegada (regra em os-alerts.ts)
+  const noShowIds = new Set(attendanceAlerts({ orders: activeOrders }).filter((a) => a.kind === 'nao-compareceu').map((a) => a.order.id));
+  const noShow = noShowIds.size;
   const nothingPending = novasReq + novasOs + aprovOs + atrasoOs + pendTotal + osAtivas === 0;
 
   // Tabelas recentes
@@ -337,13 +344,19 @@ function InicioScreen() {
 
   // Requer ação: itens DISTINTOS que esperam uma decisão (sem contar duas vezes o que aparece em mais de um cartão); "aguardando informação" depende do solicitante e fica de fora
   const pendingReqIds = new Set([...mineReq.filter((x) => refs.base(x.statusId) === 'aberto'), ...openReqs.filter((x) => x.statusId === 'STS-04' || x.statusId === 'STS-02' || (x.statusId === 'STS-01' && !x.responsibleId && can('solicitacoes', 'triar')))].map((x) => x.id));
-  const pendingOsIds = new Set([...mineOs.filter((o) => refs.base(o.statusId) === 'aberto' || (o.budget && !o.budget.decision) || o.dueAt < TODAY), ...activeOrders.filter((o) => ['STO-04', 'STO-05', 'STO-07'].includes(o.statusId))].map((o) => o.id));
+  const pendingOsIds = new Set([...mineOs.filter((o) => refs.base(o.statusId) === 'aberto' || (o.budget && !o.budget.decision) || o.dueAt < TODAY), ...activeOrders.filter((o) => ['STO-04', 'STO-05', 'STO-07'].includes(o.statusId)), ...activeOrders.filter((o) => noShowIds.has(o.id))].map((o) => o.id));
   const pendingTotal = pendingReqIds.size + pendingOsIds.size;
-  // Só um cartão fica em destaque: o primeiro com ação pendente (Atribuídas a mim › Solicitações pendentes › OS pendentes)
-  const mineCount = novasReq + novasOs + aprovOs + atrasoOs;
-  const solCount = pendAprov + awaitingApproval + unassignedNew;
-  const focus: 'mine' | 'sol' | 'os' | null = !rq ? null : mineCount > 0 ? 'mine' : solCount > 0 ? 'sol' : osAcao > 0 ? 'os' : null;
-  const focusCls = (k: 'mine' | 'sol' | 'os') => (focus === k ? ' is-focus' : '');
+  // Selo de notificação em cada INDICADOR que pede ação (não no cartão): some no primeiro clique no indicador e fica lembrado na sessão; volta se o número crescer
+  const [seen, setSeen] = useState<Record<string, number>>(readSeen);
+  const notify = (key: string, value: number) => ({
+    badge: rq && value > 0 && value > (seen[key] ?? 0),
+    onSeen: () => {
+      if ((seen[key] ?? 0) >= value) return;
+      const next = { ...seen, [key]: value };
+      setSeen(next);
+      try { sessionStorage.setItem(SEEN_KEY, JSON.stringify(next)); } catch { /* sem storage */ }
+    },
+  });
 
   // Atalho global de criação: só as ações que o perfil pode cadastrar
   // Solicitante não usa o atalho: já tem o próprio fluxo de solicitação (Nova solicitação na lista e no menu)
@@ -394,7 +407,7 @@ function InicioScreen() {
                   <span className="ag-banner-icon" aria-hidden="true"><IconAlertTriangle size={24} /></span>
                   <Stack gap="2xs">
                     <span className="ag-banner-title">{`Você tem ${pendingTotal} ${pendingTotal === 1 ? 'ação que precisa' : 'ações que precisam'} da sua atenção hoje`}</span>
-                    <span className="ag-banner-sub">Comece pelo cartão em destaque abaixo</span>
+                    <span className="ag-banner-sub">Veja os cartões sinalizados abaixo</span>
                   </Stack>
                 </Stack>
                 <a className="text-link ag-banner-link" href="#requer-acao" onClick={(e) => { e.preventDefault(); document.getElementById('requer-acao')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Ver ações <IconArrowRight size={16} aria-hidden="true" /></a>
@@ -411,37 +424,42 @@ function InicioScreen() {
             <div className={`ag-cards${mobileNew ? ' is-compact-grid' : ''}`}>
               <>
                   <DevNote note="Estrutura simples: título e ícone (como no KpiCard) · subtítulo · indicador principal · divisor · secundários · ação. RGN001/RGN009: a cor do número principal segue a criticidade (CTA004: vermelho = crítico, amarelo = atenção) e some com 0. CTA001/CTA002: cada número leva à listagem já filtrada e bate com ela (filtros por URL; “sub” refina assigned-me / pending). Atribuídas a mim: principal = Novas; secundários = Necessitam de aprovação (RF503-RGN008) e Em atraso (RGN013, prazo da OS ultrapassado, sem SLA/FE001).">
-                    <Card className={`ag-card ag-accent ${mineEmpty ? 'ag-accent--neutral' : 'ag-accent--warning'}${mobileNew ? ' is-compact' : ''}${focusCls('mine')}`} title="Atribuídas a mim" actions={<KpiIcon>{mineEmpty ? <IconUserOff size={20} /> : <IconUser size={20} />}</KpiIcon>} headingLevel={3}>
+                    <Card className={`ag-card ag-accent ${mineEmpty ? 'ag-accent--neutral' : 'ag-accent--warning'}${mobileNew ? ' is-compact' : ''}`} title="Atribuídas a mim" actions={<KpiIcon>{mineEmpty ? <IconUserOff size={20} /> : <IconUser size={20} />}</KpiIcon>} headingLevel={3}>
                       <div className="ag-items">
-                        <ActionItem hero tone="warning" value={novasReq + novasOs} label="Novas" links={[...linksOf('solicitacoes', 'new', novasReq, novasReq === 1 ? 'solicitação' : 'solicitações'), ...linksOf('ordens-servico', 'new', novasOs, 'OS')]} />
+                        <ActionItem hero {...notify('mine-new', novasReq + novasOs)} tone="warning" value={novasReq + novasOs} label="Novas" links={[...linksOf('solicitacoes', 'new', novasReq, novasReq === 1 ? 'solicitação' : 'solicitações'), ...linksOf('ordens-servico', 'new', novasOs, 'OS')]} />
                         <hr className="ag-divider" />
                         <div className="ag-secondary">
-                          <ActionItem tone="warning" value={aprovOs} label="Necessitam de aprovação" links={linksOf('ordens-servico', 'approval', aprovOs, 'OS')} />
-                          <ActionItem tone="critical" value={atrasoOs} label="Em atraso" links={linksOf('ordens-servico', 'overdue', atrasoOs, 'OS')} />
+                          <ActionItem {...notify('mine-approval', aprovOs)} tone="warning" value={aprovOs} label="Necessitam de aprovação" links={linksOf('ordens-servico', 'approval', aprovOs, 'OS')} />
+                          <ActionItem {...notify('mine-overdue', atrasoOs)} tone="critical" value={atrasoOs} label="Em atraso" links={linksOf('ordens-servico', 'overdue', atrasoOs, 'OS')} />
                         </div>
                       </div>
                     </Card>
                   </DevNote>
                   <DevNote note="Solicitações pendentes: principal = Aprovadas (o gestor precisa criar a OS); secundários = Aguardando informação (depende do solicitante) e Aguardando aprovação (solicitações em triagem, STS-02, à espera da decisão do gestor; vinha do antigo indicador “Solicitações aguardando aprovação”). 💡 Definição de “Aguardando aprovação” a confirmar com a cliente. “Rascunho” não existe na especificação (RF101-RGN015: salvar como rascunho não está previsto) e por isso não aparece.">
-                    <Card className={`ag-card ag-accent ${solEmpty ? 'ag-accent--neutral' : 'ag-accent--info'}${mobileNew ? ' is-compact' : ''}${focusCls('sol')}`} title="Solicitações pendentes" actions={<KpiIcon>{solEmpty ? <IconMessageOff size={20} /> : <IconMessageReport size={20} />}</KpiIcon>} headingLevel={3}>
+                    <Card className={`ag-card ag-accent ${solEmpty ? 'ag-accent--neutral' : 'ag-accent--info'}${mobileNew ? ' is-compact' : ''}`} title="Solicitações pendentes" actions={<KpiIcon>{solEmpty ? <IconMessageOff size={20} /> : <IconMessageReport size={20} />}</KpiIcon>} headingLevel={3}>
                       <div className="ag-items">
-                        <ActionItem hero tone="blue" value={pendAprov} label="Aprovadas" links={[{ label: 'Aprovadas', href: 'solicitacoes.html?filter=pending&sub=approved' }]} />
+                        <ActionItem hero {...notify('sol-approved', pendAprov)} tone="blue" value={pendAprov} label="Aprovadas" links={[{ label: 'Aprovadas', href: 'solicitacoes.html?filter=pending&sub=approved' }]} />
                         <hr className="ag-divider" />
                         <div className="ag-secondary">
-                          <ActionItem tone="warning" value={pendInfo} label="Aguardando informação" links={[{ label: 'Aguardando informação', href: 'solicitacoes.html?filter=pending&sub=awaiting-info' }]} />
-                          <ActionItem tone="warning" value={awaitingApproval} label="Aguardando aprovação" links={[{ label: 'Aguardando aprovação', href: 'solicitacoes.html?filter=triage' }]} />
-                          {unassignedNew > 0 && <ActionItem tone="warning" value={unassignedNew} label="Novas sem responsável" links={[{ label: 'Novas sem responsável', href: 'solicitacoes.html?filter=unassigned' }]} />}
+                          <ActionItem {...notify('sol-info', pendInfo)} tone="warning" value={pendInfo} label="Aguardando informação" links={[{ label: 'Aguardando informação', href: 'solicitacoes.html?filter=pending&sub=awaiting-info' }]} />
+                          <ActionItem {...notify('sol-triage', awaitingApproval)} tone="warning" value={awaitingApproval} label="Aguardando aprovação" links={[{ label: 'Aguardando aprovação', href: 'solicitacoes.html?filter=triage' }]} />
+                          {unassignedNew > 0 && <ActionItem {...notify('sol-unassigned', unassignedNew)} tone="warning" value={unassignedNew} label="Novas sem responsável" links={[{ label: 'Novas sem responsável', href: 'solicitacoes.html?filter=unassigned' }]} />}
                         </div>
                       </div>
                     </Card>
                   </DevNote>
                   <DevNote note="OS pendentes: principal = Ação necessária; secundários = Aguardando validação e OS ativas (total, só como contexto). 💡 RGN014: a referência traz “Requer faturamento”, mas a plataforma não tem faturamento no MVP; proposta: “Aguardando validação” (OS aguardando a confirmação do solicitante), a confirmar com a cliente.">
-                    <Card className={`ag-card ag-accent ${osEmpty ? 'ag-accent--neutral' : 'ag-accent--warning'}${mobileNew ? ' is-compact' : ''}${focusCls('os')}`} title="OS pendentes" actions={<KpiIcon>{osEmpty ? <IconClipboardOff size={20} /> : <IconClipboardList size={20} />}</KpiIcon>} headingLevel={3}>
+                    <Card className={`ag-card ag-accent ${osEmpty ? 'ag-accent--neutral' : 'ag-accent--warning'}${mobileNew ? ' is-compact' : ''}`} title="OS pendentes" actions={<KpiIcon>{osEmpty ? <IconClipboardOff size={20} /> : <IconClipboardList size={20} />}</KpiIcon>} headingLevel={3}>
                       <div className="ag-items">
-                        <ActionItem hero tone="warning" value={osAcao} label="Ação necessária" links={[{ label: 'Ação necessária', href: 'ordens-servico.html?filter=action' }]} />
+                        <ActionItem hero {...notify('os-action', osAcao)} tone="warning" value={osAcao} label="Ação necessária" links={[{ label: 'Ação necessária', href: 'ordens-servico.html?filter=action' }]} />
                         <hr className="ag-divider" />
                         <div className="ag-secondary">
-                          <ActionItem tone="warning" value={osValid} label="Aguardando validação" links={[{ label: 'Aguardando validação', href: 'ordens-servico.html?filter=awaiting-validation' }]} />
+                          <ActionItem {...notify('os-validation', osValid)} tone="warning" value={osValid} label="Aguardando validação" links={[{ label: 'Aguardando validação', href: 'ordens-servico.html?filter=awaiting-validation' }]} />
+                          {noShow > 0 && (
+                            <DevNote note="Prestador não compareceu: OS com prestador cuja visita estava agendada para uma data que já passou e não tem registro de chegada (mesma regra do aviso na central de notificações, os-alerts.ts). Só aparece quando há casos; leva à lista de OS já filtrada. A reatribuição segue manual.">
+                              <ActionItem {...notify('os-noshow', noShow)} tone="critical" value={noShow} label="Prestador não compareceu" links={[{ label: 'Prestador não compareceu', href: 'ordens-servico.html?filter=no-show' }]} />
+                            </DevNote>
+                          )}
                           <ActionItem tone="info" value={osAtivas} label="OS ativas" links={[{ label: 'OS ativas', href: 'ordens-servico.html?filter=active' }]} />
                         </div>
                       </div>

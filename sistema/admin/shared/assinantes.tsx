@@ -73,7 +73,7 @@ function AssinantesScreen() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState(() => { const p = param('status'); return STATUS_OPTIONS.some((o) => o.value === p) ? (p as string) : 'todos'; });
   const [plan, setPlan] = useState('todos');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | 'none'>('asc');
   const [page, setPage] = useState(1);
   const [toggling, setToggling] = useState<Subscriber | null>(null);
 
@@ -106,7 +106,7 @@ function AssinantesScreen() {
   const allSubscribers = mode === 'empty' ? [] : db.subscribers;
   const filtered = useMemo(() => allSubscribers
     .filter((s) => (status === 'todos' || s.status === status) && (plan === 'todos' || s.plan === plan) && matches(s, query))
-    .sort((a, b) => subscriberName(a).localeCompare(subscriberName(b), 'pt-BR') * (sortDir === 'asc' ? 1 : -1)), [db, allSubscribers, query, status, plan, sortDir]);
+    .sort((a, b) => subscriberName(a).localeCompare(subscriberName(b), 'pt-BR') * (sortDir === 'desc' ? -1 : 1)), [db, allSubscribers, query, status, plan, sortDir]);
   const pageRows: Row[] = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((s) => ({ ...s, activeUsers: activeUsersCount(s) }));
 
   const actions = (s: Subscriber) => {
@@ -256,9 +256,9 @@ function AssinantesScreen() {
               toolbar={<ToolbarGate disabled={noRecords}>{toolbarFor(true)}</ToolbarGate>}
               columns={shownColumns}
               rows={pageRows}
-              sortKey="tradeName"
-              sortDir={sortDir}
-              onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              sortKey={sortDir === 'none' ? undefined : 'tradeName'}
+              sortDir={sortDir === 'none' ? 'asc' : sortDir}
+              onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : d === 'desc' ? 'none' : 'asc'))}
               empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />

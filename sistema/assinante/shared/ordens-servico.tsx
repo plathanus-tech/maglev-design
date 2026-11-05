@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState, ReactElement } from 'react';
+import { attendanceAlerts } from './os-alerts';
 import {
   IconAdjustmentsHorizontal, IconAlertTriangle, IconCircleCheck, IconCircleX, IconClipboardList, IconEye, IconFileInvoice,
   IconHourglass, IconPencil, IconPackage, IconSearch, IconThumbUp, IconTool, IconTruck, IconChecklist, IconUserEdit,
@@ -28,7 +29,7 @@ const STATES = ['idle', 'empty', 'noresults', 'reassign'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
-type Quick = 'todos' | 'assigned-me' | 'active' | 'action' | 'awaiting-validation' | 'awaiting-technician';
+type Quick = 'todos' | 'assigned-me' | 'active' | 'action' | 'awaiting-validation' | 'awaiting-technician' | 'no-show';
 const QUICK_OPTIONS: Array<{ value: Quick; label: string }> = [
   { value: 'todos', label: 'Todas as OS' },
   { value: 'assigned-me', label: 'Atribuídas a mim' },
@@ -36,6 +37,7 @@ const QUICK_OPTIONS: Array<{ value: Quick; label: string }> = [
   { value: 'action', label: 'Ação necessária' },
   { value: 'awaiting-validation', label: 'Aguardando validação' },
   { value: 'awaiting-technician', label: 'Aguardando prestador/técnico' },
+  { value: 'no-show', label: 'Prestador não compareceu' },
 ];
 const PERIOD_OPTIONS = [
   { value: 'todos', label: 'Todo o período' },
@@ -107,6 +109,8 @@ function OrdensScreen() {
   const total30 = summary.reduce((n, s) => n + s.count, 0);
   const pct = (n: number) => (total30 ? ((n / total30) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '0');
 
+  // Prestador não compareceu (visita agendada em data passada, sem chegada): mesma regra do aviso ao gestor e do Início
+  const noShowIds = useMemo(() => new Set(attendanceAlerts(db).filter((a) => a.kind === 'nao-compareceu').map((a) => a.order.id)), [db]);
   const quickMatch = (o: WorkOrder) => {
     const base = refs.base(o.statusId);
     if (quick === 'assigned-me' && sub) {
@@ -120,6 +124,7 @@ function OrdensScreen() {
       case 'action': return [STO.APROVACAO, STO.PECA, STO.VALIDACAO].includes(o.statusId as never);
       case 'awaiting-validation': return o.statusId === STO.VALIDACAO;
       case 'awaiting-technician': return o.statusId === STO.PRESTADOR;
+      case 'no-show': return noShowIds.has(o.id);
       default: return true;
     }
   };

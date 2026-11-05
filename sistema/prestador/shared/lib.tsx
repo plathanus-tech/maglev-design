@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { IconLinkOff, IconLock } from '@tabler/icons-react';
 import { Card, EmptyState } from '@maglev/ds';
 import { Equipment, Provider, SubDb, Technician, WorkOrder } from '../../assinante/shared/data';
@@ -7,19 +7,38 @@ import { useSubDb } from '../../assinante/shared/store';
 import { param } from '../../assinante/shared/ui';
 import { TODAY } from '../../assinante/shared/os-common';
 import { formatDate } from '../../admin/shared/format';
+import { acessoUrl, endSession, readSession, startSession } from './otp-session';
 
 /**
  * Peças do Prestador de serviço (link web, sem login - Prestador RF001): o link identifica o prestador (`?p=`) e, se for individual,
  * o técnico (`?tec=`). 💡 P09 a confirmar: link permanente do prestador x link por OS, link individual por técnico e se a empresa vê
  * as OS de todos os seus técnicos. No protótipo: link do prestador (empresa vê todas as OS); com `?tec=` o técnico vê só as suas.
  */
-export type LinkState = 'ok' | 'invalid' | 'inactive';
+export type LinkState = 'ok' | 'invalid' | 'inactive' | 'auth';
 
 export function useProviderLink(simulated?: 'inactive'): { db: SubDb; provider?: Provider; technician?: Technician; state: LinkState; actorName: string } {
   const db = useSubDb();
   const provider = db.providers.find((p) => p.id === param('p'));
-  const technician = provider?.technicians.find((t) => t.id === param('tec'));
-  const state: LinkState = !provider ? 'invalid' : provider.status === 'inativo' || simulated === 'inactive' ? 'inactive' : 'ok';
+  // Protótipo: `?otp=demo` (usado pelo Navegador de Protótipo) abre uma sessão de demonstração para pular o código; o parâmetro some da URL
+  if (provider && param('otp') === 'demo') {
+    startSession({ providerId: provider.id });
+    const q = new URLSearchParams(location.search); q.delete('otp');
+    history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`);
+  }
+  // Protótipo: `?otp=reset` encerra a sessão (para ver o pedido de código)
+  if (param('otp') === 'reset') {
+    endSession();
+    const q = new URLSearchParams(location.search); q.delete('otp');
+    history.replaceState(null, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`);
+  }
+  const { session, expired } = readSession();
+  const authenticated = !!provider && !!session && session.providerId === provider.id;
+  // Quem entrou com o celular de um técnico só enxerga as OS dele, mesmo que o link seja o da empresa
+  const technician = provider?.technicians.find((t) => t.id === (authenticated && session?.technicianId ? session.technicianId : param('tec')));
+  const state: LinkState = !provider ? 'invalid' : provider.status === 'inativo' || simulated === 'inactive' ? 'inactive' : !authenticated ? 'auth' : 'ok';
+  useEffect(() => {
+    if (state === 'auth') window.location.replace(acessoUrl(`${location.pathname.split('/').pop()}${location.search}`, expired));
+  }, [state, expired]);
   return { db, provider, technician, state, actorName: technician?.name ?? (provider ? providerName(provider) : '') };
 }
 
@@ -63,7 +82,7 @@ export function AddressLink({ address, inCard }: { address: string; inCard?: boo
 }
 
 /** Acesso bloqueado (RF001-CTA002: prestador inativo não acessa) ou link inválido: empty state sem cartão (padrão ext-empty), no topo da área principal. */
-export function BlockedAccess({ state }: { state: Exclude<LinkState, 'ok'> }): ReactNode {
+export function BlockedAccess({ state }: { state: Exclude<LinkState, 'ok' | 'auth'> }): ReactNode {
   return (
     <div className="ext-empty is-page">
       <EmptyState

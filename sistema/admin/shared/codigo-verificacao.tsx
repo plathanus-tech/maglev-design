@@ -1,5 +1,6 @@
-import { ClipboardEvent, FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
-import { Badge, Button, Feedback, FormField, Stack, fieldControlClass } from '@maglev/ds';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { Badge, Button, Feedback, Stack } from '@maglev/ds';
+import { OTP_LENGTH, OtpInput, OtpInputHandle } from './OtpInput';
 import { AuthLayout, mountScreen } from './AuthLayout';
 import { DevNote } from './dev-notes/DevNote';
 import { useHashState } from './useHashState';
@@ -13,7 +14,7 @@ import { getRecoveryEmail, maskEmail } from './recovery';
 const STATES = ['idle', 'incorrect', 'expired', 'toomany', 'commerror'] as const;
 type Mode = (typeof STATES)[number];
 
-const LENGTH = 6;
+const LENGTH = OTP_LENGTH;
 const VALID_CODE = '111111';            // protótipo: único código aceito
 const MAX_ATTEMPTS = 5;
 const EXPIRY_SECONDS = 300;             // validade do código: 5 min
@@ -32,7 +33,7 @@ function CodigoVerificacaoScreen() {
   const [justResent, setJustResent] = useState(false);
   const [loading, setLoading] = useState(false);
   const attempts = useRef(0);
-  const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const otp = useRef<OtpInputHandle>(null);
   const email = maskEmail(getRecoveryEmail() || 'ana.ribeiro@maglev.com.br');
 
   const locked = mode === 'expired' || mode === 'toomany';
@@ -48,7 +49,7 @@ function CodigoVerificacaoScreen() {
   }, [mode]);
 
   // Foco no primeiro dígito ao abrir a tela.
-  useEffect(() => { refs.current[0]?.focus(); }, []);
+  useEffect(() => { otp.current?.focus(0); }, []);
 
   // Contagens regressivas (validade do código e intervalo de reenvio).
   useEffect(() => {
@@ -67,35 +68,8 @@ function CodigoVerificacaoScreen() {
     mode === 'incorrect' ? 'Código incorreto. Verifique e tente novamente.'
     : undefined;
 
-  const focusDigit = (i: number) => refs.current[Math.min(Math.max(i, 0), LENGTH - 1)]?.focus();
+  const focusDigit = (i: number) => otp.current?.focus(i);
   const clearError = () => { if (mode === 'incorrect' || mode === 'commerror') setMode('idle'); };
-
-  const onDigitChange = (i: number, raw: string) => {
-    const v = raw.replace(/\D/g, '').slice(-1);
-    setDigits((d) => d.map((x, idx) => (idx === i ? v : x)));
-    clearError();
-    if (v) focusDigit(i + 1);
-  };
-
-  const onKeyDown = (i: number, e: KeyboardEvent<HTMLInputElement>) => {
-    // Redigitar o mesmo número não dispara onChange: avança o foco mesmo assim.
-    if (/^d$/.test(e.key) && digits[i] === e.key) { e.preventDefault(); focusDigit(i + 1); return; }
-    if (e.key === 'Backspace' && !digits[i] && i > 0) {
-      setDigits((d) => d.map((x, idx) => (idx === i - 1 ? '' : x)));
-      focusDigit(i - 1);
-    }
-    if (e.key === 'ArrowLeft') focusDigit(i - 1);
-    if (e.key === 'ArrowRight') focusDigit(i + 1);
-  };
-
-  const onPaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, LENGTH);
-    if (!pasted) return;
-    e.preventDefault();
-    setDigits(Array.from({ length: LENGTH }, (_, i) => pasted[i] ?? ''));
-    clearError();
-    focusDigit(pasted.length);
-  };
 
   const resetFlow = () => {
     attempts.current = 0;
@@ -158,33 +132,7 @@ function CodigoVerificacaoScreen() {
       <form onSubmit={onSubmit} noValidate>
         <Stack gap="lg">
           <Stack gap="md">
-            <FormField id="otp" error={error}>
-              {({ id, ...aria }) => (
-                <div className="grid grid-otp" role="group" aria-label="Código de verificação de 6 dígitos">
-                  {digits.map((d, i) => (
-                    <input
-                      key={i}
-                      ref={(el) => { refs.current[i] = el; }}
-                      id={i === 0 ? id : undefined}
-                      className={`${fieldControlClass} otp-digit`}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={1}
-                      autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                      aria-label={`Dígito ${i + 1} de ${LENGTH}`}
-                      value={d}
-                      disabled={locked || loading}
-                      onChange={(e) => onDigitChange(i, e.target.value)}
-                      onKeyDown={(e) => onKeyDown(i, e)}
-                      onPaste={onPaste}
-                      onFocus={(e) => e.target.select()}
-                      {...aria}
-                    />
-                  ))}
-                </div>
-              )}
-            </FormField>
+            <OtpInput ref={otp} digits={digits} onChange={setDigits} onEdit={clearError} disabled={locked || loading} error={error} />
 
             <Stack gap="xs" align="center">
               <p className="page-text page-text--center" role="timer">

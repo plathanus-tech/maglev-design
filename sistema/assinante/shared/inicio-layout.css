@@ -255,6 +255,8 @@ section.ag2-att:hover { border-color: var(--color-gray-300); box-shadow: var(--s
 .ag-rq-head { display: flex; align-items: center; gap: var(--spacing-sm); }
 .ag-top { scroll-margin-block-start: var(--spacing-3xl); }
 /* só um cartão em destaque: borda e fundo de atenção; o título leva o contador vermelho */
-.ag-card.is-focus { border: var(--border-width-medium) solid var(--color-status-warning-fg); background: color-mix(in srgb, var(--color-status-warning-bg) 45%, var(--color-bg-surface)); }
-:root[data-theme="dark"] .ag-banner, :root[data-theme="dark"] .ag-card.is-focus { background: var(--color-status-warning-bg); }
+:root[data-theme="dark"] .ag-banner { background: var(--color-status-warning-bg); }
 .ag-banner-link { display: inline-flex; align-items: center; gap: var(--spacing-xs); font-weight: var(--font-weight-label); white-space: nowrap; }
+
+/* Selo de notificação no indicador que pede ação (some no primeiro clique no indicador) */
+.ag-dot { display: inline-block; vertical-align: middle; margin-inline-start: var(--spacing-xs); width: var(--spacing-sm); height: var(--spacing-sm); border-radius: var(--radius-pill); background: var(--color-status-error-fg); }

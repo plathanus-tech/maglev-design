@@ -1,13 +1,18 @@
 /**
  * Navegador de Protótipo - Prestador de serviço (acesso por link web, sem login): prestador/screens/*.html.
- * Fluxo: link recebido por e-mail → Minhas OS (RF101) → Atendimento da OS (RF102) → execução da preventiva (RF603 adaptado).
+ * Fluxo: link recebido por e-mail → celular e código (OTP) → Minhas OS (RF101, abas Ativas e Histórico) → Atendimento da OS (RF102) → execução da preventiva (RF603 adaptado).
  * O link identifica o prestador (`?p=`) e, quando individual, o técnico (`?tec=`). 💡 P09: modelo de link a confirmar.
  */
 import type { Journey } from '../config';
 import { seed } from '../../assinante/shared/data';
 
 const s = 'prestador/screens';
-const v = (id: string, label: string, path: string) => ({ id, label, path: `${s}/${path}` });
+/** As telas do prestador pedem celular e código; nas variantes o Navegador abre uma sessão de demonstração (`otp=demo`) para ir direto à tela */
+const demo = (path: string) => {
+  const [rest, hash = ''] = path.split('#');
+  return `${rest}${rest.includes('?') ? '&' : '?'}otp=demo${hash ? `#${hash}` : ''}`;
+};
+const v = (id: string, label: string, path: string) => ({ id, label, path: `${s}/${demo(path)}` });
 const db = seed();
 
 const provOf = (o: (typeof db.orders)[number]) => (o.executor.kind === 'prestador' ? o.executor.providerId : '');
@@ -33,19 +38,36 @@ const preventiveDone = find((o) => o.kind === 'preventiva' && o.statusId === 'ST
 export const journeys: Journey[] = [
   {
     id: 'prest-link',
-    label: 'Acesso por link',
+    label: 'Acesso por link e código',
     items: [
       {
-        id: 'prest-minhas-os', label: 'RF001/RF101 - Minhas OS', path: `${s}/minhas-os.html?p=${main.id}`,
+        id: 'prest-acesso', label: 'RF001 - Acesso: celular e código (OTP)', path: `${s}/acesso.html`,
+        variants: [
+          { id: 'prest-ac-link', label: 'Chegando por um link (pede o código e volta à OS)', path: `${s}/${link(inProgress)}&otp=reset` },
+          { id: 'prest-ac-expired', label: 'Sessão vencida (confirmar de novo)', path: `${s}/acesso.html#state=expired` },
+          { id: 'prest-ac-required', label: 'Celular obrigatório', path: `${s}/acesso.html#state=required` },
+          { id: 'prest-ac-invalid', label: 'Celular inválido', path: `${s}/acesso.html#state=invalid` },
+          { id: 'prest-ac-senderror', label: 'Falha ao enviar o código', path: `${s}/acesso.html#state=senderror` },
+          { id: 'prest-ac-code', label: 'Código de verificação', path: `${s}/acesso-codigo.html` },
+          { id: 'prest-ac-incorrect', label: 'Código incorreto', path: `${s}/acesso-codigo.html#state=incorrect` },
+          { id: 'prest-ac-codeexpired', label: 'Código expirado', path: `${s}/acesso-codigo.html#state=expired` },
+          { id: 'prest-ac-toomany', label: 'Excedeu as tentativas', path: `${s}/acesso-codigo.html#state=toomany` },
+          { id: 'prest-ac-commerror', label: 'Falha ao validar o código', path: `${s}/acesso-codigo.html#state=commerror` },
+        ],
+      },
+      {
+        id: 'prest-minhas-os', label: 'RF001/RF101 - Minhas OS', path: `${s}/${demo(`minhas-os.html?p=${main.id}`)}`,
         variants: [
           v('prest-mos-tech', 'Link individual do técnico', `minhas-os.html?p=${main.id}&tec=${tech.id}`),
+          v('prest-mos-history', 'Aba Histórico (OS concluídas e canceladas)', `minhas-os.html?p=${main.id}#state=history`),
+          v('prest-mos-nohistory', 'Histórico vazio', `minhas-os.html?p=${main.id}#state=nohistory`),
           v('prest-mos-empty', 'Sem OS atribuídas', `minhas-os.html?p=${main.id}#state=empty`),
           v('prest-mos-inactive', 'Prestador inativo (sem acesso)', `minhas-os.html?p=${inactive.id}`),
           v('prest-mos-invalid', 'Link inválido ou expirado', `minhas-os.html?p=INVALIDO`),
         ],
       },
       {
-        id: 'prest-atendimento', label: 'RF102 - Atendimento da OS', path: `${s}/${link(inProgress)}`,
+        id: 'prest-atendimento', label: 'RF102 - Atendimento da OS', path: `${s}/${demo(link(inProgress))}`,
         variants: [
           v('prest-at-new', 'OS nova (aceitar o atendimento)', link(newOrder)),
           v('prest-at-scheduled', 'Visita já agendada (só registrar a chegada)', link(scheduled)),
@@ -54,12 +76,12 @@ export const journeys: Journey[] = [
           v('prest-at-budget', 'Orçamento enviado, aguardando aprovação (execução bloqueada)', link(budgetWait)),
           v('prest-at-approved', 'Orçamento aprovado (execução liberada)', link(budgetApproved ?? inProgress)),
           v('prest-at-validation', 'Conclusão indicada (aguardando validação)', link(validation)),
-          v('prest-at-expired', 'OS encerrada (link expirado)', link(closed)),
+          v('prest-at-expired', 'OS concluída (somente consulta, vinda do Histórico)', link(closed)),
           v('prest-at-other', 'OS de outro prestador (sem acesso)', `os.html?p=${inactive.id === main.id ? 'PRE-002' : main.id}&os=${(byProvider.find((o) => provOf(o) !== main.id) ?? db.orders[0]).id}`),
         ],
       },
       {
-        id: 'prest-preventiva', label: 'RF102/RF603 - Executar preventiva', path: `${s}/${link(preventiveNew, 'execucao-preventiva.html')}`,
+        id: 'prest-preventiva', label: 'RF102/RF603 - Executar preventiva', path: `${s}/${demo(link(preventiveNew, 'execucao-preventiva.html'))}`,
         variants: [
           v('prest-pv-os', 'OS preventiva (resumo e acesso à execução)', link(preventive)),
           v('prest-pv-incomplete', 'Tentativa de concluir com pendências', link(preventive, 'execucao-preventiva.html', '#state=incomplete')),

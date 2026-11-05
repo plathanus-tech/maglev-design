@@ -20,6 +20,7 @@ function ExecucaoPrestadorScreen() {
   const shell = (content: ReactNode) => <ExternalLayout area="Área do prestador">{content}</ExternalLayout>;
   if (!provider || state === 'invalid') return <>{shell(<BlockedAccess state="invalid" />)}</>;
   if (state === 'inactive') return <>{shell(<BlockedAccess state="inactive" />)}</>;
+  if (state === 'auth') return null;   // sem sessão: redireciona para o acesso (celular + código)
 
   const phone = technician?.phone ?? provider.contacts.find((c) => c.main)?.phone ?? '';
   const osLink = (id: string) => linkTo('os.html', provider, technician, { os: id });

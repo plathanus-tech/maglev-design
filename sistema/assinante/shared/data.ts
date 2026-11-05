@@ -229,6 +229,8 @@ export interface WorkOrder {
   accepted?: { at: string; by: string };
   /** Horas trabalhadas, informadas pelo prestador no atendimento (Prestador RF102). */
   workedHours?: number;
+  /** Horas trabalhadas no diagnóstico (lançadas ao registrar o orçamento; somam-se às horas da execução no total da OS). */
+  diagnosisHours?: number;
   /** Atividades realizadas informadas pelo prestador (uma por linha; opcional). Registros antigos ficam no histórico como "Atividade: …". */
   activityList?: string[];
 }
