@@ -1,5 +1,6 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { IconCircleCheck, IconCircleOff, IconClipboardList, IconEye, IconPencil, IconPlus, IconTools, IconTruck, IconBuilding } from '@tabler/icons-react';
 import { IconSearch, IconTool } from '@tabler/icons-react';
 import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
@@ -31,11 +32,11 @@ function PrestadoresScreen() {
   const refs = useRefs();
   const { db, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('todos');
-  const [specialty, setSpecialty] = useState('todos');
-  const [category, setCategory] = useState('todos');
-  const [region, setRegion] = useState('todos');
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', 'todos');
+  const [specialty, setSpecialty] = useListState('specialty', 'todos');
+  const [category, setCategory] = useListState('category', 'todos');
+  const [region, setRegion] = useListState('region', 'todos');
   const [toggling, setToggling] = useState<Provider | null>(null);
 
   const providers = mode === 'empty' ? [] : db.providers;

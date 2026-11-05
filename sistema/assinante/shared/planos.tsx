@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { IconAlertTriangle, IconCalendarEvent, IconCalendarRepeat, IconCircleCheck, IconCircleOff, IconCopy, IconEye, IconChecks, IconPencil, IconPlayerPause, IconPlus } from '@tabler/icons-react';
 import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Badge, Button, Card, EmptyState, KpiCard, Stack, TableColumn, useToast } from '@maglev/ds';
@@ -35,14 +36,14 @@ function PlanosScreen() {
   const toast = useToast();
   const { db, user, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(() => (['ativo', 'pausado'].includes(param('status') ?? '') ? (param('status') as string) : 'todos'));
-  const [situation, setSituation] = useState(() => FILTER_TO_SITUATION[param('filter') ?? ''] ?? 'todos');
-  const [executor, setExecutor] = useState('todos');
-  const [unit, setUnit] = useState('todos');
-  const [period, setPeriod] = useState('todos');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', () => (['ativo', 'pausado'].includes(param('status') ?? '') ? (param('status') as string) : 'todos'));
+  const [situation, setSituation] = useListState('situation', () => FILTER_TO_SITUATION[param('filter') ?? ''] ?? 'todos');
+  const [executor, setExecutor] = useListState('executor', 'todos');
+  const [unit, setUnit] = useListState('unit', 'todos');
+  const [period, setPeriod] = useListState('period', 'todos');
+  const [from, setFrom] = useListState('from', '');
+  const [to, setTo] = useListState('to', '');
   const [toggling, setToggling] = useState<Plan | null>(null);
 
   const plans = useMemo(() => (mode === 'empty' ? [] : plansVisible(db, user, unitIds)), [db, user, unitIds, mode]);

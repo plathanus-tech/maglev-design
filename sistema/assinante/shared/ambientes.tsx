@@ -1,4 +1,5 @@
 import { FormEvent, ReactElement, useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { IconCircleCheck, IconCircleOff, IconEye, IconLayoutGrid, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Dialog, Dropdown, Feedback, Input, RadioButton, Stack, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
@@ -92,14 +93,14 @@ function AmbientesScreen() {
   const isMobile = useIsMobile();
   const { db, can, unitIds } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useListState('query', '');
   // Acesso a partir da unidade: ?unit=UNI-001 abre já filtrada (RF203-FLU001)
-  const [unit, setUnit] = useState(() => { const u = param('unit'); return u && db.units.some((x) => x.id === u) ? u : 'todos'; });
-  const [status, setStatus] = useState('todos');
-  const [page, setPage] = useState(1);
+  const [unit, setUnit] = useListState('unit', () => { const u = param('unit'); return u && db.units.some((x) => x.id === u) ? u : 'todos'; });
+  const [status, setStatus] = useListState('status', 'todos');
+  const [page, setPage] = useListState('page', 1);
   const [dialog, setDialog] = useState<{ kind: 'form'; env?: Environment; prefill?: Partial<Form>; errors?: boolean } | { kind: 'toggle' | 'delete' | 'view'; env: Environment } | null>(null);
 
-  useEffect(() => setPage(1), [query, unit, status]);
+  useResetPage(setPage, [query, unit, status]);
   useEffect(() => {
     const visibleEnvs = db.environments.filter((e) => unitIds.includes(e.unitId));
     if (mode === 'noresults') setQuery('Padaria');

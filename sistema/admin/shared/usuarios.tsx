@@ -1,5 +1,6 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from './list-memory';
 import { IconCircleCheck, IconCircleOff, IconEye, IconMail, IconMailForward, IconPencil, IconPlus, IconSearch, IconUserCheck, IconUserOff, IconUsers } from '@tabler/icons-react';
 import { Badge, Button, Input, KpiCard, Stack, Table, TableColumn, useToast } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
@@ -38,10 +39,10 @@ function UsuariosScreen() {
   const isMobile = useIsMobile();
   const { db, user: me, can } = useSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('todos');
-  const [profile, setProfile] = useState('todos');
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', 'todos');
+  const [profile, setProfile] = useListState('profile', 'todos');
+  const [page, setPage] = useListState('page', 1);
   const [toggling, setToggling] = useState<AdminUser | null>(null);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ function UsuariosScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, status, profile]);
+  useResetPage(setPage, [query, status, profile]);
 
   const profileName = (id: string) => db.profiles.find((p) => p.id === id)?.name ?? '-';
   const allUsers = mode === 'empty' ? [] : db.adminUsers;

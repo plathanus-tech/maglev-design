@@ -1,4 +1,5 @@
 import { ReactElement, ReactNode, useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { CategoryIcon } from '../../admin/shared/IconPicker';
 import {
   IconAlertTriangle, IconChevronDown, IconClipboardList, IconChecklist, IconChevronRight, IconCircleCheck, IconCircleOff, IconEye, IconMicrowave,
@@ -66,19 +67,19 @@ function EquipamentosScreen() {
   const statusIdByVisual = (v: string) => eqStatuses.find((s) => s.visual === v)?.id ?? ALL;
 
   // Filtros por URL (links dos cards do Início): ?filter=stopped|alert|inactive e ?unit=
-  const [query, setQuery] = useState('');
-  const [unit, setUnit] = useState(() => { const u = param('unit'); return u && unitIds.includes(u) ? u : ALL; });
-  const [env, setEnv] = useState(ALL);
-  const [category, setCategory] = useState(ALL);
-  const [status, setStatus] = useState(() => {
+  const [query, setQuery] = useListState('query', '');
+  const [unit, setUnit] = useListState('unit', () => { const u = param('unit'); return u && unitIds.includes(u) ? u : ALL; });
+  const [env, setEnv] = useListState('env', ALL);
+  const [category, setCategory] = useListState('category', ALL);
+  const [status, setStatus] = useListState('status', () => {
     const f = param('filter');
     return f === 'running' ? statusIdByVisual('sucesso') : f === 'maintenance' ? statusIdByVisual('informativo') : f === 'stopped' ? statusIdByVisual('critico') : f === 'alert' ? statusIdByVisual('atencao') : f === 'inactive' ? (eqStatuses.find((s) => refs.base(s.id) === 'cancelado')?.id ?? ALL) : ALL;
   });
-  const [criticality, setCriticality] = useState(ALL);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [sortKey, setSortKey] = useState<'name' | 'statusId' | 'criticalityId' | 'cost' | null>(null);
-  const [page, setPage] = useState(1);
-  const [treePage, setTreePage] = useState(1);
+  const [criticality, setCriticality] = useListState('criticality', ALL);
+  const [sortDir, setSortDir] = useListState<'asc' | 'desc'>('sortDir', 'asc');
+  const [sortKey, setSortKey] = useListState<'name' | 'statusId' | 'criticalityId' | 'cost' | null>('sortKey', null);
+  const [page, setPage] = useListState('page', 1);
+  const [treePage, setTreePage] = useListState('treePage', 1);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [toggling, setToggling] = useState<Equipment | null>(null);
   const [qr, setQr] = useState<{ id: string; mode: 'qr' | 'label' } | null>(null);
@@ -182,8 +183,8 @@ function EquipamentosScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treeUnits, treePage, expanded, db, refs.admin]);
 
-  useEffect(() => setPage(1), [query, unit, env, category, status, criticality, sortDir, sortKey]);
-  useEffect(() => setTreePage(1), [query, unit, env, category, status, criticality]);
+  useResetPage(setPage, [query, unit, env, category, status, criticality, sortDir, sortKey]);
+  useResetPage(setTreePage, [query, unit, env, category, status, criticality]);
   // Com busca ou filtro ativos, a árvore abre sozinha nos níveis com resultado (CTA002 segue valendo: dá para recolher)
   useEffect(() => {
     if (!filtering) return;

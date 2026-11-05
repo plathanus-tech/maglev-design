@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState, ReactElement } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { attendanceAlerts } from './os-alerts';
 import {
   IconAdjustmentsHorizontal, IconAlertTriangle, IconCircleCheck, IconCircleX, IconClipboardList, IconEye, IconFileInvoice,
@@ -69,23 +70,23 @@ function OrdensScreen() {
   const quickParam = param('filter') as Quick | null;
   // Atalhos que têm filtro próprio na tela (Status) chegam com esse filtro já selecionado; os demais vêm como aviso removível
   const QUICK_TO_STATUS: Record<string, string> = { 'awaiting-validation': STO.VALIDACAO, 'awaiting-technician': STO.PRESTADOR };
-  const [quick, setQuick] = useState<Quick>(() => (QUICK_OPTIONS.some((o) => o.value === quickParam) && !QUICK_TO_STATUS[quickParam as string] ? (quickParam as Quick) : 'todos'));
+  const [quick, setQuick] = useListState<Quick>('quick', () => (QUICK_OPTIONS.some((o) => o.value === quickParam) && !QUICK_TO_STATUS[quickParam as string] ? (quickParam as Quick) : 'todos'));
   const SUBS = { new: 'Novas (abertas)', approval: 'Necessitam de aprovação', overdue: 'Em atraso' } as const;
   type Sub = keyof typeof SUBS;
   const subParam = param('sub') as Sub | null;
-  const [sub, setSub] = useState<Sub | null>(() => (quickParam === 'assigned-me' && subParam && subParam in SUBS ? subParam : null));
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(() => param('status') ?? QUICK_TO_STATUS[quickParam as string] ?? 'todos');
-  const [type, setType] = useState('todos');
-  const [priority, setPriority] = useState('todos');
-  const [unit, setUnit] = useState(() => param('unit') ?? 'todos');
-  const [executor, setExecutor] = useState('todos');
-  const [period, setPeriod] = useState('todos');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [equipment, setEquipment] = useState<string | null>(() => param('equipment'));
-  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'attention', dir: 'asc' });   // 'attention' = padrão “Atenção necessária”
-  const [page, setPage] = useState(1);
+  const [sub, setSub] = useListState<Sub | null>('sub', () => (quickParam === 'assigned-me' && subParam && subParam in SUBS ? subParam : null));
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', () => param('status') ?? QUICK_TO_STATUS[quickParam as string] ?? 'todos');
+  const [type, setType] = useListState('type', 'todos');
+  const [priority, setPriority] = useListState('priority', 'todos');
+  const [unit, setUnit] = useListState('unit', () => param('unit') ?? 'todos');
+  const [executor, setExecutor] = useListState('executor', 'todos');
+  const [period, setPeriod] = useListState('period', 'todos');
+  const [from, setFrom] = useListState('from', '');
+  const [to, setTo] = useListState('to', '');
+  const [equipment, setEquipment] = useListState<string | null>('equipment', () => param('equipment'));
+  const [sort, setSort] = useListState<{ key: string; dir: 'asc' | 'desc' }>('sort', { key: 'attention', dir: 'asc' });   // 'attention' = padrão “Atenção necessária”
+  const [page, setPage] = useListState('page', 1);
   const [reassigning, setReassigning] = useState<WorkOrder | null>(null);
   const [classifying, setClassifying] = useState<WorkOrder | null>(null);
   const [hot, setHot] = useState<string | null>(null);   // status destacado (hover/foco) na barra e na legenda
@@ -99,7 +100,7 @@ function OrdensScreen() {
     if (mode === 'reassign') setReassigning(visible.find((o) => isEditable(refs.base(o.statusId)) && o.executor.kind === 'prestador') ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
-  useEffect(() => setPage(1), [quick, sub, query, status, type, priority, unit, executor, period, from, to, equipment, sort]);
+  useResetPage(setPage, [quick, sub, query, status, type, priority, unit, executor, period, from, to, equipment, sort]);
 
   const eqName = (o: WorkOrder) => equipmentOf(db, o.equipmentId)?.name ?? '-';
   const unitOf = (o: WorkOrder) => equipmentOf(db, o.equipmentId)?.unitId ?? '';

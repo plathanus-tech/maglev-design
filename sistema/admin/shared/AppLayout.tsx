@@ -19,6 +19,7 @@ import '../../../src/tokens/tokens.css';
 import './theme';
 import './fonts.css';
 import './nav-sync';
+import './list-memory';
 import './page.css';
 
 /** Menu principal do Admin (RF101 → RF407). Itens sem permissão de visualizar ficam ocultos (RF303-FLU005). */

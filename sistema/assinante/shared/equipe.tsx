@@ -1,5 +1,6 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { IconCircleCheck, IconCircleOff, IconMailForward, IconPencil, IconPlus, IconSearch, IconUsers } from '@tabler/icons-react';
 import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Badge, Button, Dialog, Feedback, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -35,15 +36,15 @@ function EquipeScreen() {
   const isMobile = useIsMobile();
   const { db, user: me, can } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
-  const [profile, setProfile] = useState('todos');
-  const [status, setStatus] = useState('todos');
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useListState('query', '');
+  const [profile, setProfile] = useListState('profile', 'todos');
+  const [status, setStatus] = useListState('status', 'todos');
+  const [page, setPage] = useListState('page', 1);
   const [toggling, setToggling] = useState<SubUser | null>(null);
   const [selfBlock, setSelfBlock] = useState(false);
 
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, profile, status]);
+  useResetPage(setPage, [query, profile, status]);
   useEffect(() => {
     if (mode === 'noresults') setQuery('joao.silva');
     if (mode === 'deactivate') setToggling(db.users.find((u) => u.id !== me.id && u.status === 'ativo') ?? null);

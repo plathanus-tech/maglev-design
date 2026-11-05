@@ -1,4 +1,5 @@
 import { ReactElement, useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { IconBuildingStore, IconCircleCheck, IconCircleOff, IconEye, IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Dropdown, Input, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -28,14 +29,14 @@ function UnidadesScreen() {
   const isMobile = useIsMobile();
   const { db, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('todos');
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', 'todos');
+  const [page, setPage] = useListState('page', 1);
   const [toggling, setToggling] = useState<Unit | null>(null);
   const [deleting, setDeleting] = useState<Unit | null>(null);
 
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, status]);
+  useResetPage(setPage, [query, status]);
   useEffect(() => {
     if (mode === 'noresults') setQuery('Pinheiros');
     if (mode === 'deactivate') setToggling(db.units.find((u) => u.status === 'ativo') ?? null);

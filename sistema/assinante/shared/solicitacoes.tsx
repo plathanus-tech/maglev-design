@@ -1,5 +1,6 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from '../../admin/shared/list-memory';
 import { IconCircleCheck, IconClipboardList, IconClockHour4, IconEye, IconInbox, IconListCheck, IconMessageReport, IconPlus, IconSearch } from '@tabler/icons-react';
 import { ToolbarGate, listEmpty } from '../../admin/shared/list-empty';
 import { Button, Feedback, Input, KpiCard, Stack, Table, TableColumn, useToast } from '@maglev/ds';
@@ -54,24 +55,24 @@ function SolicitacoesScreen() {
   const urlSub = URL_SUB[param('sub') ?? ''];
   // Padrão: só as abertas; filtro por equipamento/unidade (links do Equipamento e do Início) abre todos os status
   const initialStatus = urlSub && (urlFilter === 'assigned-me' || urlFilter === 'pending') ? urlSub : URL_STATUS[urlFilter] ?? (param('equipment') || param('unit') ? 'todos' : OPEN);
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(initialStatus);
-  const [priority, setPriority] = useState('todos');
-  const [unit, setUnit] = useState(() => (urlUnit && unitIds.includes(urlUnit) ? urlUnit : 'todos'));
-  const [equipment, setEquipment] = useState(() => (urlEquipment && db.equipments.some((e) => e.id === urlEquipment && unitIds.includes(e.unitId)) ? urlEquipment : 'todos'));
-  const [requester, setRequester] = useState('todos');
-  const [assign, setAssign] = useState(urlFilter === 'assigned-me' ? 'me' : urlFilter === 'unassigned' ? 'none' : 'todos');
-  const [period, setPeriod] = useState('todos');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', initialStatus);
+  const [priority, setPriority] = useListState('priority', 'todos');
+  const [unit, setUnit] = useListState('unit', () => (urlUnit && unitIds.includes(urlUnit) ? urlUnit : 'todos'));
+  const [equipment, setEquipment] = useListState('equipment', () => (urlEquipment && db.equipments.some((e) => e.id === urlEquipment && unitIds.includes(e.unitId)) ? urlEquipment : 'todos'));
+  const [requester, setRequester] = useListState('requester', 'todos');
+  const [assign, setAssign] = useListState('assign', urlFilter === 'assigned-me' ? 'me' : urlFilter === 'unassigned' ? 'none' : 'todos');
+  const [period, setPeriod] = useListState('period', 'todos');
+  const [from, setFrom] = useListState('from', '');
+  const [to, setTo] = useListState('to', '');
+  const [page, setPage] = useListState('page', 1);
   const [concluding, setConcluding] = useState<Request | null>(null);
   // Resumo da solicitação (clique na linha) e a decisão escolhida nele (abre o diálogo correspondente)
   const [summary, setSummary] = useState<Request | null>(null);
   const [deciding, setDeciding] = useState<{ kind: SummaryDecision; request: Request } | null>(null);
 
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, status, priority, unit, equipment, requester, assign, period, from, to]);
+  useResetPage(setPage, [query, status, priority, unit, equipment, requester, assign, period, from, to]);
 
   const views: View[] = useMemo(() => (mode === 'empty' ? [] : requestsVisible(db, unitIds)).map((r) => ({ r, unitId: unitIdOfEquipment(db, r.equipmentId), base: refs.base(r.statusId) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps

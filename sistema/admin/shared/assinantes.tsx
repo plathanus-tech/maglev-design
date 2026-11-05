@@ -1,5 +1,6 @@
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { useEffect, useMemo, useState } from 'react';
+import { useListState, useResetPage } from './list-memory';
 import {
   IconCircleCheck, IconCircleOff, IconEye, IconMessageReport, IconPencil, IconPlus, IconReportMoney, IconSearch,
   IconToolsKitchen2, IconUserCheck, IconUserExclamation,
@@ -70,11 +71,11 @@ function AssinantesScreen() {
   const isMobile = useIsMobile();
   const { db, can } = useSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState(() => { const p = param('status'); return STATUS_OPTIONS.some((o) => o.value === p) ? (p as string) : 'todos'; });
-  const [plan, setPlan] = useState('todos');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc' | 'none'>('asc');
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useListState('query', '');
+  const [status, setStatus] = useListState('status', () => { const p = param('status'); return STATUS_OPTIONS.some((o) => o.value === p) ? (p as string) : 'todos'; });
+  const [plan, setPlan] = useListState('plan', 'todos');
+  const [sortDir, setSortDir] = useListState<'asc' | 'desc' | 'none'>('sortDir', 'asc');
+  const [page, setPage] = useListState('page', 1);
   const [toggling, setToggling] = useState<Subscriber | null>(null);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ function AssinantesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPage(1), [query, status, plan, sortDir]);
+  useResetPage(setPage, [query, status, plan, sortDir]);
 
   const kpis = useMemo(() => {
     const active = db.subscribers.filter((s) => s.status === 'ativo').length;
