@@ -23,8 +23,8 @@ import { CellPair, RowAction, RowActions, SectionLabel, Text, firstName, goTo, u
 import './inicio.css';
 import './inicio-layout.css';
 
-/** Estados: idle (cheio) · empty (sem pendências) · v1 (Início anterior: sem a faixa de ações e sem cartão em destaque) · mobilev1 (mobile anterior: cartões completos e sem blocos recolhíveis novos). */
-const STATES = ['idle', 'empty', 'v1', 'mobilev1', 'firstaccess'] as const;
+/** Estados: idle (cheio) · empty (sem pendências) · firstaccess (primeiro acesso: canal de avisos e telefone) */
+const STATES = ['idle', 'empty', 'firstaccess'] as const;
 type Mode = (typeof STATES)[number];
 
 const TODAY = dayOnly(0);
@@ -185,9 +185,8 @@ function InicioScreen() {
   const [mode] = useHashState<Mode>(STATES, 'idle');
   // Mobile atual (cartões compactos e blocos recolhíveis); a variante v1 mantém a versão anterior
   const isMobile = useIsMobile();
-  const mobileNew = isMobile && mode !== 'mobilev1';
+  const mobileNew = isMobile;
   // Faixa "Você tem N ações…" e cartão em destaque (referência do cliente); a variante v1 mantém o Início anterior
-  const rq = mode !== 'v1';
   // Lado a lado (≥1440px) a tabela de OS mostra mais linhas para terminar na altura de “Equipamentos por status” (calibrado medindo no navegador); empilhado, mantém 5.
   const sideBySide = useMediaQuery('(min-width: 1440px)');
   const osLimit = sideBySide && !isMobile ? OS_ROWS_SIDE : 5;
@@ -349,7 +348,7 @@ function InicioScreen() {
   // Selo de notificação em cada INDICADOR que pede ação (não no cartão): some no primeiro clique no indicador e fica lembrado na sessão; volta se o número crescer
   const [seen, setSeen] = useState<Record<string, number>>(readSeen);
   const notify = (key: string, value: number) => ({
-    badge: rq && value > 0 && value > (seen[key] ?? 0),
+    badge: value > 0 && value > (seen[key] ?? 0),
     onSeen: () => {
       if ((seen[key] ?? 0) >= value) return;
       const next = { ...seen, [key]: value };
@@ -399,7 +398,7 @@ function InicioScreen() {
           <PageHeader title={`${greeting()}, ${firstName(user.name)}`} subtitle={dateText} {...{ [isMobile ? 'iconActions' : 'actions']: createMenu }} />
         </DevNote>
 
-        {rq && pendingTotal > 0 && (
+        {pendingTotal > 0 && (
           <DevNote note="Faixa de ações (referência do cliente): só aparece com pendências e diz quantos itens DISTINTOS esperam ação (sem somar duas vezes o que aparece em mais de um cartão; “aguardando informação” fica de fora porque depende do solicitante). “Ver ações” rola até o bloco Requer ação. Sem pendências, a faixa some e o Início fica como sempre, sem laranja, para não gerar falso senso de urgência. A variante v1 não tem a faixa.">
             <Card className="ag-banner" padding="none">
               <Stack direction="horizontal" align="center" justify="between" gap="md" wrap className="ag-banner-in">
@@ -418,7 +417,7 @@ function InicioScreen() {
 
         <DevNote note="Início (RF101): agenda do dia ao lado de “Requer ação”, no primeiro bloco. Os 3 cards de ação (“ação”) ganham uma linha superior fina e o ícone do canto em tint suave, usando só tokens semânticos do DS pelo significado do indicador principal — Atribuídas a mim = Atenção (--color-status-warning-*: demandas sob responsabilidade do usuário), Solicitações pendentes = Info (--color-status-info-*: itens aguardando decisão, informação ou aprovação), OS pendentes = Atenção (--color-status-warning-*: o principal é “Ação necessária”). Dois cards podem repetir o token; Sucesso e Erro ficam reservados a estados positivos e críticos. A Agenda (“programação”) permanece neutra, com o ícone no padrão da marca. Fundo, textos e números seguem neutros. Os 3 cards são resumos simples, alinhados no topo e com altura própria (a agenda tem a sua). Números, links e tons de criticidade vêm da tela atual. O 1º indicador de cada card é o mais acionável, não o maior número: Atribuídas = Em atraso › Necessitam de aprovação › Novas (zerados vão para o fim; se tudo é 0, Novas); Solicitações = Aprovadas (o gestor precisa criar a OS) › Aguardando informação (depende do solicitante); OS = Ação necessária › Aguardando validação › OS ativas (total só como contexto). Ícone de atenção só em itens com valor. A agenda lista só o que está PROGRAMADO para hoje (visitas técnicas, manutenções e preventivas agendadas em OS ainda não concluídas); programado ≠ registrado: eventos já registrados no sistema (log) e solicitações abertas não entram. Em larguras menores a agenda desce para baixo dos cards.">
           <div className="ag-top" id="requer-acao">
-            {rq && pendingTotal > 0 ? (
+            {pendingTotal > 0 ? (
               <div className="ag-label-top ag-rq-head"><h2 className="page-label">Requer ação</h2><Badge status="error">{pendingTotal}</Badge></div>
             ) : <h2 className="page-label ag-label-top">Requer ação</h2>}
             <div className={`ag-cards${mobileNew ? ' is-compact-grid' : ''}`}>
