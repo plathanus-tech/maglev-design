@@ -137,3 +137,13 @@ ol.step-list > li { margin: 0; }
 .att-nav.is-next { right: var(--spacing-sm); }
 .att-doc { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-lg); color: var(--color-text-secondary); text-align: center; overflow-wrap: anywhere; }
 .att-doc-name { font-weight: var(--font-weight-label); color: var(--color-text-primary); }
+
+/* Unidade recolhível na seleção de equipamentos do plano: contagem + seta à direita do cabeçalho */
+.pick-head-end { display: inline-flex; align-items: center; gap: var(--spacing-xs); flex-shrink: 0; }
+.pick-toggle svg { transition: transform var(--duration-fast, 150ms) ease; }
+.pick-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .pick-toggle svg { transition: none; } }
+.pick-items[hidden] { display: none; }
+.pick-head.is-clickable { cursor: pointer; }
+.pick-head-main { display: inline-flex; align-items: center; gap: var(--spacing-sm); min-width: 0; flex: 1; }
+.pick-head-check { display: inline-flex; flex-shrink: 0; cursor: default; }

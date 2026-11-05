@@ -31,6 +31,7 @@ export const journeys: Journey[] = [
           v('os-status-approval', 'Resumo: Aguardando aprovação (30 dias)', 'ordens-servico.html?status=STO-04'),
           v('os-noresults', 'Busca sem resultados', 'ordens-servico.html#state=noresults'),
           v('os-empty', 'Sem nenhuma OS', 'ordens-servico.html#state=empty'),
+          v('os-quickview', 'Resumo da OS (ao clicar na linha)', 'ordens-servico.html#state=summary'),
           v('os-reassign', 'Reatribuir (diálogo rápido)', 'ordens-servico.html#state=reassign'),
           v('os-executor', 'Perfil Executor (só as OS dele)', 'ordens-servico.html?as=ASS-0001-U3'),
           v('os-gestor', 'Perfil Gestor', 'ordens-servico.html?as=ASS-0001-U4'),

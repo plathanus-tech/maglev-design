@@ -305,6 +305,33 @@ function EquipamentoScreen() {
               </Card>
             </DevNote>) : null;
 
+  // v2: custos do ativo como coluna do Perfil, ao lado de Situação (sem card próprio): título, legenda e um divisor vertical separam os dois assuntos
+  const costsColumn = canSeeCosts ? (
+    <DevNote note="RF304-RGN004 / CTA003 (v2): relação manutenção/ativo = manutenção acumulada ÷ valor de aquisição. Na v2 os custos ficam numa coluna do card Perfil do ativo, ao lado de Situação, separados por divisor e com título próprio; sem valor de aquisição, a barra fica zerada e só a manutenção acumulada é exibida, sem erro. Acima de 100% a barra enche e muda de cor. Dado sensível: só Administrador e Gestor (RGN003); sem a permissão a coluna não existe e Situação ocupa a linha toda.">
+      <section className="eq-profile2-col eq-profile2-costs" aria-labelledby="eqp-cost">
+        <div className="eq-profile2-head">
+          <h3 id="eqp-cost" className="eq-profile2-title">Custos do ativo</h3>
+          <p className="eq-profile2-sub">Manutenção comparada ao valor de aquisição</p>
+        </div>
+        <div className="eq-profile2-fields is-pair">
+          <ReadField label="Valor de aquisição" value={eq.valueCents ? formatMoney(eq.valueCents) : 'Não informado'} />
+          <ReadField label="Manutenção acumulada" value={formatMoney(data.spent)} />
+        </div>
+        <Stack gap="xs">
+          <Stack direction="horizontal" justify="between" align="center" gap="sm">
+            <span className="read-label">Relação manutenção/ativo</span>
+            <span className="read-value">{eq.valueCents ? `${ratio.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '0%'}</span>
+          </Stack>
+          <div className="eq-bar" role="progressbar" aria-label="Relação manutenção/ativo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(ratio))}>
+            <div className={`eq-bar-fill${ratio > 100 ? ' is-over' : ''}`} style={{ width: `${Math.min(100, ratio)}%` }} />
+          </div>
+          {!eq.valueCents && <p className="field-note">Sem valor de aquisição informado, não é possível calcular a relação</p>}
+          {eq.valueCents && ratio >= 50 ? <p className="field-note">{ratio > 100 ? 'A manutenção já custou mais que o valor do equipamento' : 'A manutenção já passou de metade do valor do equipamento'}</p> : null}
+        </Stack>
+      </section>
+    </DevNote>
+  ) : null;
+
   // Informações v2: um card de perfil (identificação com as duas fotos, localização e situação) e o histórico em card separado, como antes
   const infoV2 = (
     <Stack gap="lg">
@@ -338,18 +365,21 @@ function EquipamentoScreen() {
                   <ReadField label="Ambiente" value={eq.environmentId ? environmentName(db, eq.environmentId) : undefined} />
                 </div>
               </section>
-              <section className="eq-profile2-sec" aria-labelledby="eqp-sit">
-                <h3 id="eqp-sit" className="eq-profile2-title">Situação</h3>
-                <div className="eq-profile2-fields">
-                  <ReadField label="Status" value={refs.statusBadge(eq.statusId)} />
-                  <ReadField label="Criticidade" value={refs.criticalityBadge(eq.criticalityId)} />
-                  <ReadField label="Garantia" value={warrantyBadge} />
-                  <ReadField label="Cadastrado em" value={formatDate(eq.createdAt)} />
-                  <ReadField label="Data de instalação" value={eq.acquiredAt ? formatDate(eq.acquiredAt) : undefined} />
-                  {w.has && <ReadField label="Início da garantia" value={w.start ? formatDate(w.start) : undefined} />}
-                  {w.has && <ReadField label="Fim da garantia" value={w.end ? formatDate(w.end) : undefined} />}
-                </div>
-              </section>
+              <div className="eq-profile2-sec eq-profile2-split">
+                <section className="eq-profile2-col" aria-labelledby="eqp-sit">
+                  <div className="eq-profile2-head"><h3 id="eqp-sit" className="eq-profile2-title">Situação</h3></div>
+                  <div className={`eq-profile2-fields${canSeeCosts ? ' is-pair' : ''}`}>
+                    <ReadField label="Status" value={refs.statusBadge(eq.statusId)} />
+                    <ReadField label="Criticidade" value={refs.criticalityBadge(eq.criticalityId)} />
+                    <ReadField label="Garantia" value={warrantyBadge} />
+                    <ReadField label="Cadastrado em" value={formatDate(eq.createdAt)} />
+                    <ReadField label="Data de instalação" value={eq.acquiredAt ? formatDate(eq.acquiredAt) : undefined} />
+                    {w.has && <ReadField label="Início da garantia" value={w.start ? formatDate(w.start) : undefined} />}
+                    {w.has && <ReadField label="Fim da garantia" value={w.end ? formatDate(w.end) : undefined} />}
+                  </div>
+                </section>
+                {costsColumn}
+              </div>
               {(eq.notes || eq.safetyNote) && (
                 <section className="eq-profile2-sec" aria-labelledby="eqp-obs">
                   <h3 id="eqp-obs" className="eq-profile2-title">Observações e segurança</h3>
@@ -409,8 +439,9 @@ function EquipamentoScreen() {
               </div>
             </DevNote>
 
-            <Grid>
+            {/* Só na v1: na v2 a localização e os custos estão dentro do Perfil do ativo (um Grid vazio abriria um vão extra entre os indicadores e o alerta) */}
             {!v2 && (
+            <Grid>
             <Col span={canSeeCosts ? 4 : 12} fill>
               <Card title="Localização" subtitle="Unidade e ambiente onde o equipamento está instalado">
                 <div className="card-body-tight">
@@ -432,13 +463,13 @@ function EquipamentoScreen() {
                 </div>
               </Card>
             </Col>
-            )}
             {canSeeCosts && (
-              <Col span={v2 ? 12 : 8} fill><div className="eq-fill">
+              <Col span={8} fill><div className="eq-fill">
                 {costsCard}
               </div></Col>
             )}
             </Grid>
+            )}
 
         </>
 

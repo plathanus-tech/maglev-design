@@ -17,10 +17,11 @@ import { requestsVisible, unitIdOfEquipment, unitName, userName, useSubSession }
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, takeFlash, useRefs } from './ui';
 import { OpenByCode } from './open-by-code';
 import { SafetyRiskFlag } from './solicitacao-details';
-import { ConcludeDialog, STS, canConclude, hoursSince, isOpenBase } from './solicitacoes-shared';
+import { ComplementDialog, ConcludeDialog, RejectDialog, STS, canConclude, hoursSince, isOpenBase } from './solicitacoes-shared';
+import { SolicitacaoSummary, SummaryDecision } from './solicitacao-summary';
 
-/** Estados: idle · noresults (busca sem resultado) · conclude (RF401-FLU006: abre "Concluir sem OS" da primeira solicitação elegível) */
-const STATES = ['idle', 'noresults', 'conclude', 'empty'] as const;
+/** Estados: idle · noresults (busca sem resultado) · conclude (RF401-FLU006: abre "Concluir sem OS" da primeira solicitação elegível) · summary (abre o resumo da primeira solicitação em triagem) */
+const STATES = ['idle', 'noresults', 'conclude', 'empty', 'summary'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
@@ -65,6 +66,9 @@ function SolicitacoesScreen() {
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
   const [concluding, setConcluding] = useState<Request | null>(null);
+  // Resumo da solicitação (clique na linha) e a decisão escolhida nele (abre o diálogo correspondente)
+  const [summary, setSummary] = useState<Request | null>(null);
+  const [deciding, setDeciding] = useState<{ kind: SummaryDecision; request: Request } | null>(null);
 
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [query, status, priority, unit, equipment, requester, assign, period, from, to]);
@@ -75,6 +79,11 @@ function SolicitacoesScreen() {
 
   useEffect(() => {
     if (mode === 'noresults') setQuery('zzzz');
+    if (mode === 'summary') {
+      setPeriod('todos'); setStatus(OPEN);
+      const first = views.find((v) => [STS.NEW, STS.TRIAGE].includes(v.r.statusId as never));
+      if (first) setSummary(first.r);
+    }
     if (mode === 'conclude') {
       setPeriod('todos'); setStatus(OPEN);
       const first = views.find((v) => canConclude(v.r, v.base));
@@ -237,7 +246,7 @@ function SolicitacoesScreen() {
         <DevNote note="RF401: tabela paginada (10). “Aguardando há” = tempo desde a última mudança de status, só para solicitações não encerradas (RGN003). Perfil Solicitante/Gestor da unidade vê apenas as solicitações das suas unidades (RGN004). Concluir sem OS (FLU006): só para quem ainda não virou OS; convertida segue o status da OS (RGN007). SLA/prazos fora do escopo (FE001). No mobile vira lista de cards.">
           {isMobile ? (
             <MobileCardList
-              onItemClick={(i) => goTo(`solicitacao.html?id=${pageViews[i].r.id}`)}
+              onItemClick={(i) => setSummary(pageViews[i].r)}
               headingId="requests-title" title="Lista de solicitações" titleHidden toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} emptyTitle={empty.title ?? ''} empty={empty}
               page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
               items={pageViews.map((v) => {
@@ -258,7 +267,7 @@ function SolicitacoesScreen() {
               })}
             />
           ) : (
-            <Table<Row> onRowClick={(r) => goTo(`solicitacao.html?id=${r.v.r.id}`)}
+            <Table<Row> onRowClick={(r) => setSummary(r.v.r)}
               caption="Lista de solicitações" toolbar={<ToolbarGate disabled={noRecords}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={rows} empty={empty}
               pagination={{ page, pageSize: PAGE_SIZE, total: filtered.length, onPageChange: setPage }}
             />
@@ -266,6 +275,10 @@ function SolicitacoesScreen() {
         </DevNote>
       </Stack>
       {concluding && <ConcludeDialog request={concluding} onClose={() => setConcluding(null)} />}
+      {summary && <SolicitacaoSummary request={db.requests.find((r) => r.id === summary.id) ?? summary} onClose={() => setSummary(null)} onDecide={(kind, request) => { setSummary(null); setDeciding({ kind, request }); }} />}
+      {deciding?.kind === 'complement' && <ComplementDialog request={deciding.request} onClose={() => setDeciding(null)} />}
+      {deciding?.kind === 'close' && <ConcludeDialog request={deciding.request} onClose={() => setDeciding(null)} />}
+      {deciding?.kind === 'reject' && <RejectDialog request={deciding.request} onClose={() => setDeciding(null)} />}
     </AppLayout>
   );
 }

@@ -246,3 +246,17 @@ button.eq-photo-tile:focus-visible { outline: var(--focus-ring-width) solid var(
 .eq-profile2-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--spacing-md) var(--spacing-lg); min-width: 0; }
 .eq-profile2-fields.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 1023px) { .eq-profile2-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* v2: Situação e Custos do ativo lado a lado no Perfil, separados por um divisor vertical (empilham abaixo de 1024px) */
+.eq-profile2-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--spacing-lg); }
+.eq-profile2-col { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
+.eq-profile2-head { display: flex; flex-direction: column; gap: var(--spacing-2xs); }
+.eq-profile2-sub { margin: 0; font: var(--text-body-s); letter-spacing: var(--text-body-s-tracking); color: var(--color-text-tertiary); }
+.eq-profile2-costs { padding-block-start: var(--spacing-lg); border-block-start: var(--border-width-thin) solid var(--color-border-subtle); }
+@media (min-width: 1024px) {
+  .eq-profile2-split:has(.eq-profile2-costs) { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0; }
+  .eq-profile2-split:has(.eq-profile2-costs) > .eq-profile2-col:first-child { padding-inline-end: var(--spacing-xl); }
+  .eq-profile2-costs { padding-block-start: 0; border-block-start: 0; padding-inline-start: var(--spacing-xl); border-inline-start: var(--border-width-thin) solid var(--color-border-subtle); }
+}
+.eq-profile2-split > .dev-anchor { display: flex; flex-direction: column; }
+.eq-profile2-split > .dev-anchor > .eq-profile2-costs { flex: 1; }

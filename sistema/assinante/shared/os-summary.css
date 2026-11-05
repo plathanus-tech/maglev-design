@@ -35,3 +35,6 @@
 .os-legend-item.is-zero .os-legend-name, .os-legend-item.is-zero .os-legend-count { color: var(--color-text-tertiary); }
 .os-legend-item.is-zero .os-dot { opacity: 0.45; }
 .os-legend-item.is-zero:hover { background: none; }
+
+/* Resumo da OS (modal da lista) */
+.os-qv-text { white-space: pre-wrap; overflow-wrap: anywhere; }

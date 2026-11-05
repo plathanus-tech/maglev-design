@@ -20,12 +20,13 @@ import { ordersVisible, unitName, equipmentOf, userName } from './store';
 import { useSubSession } from './store';
 import { RowMenu, RowMenuItem } from './RowMenu';
 import { CellPair, Col, Grid, RowAction, RowActions, TableToolbar, goTo, param, takeFlash, useRefs } from './ui';
+import { OsQuickView } from './os-quick-view';
 import { ClassifyDialog, ReassignDialog, STO, dueCell, executorInfo, isEditable, overdueDays } from './os-common';
 import type { WorkOrder } from './data';
 import './os-summary.css';
 
-/** Estados: idle · empty (sem nenhuma OS) · noresults (busca sem resultado) · reassign (diálogo de reatribuição aberto) */
-const STATES = ['idle', 'empty', 'noresults', 'reassign'] as const;
+/** Estados: idle · empty (sem nenhuma OS) · noresults (busca sem resultado) · reassign (diálogo de reatribuição aberto) · summary (resumo da primeira OS em andamento) */
+const STATES = ['idle', 'empty', 'noresults', 'reassign', 'summary'] as const;
 type Mode = (typeof STATES)[number];
 
 const PAGE_SIZE = 10;
@@ -60,6 +61,8 @@ function OrdensScreen() {
   const refs = useRefs();
   const { db, user, can, unitIds, company } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
+  // Resumo da OS (clique na linha): status, prioridade, prazo e principais informações, com "Ver detalhes"
+  const [quickView, setQuickView] = useState<WorkOrder | null>(null);
   const isExecutor = user.profile === 'executor';
   const canPlan = can('os', 'editar') && !isExecutor;
 
@@ -92,6 +95,7 @@ function OrdensScreen() {
   useEffect(() => { const f = takeFlash(); if (f) toast.show(f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (mode === 'noresults') setQuery('triturador de resíduos');
+    if (mode === 'summary') setQuickView(visible.find((o) => isEditable(refs.base(o.statusId))) ?? null);
     if (mode === 'reassign') setReassigning(visible.find((o) => isEditable(refs.base(o.statusId)) && o.executor.kind === 'prestador') ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
@@ -370,7 +374,7 @@ function OrdensScreen() {
             <DevNote note="RF501: Executor/Prestador e Responsável são colunas separadas. Prazo vencido e não concluído é destacado em vermelho com o atraso (RGN003) - SLA configurável é FE001, fora do escopo. Ações por linha: ícone de olho (Visualizar, RF503, somente leitura, sempre permitido) e menu ⋮ com Editar (abre o formulário de edição), Classificar (diálogo rápido só com tipo de manutenção e prioridade, RF502-FLU006) e Reatribuir (diálogo rápido). O menu só aparece para quem pode editar e enquanto a OS não estiver concluída/cancelada. Colunas personalizáveis (botão “Exibição”) entram a pedido, para avaliação.">
               {isMobile ? (
                 <MobileCardList
-                  onItemClick={(i) => goTo(`os.html?id=${pageRows[i].id}`)}
+                  onItemClick={(i) => setQuickView(pageRows[i].order)}
                   headingId="os-title" title="Lista de ordens de serviço" titleHidden toolbar={<ToolbarGate disabled={noOs}>{toolbar}</ToolbarGate>} emptyTitle={empty.title} empty={osEmpty}
                   page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage}
                   items={pageRows.map((r) => ({
@@ -388,7 +392,7 @@ function OrdensScreen() {
                   }))}
                 />
               ) : (
-                <Table<Row> onRowClick={(r) => goTo(`os.html?id=${r.id}`)}
+                <Table<Row> onRowClick={(r) => setQuickView(r.order)}
                   caption="Lista de ordens de serviço" toolbar={<ToolbarGate disabled={noOs}>{toolbar}</ToolbarGate>} columns={shownColumns} rows={pageRows}
                   sortKey={sort.key as keyof Row} sortDir={sort.dir}
                   onSort={(k) => setSort((s) => (s.key === k ? (s.dir === 'desc' ? { key: s.key, dir: 'asc' } : { key: 'attention', dir: 'asc' }) : { key: String(k), dir: 'desc' }))}
@@ -399,6 +403,7 @@ function OrdensScreen() {
             </DevNote>
         </>
       </Stack>
+      {quickView && <OsQuickView order={db.orders.find((o) => o.id === quickView.id) ?? quickView} onClose={() => setQuickView(null)} />}
       <ReassignDialog order={reassigning} onClose={() => setReassigning(null)} />
       <ClassifyDialog order={classifying} onClose={() => setClassifying(null)} />
     </AppLayout>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { IconChevronLeft, IconChevronRight, IconSearch } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronLeft, IconChevronRight, IconSearch } from '@tabler/icons-react';
 import { Button, Checkbox, Dialog, EmptyState, Feedback, Input, Stack, useToast } from '@maglev/ds';
 import { CategoryIcon } from '../../admin/shared/IconPicker';
 import { FilterControl } from '../../admin/shared/FilterControl';
@@ -191,6 +191,8 @@ function EquipmentPickerV2({ selected, onChange, error }: { selected: string[]; 
   const picked = new Set(selected.map((id) => db.equipments.find((e) => e.id === id)?.unitId).filter(Boolean));
   const lockedUnitId = picked.size === 1 ? [...picked][0] : undefined;
   const lockedUnit = db.units.find((u) => u.id === lockedUnitId);
+  // Cada unidade abre e fecha pela seta; vale o que a pessoa escolheu e, sem escolha, o padrão: fechada, exceto com busca/filtro ativos, com uma só unidade ou com equipamento já escolhido ao abrir
+  const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries([...picked].map((u) => [String(u), true])));
 
   const visibleUnits = db.units.filter((u) => unitIds.includes(u.id) && u.status === 'ativo');
   const envOptions = useMemo(() => {
@@ -255,17 +257,31 @@ function EquipmentPickerV2({ selected, onChange, error }: { selected: string[]; 
         const ids = items.map((e) => e.id);
         const count = ids.filter((id) => selected.includes(id)).length;
         const blocked = !!lockedUnitId && unit.id !== lockedUnitId;
+        const expanded = open[unit.id] ?? (hasFilters || groups.length === 1);
+        const panelId = `pick-items-${unit.id}`;
         return (
           <Stack as="fieldset" key={unit.id} gap="sm" className="check-group">
             <legend className="sr-only">{unit.name}</legend>
-            <div className="pick-head">
-              <Checkbox
-                label={<span className="pick-unit">{unit.name}</span>} checked={count === ids.length} indeterminate={count > 0 && count < ids.length} disabled={blocked}
-                onChange={(e) => toggleUnit(ids, e.target.checked)}
-              />
-              <span className="pick-count" aria-live="polite">{`${count} de ${items.length} selecionados`}</span>
+            {/* A linha inteira da unidade expande/recolhe (menos o checkbox, que seleciona todos); a seta continua para quem usa o teclado */}
+            <div className="pick-head is-clickable" onClick={(ev) => { if (!(ev.target as HTMLElement).closest('.pick-head-check, button')) setOpen((o) => ({ ...o, [unit.id]: !expanded })); }}>
+              <span className="pick-head-main">
+                <span className="pick-head-check">
+                  <Checkbox
+                    aria-label={`Selecionar todos os equipamentos de ${unit.name}`} checked={count === ids.length} indeterminate={count > 0 && count < ids.length} disabled={blocked}
+                    onChange={(e) => toggleUnit(ids, e.target.checked)}
+                  />
+                </span>
+                <span className="pick-unit">{unit.name}</span>
+              </span>
+              <span className="pick-head-end">
+                <span className="pick-count" aria-live="polite">{`${count} de ${items.length} selecionados`}</span>
+                <Button
+                  variant="ghost" size="sm" iconOnly className="pick-toggle" iconLeft={<IconChevronDown size={20} />} aria-expanded={expanded} aria-controls={panelId}
+                  aria-label={`${expanded ? 'Recolher' : 'Expandir'} os equipamentos de ${unit.name}`} onClick={() => setOpen((o) => ({ ...o, [unit.id]: !expanded }))}
+                />
+              </span>
             </div>
-            <div className="check-group-grid pick-items">
+            <div id={panelId} className="check-group-grid pick-items" hidden={!expanded}>
               {items.map((e) => (
                 <Checkbox
                   key={e.id} checked={selected.includes(e.id)} disabled={blocked} onChange={(ev) => toggle(e.id, ev.target.checked)}

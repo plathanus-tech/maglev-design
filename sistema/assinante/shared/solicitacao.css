@@ -9,7 +9,12 @@
 @media (min-width: 1200px) {
   .sol-layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: var(--spacing-xl); align-items: start; }
   .sol-left { display: flex; flex-direction: column; gap: var(--spacing-xl); }
-  .sol-right { order: 0; position: sticky; top: var(--spacing-lg); max-height: calc(100dvh - var(--spacing-2xl)); overflow-y: auto; }   /* só o painel de triagem: as ações ficam à mão durante a consulta */
+  /* Painel de decisão: a altura é limitada ao que cabe na tela a partir de onde ele está (--sol-max, calculada em solicitacao.tsx; rolando, ele gruda no topo e usa a tela toda).
+     Dentro do card, só o corpo (campos) rola; o cabeçalho e o rodapé com as decisões ficam fixos e sempre visíveis */
+  .sol-right { order: 0; position: sticky; top: var(--spacing-lg); max-height: var(--sol-max, calc(100dvh - var(--spacing-2xl))); }
+  .sol-right > .dev-anchor { display: flex; flex-direction: column; min-height: 0; }
+  .sol-right > .dev-anchor > section { display: flex; flex-direction: column; min-height: 0; }
+  .sol-right > .dev-anchor > section > div { min-height: 0; overflow-y: auto; }
   .sol-hist { order: 0; }
 }
 
@@ -62,3 +67,22 @@
 
 /* Título do accordion de notas do troubleshooting com o mesmo tamanho e cor do título dos demais cards */
 .ts-accordion button[aria-expanded] { font-size: var(--font-size-lg); line-height: var(--line-height-snug); color: var(--color-text-secondary); }
+
+.sol-actions.is-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sol-actions.is-grid > .sol-act-main, .sol-actions.is-grid > .sol-act-wide { grid-column: 1 / -1; }
+.sol-actions.is-grid > button { width: 100%; }
+.sol-actions.is-compact { flex-direction: row; align-items: center; }
+.sol-actions.is-compact > button, .sol-actions.is-compact > div { flex: 1; }
+.sol-actions.is-compact > div > button { width: 100%; }
+/* Abaixo de 1200px: barra compacta (ação principal + "Mais opções") colada na base, desde o topo da página; no mobile fica acima da barra inferior */
+.sol-actionbar {
+  order: 9; position: sticky; inset-block-end: 0; z-index: var(--z-sticky); padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-surface); border: var(--border-width-thin) solid var(--color-border-subtle); border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
+}
+@media (max-width: 767px) {
+  .sol-actionbar { inset-block-end: calc(var(--spacing-3xl) + env(safe-area-inset-bottom) + var(--spacing-xs)); }
+}
+
+/* Resumo da solicitação (modal da lista) */
+.sol-sum-link { display: inline-flex; align-items: center; gap: var(--spacing-xs); align-self: flex-start; }
+.sol-sum-text { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -1,13 +1,14 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { PreviousServiceNotice, warrantyLine } from './warranty-ui';
 import { warrantyOf } from './warranty';
-import { IconCircleCheck, IconExternalLink, IconPhoto } from '@tabler/icons-react';
+import { IconBan, IconCircleCheck, IconExternalLink, IconMessageQuestion, IconPhoto } from '@tabler/icons-react';
+import { RowMenu } from './RowMenu';
 import { Badge, Button, Card, Dialog, Dropdown, Feedback, Stack, Tab, Table, TableColumn, Textarea, useToast } from '@maglev/ds';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { PRIORITY_MATRIX } from '../../admin/shared/data';
 import { useHashState } from '../../admin/shared/useHashState';
-import { useIsMobile } from '../../admin/shared/useMediaQuery';
+import { useIsMobile, useMediaQuery } from '../../admin/shared/useMediaQuery';
 import { formatDate, formatDateTime, formatMoney, formatPhone, noBreak, requiredMessage } from '../../admin/shared/format';
 import { IMPACT_LABEL, PROFILE_LABEL, Request, hoursAgo } from './data';
 import { photoSrc } from './photos';
@@ -22,8 +23,8 @@ import {
   ComplementDialog, ConcludeDialog, GROUPS, IS_THUMB, RejectDialog, STS, changeRequest, canConclude, isOpenBase, suggestedPriority,
 } from './solicitacoes-shared';
 
-/** Estados: idle · reject · complement · close (abrem o diálogo) · required (campos obrigatórios) · answered (simula a resposta do solicitante - CTA004) */
-const STATES = ['idle', 'reject', 'complement', 'close', 'required', 'answered', 'prioritychange'] as const;
+/** Estados: idle · reject · complement · close (abrem o diálogo) · answered (simula a resposta do solicitante - CTA004) */
+const STATES = ['idle', 'reject', 'complement', 'close', 'answered', 'prioritychange'] as const;
 type Mode = (typeof STATES)[number];
 type Dlg = 'reject' | 'complement' | 'close' | null;
 
@@ -55,6 +56,22 @@ const DEMO_PHOTOS = ['forno2.webp', 'chapa.jpg', 'images.jpg', 'placa.webp'];
 function SolicitacaoScreen() {
   const toast = useToast();
   const isMobile = useIsMobile();
+  // Abaixo de 1200px o painel de decisão fica depois do conteúdo: as ações viram uma barra compacta colada na base da tela, visível desde o topo
+  const stackedLayout = useMediaQuery('(max-width: 1199px)');
+  // Desktop: limita a altura do painel de decisão ao que cabe na tela a partir de onde ele está (assim o rodapé com os botões nunca fica abaixo da dobra e só o corpo do card rola)
+  useEffect(() => {
+    if (stackedLayout) return;
+    const update = () => {
+      const el = document.querySelector<HTMLElement>('.sol-right');
+      if (el) el.style.setProperty('--sol-max', `calc(100dvh - ${Math.max(el.getBoundingClientRect().top, 0)}px - var(--spacing-lg))`);
+    };
+    update();
+    const raf = window.requestAnimationFrame(update);
+    const t = window.setTimeout(update, 300);
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => { window.cancelAnimationFrame(raf); window.clearTimeout(t); window.removeEventListener('scroll', update); window.removeEventListener('resize', update); };
+  }, [stackedLayout]);
   const refs = useRefs();
   const { db, user, can, unitIds, canSeeCosts } = useSubSession();
   const [mode] = useHashState<Mode>(STATES, 'idle');
@@ -92,7 +109,6 @@ function SolicitacaoScreen() {
       if (other) setPriorityId(other.id);
       setTried(true);
     }
-    if (mode === 'required') { setMaintTypeId(''); setPriorityId(''); setGroup(''); setResponsibleId(''); setTried(true); }
   }, [mode]);
 
   if (!req) {
@@ -129,12 +145,9 @@ function SolicitacaoScreen() {
 
   // Prioridade diferente da sugerida pela matriz: exige motivo, que vai para o histórico junto com a sugerida e a aplicada
   const priorityChanged = !!priorityId && !!suggestion && priorityId !== suggestion;
+  // Classificação e encaminhamento são opcionais: o que ficar em branco é pedido na criação da OS. Só o motivo da alteração da prioridade é obrigatório
   const problems = {
-    type: !maintTypeId ? requiredMessage('Tipo de manutenção') : undefined,
-    priority: !priorityId ? requiredMessage('Prioridade') : undefined,
     priorityReason: priorityChanged && !priorityReason.trim() ? requiredMessage('Motivo da alteração da prioridade') : undefined,
-    group: !group ? requiredMessage('Grupo responsável') : undefined,
-    responsible: !responsibleId ? requiredMessage('Responsável') : undefined,
   };
   const show = (k: keyof typeof problems) => (tried ? problems[k] : undefined);
   const invalid = Object.values(problems).some(Boolean);
@@ -424,20 +437,19 @@ function SolicitacaoScreen() {
 
             <aside className="sol-right" aria-label="Triagem e decisão">
               {canTriage && (
-                <DevNote note="RF402-FLU004 / FLU005 / CTA001: tipo de manutenção, prioridade, grupo responsável e responsável são obrigatórios para criar a OS (grupo: 💡 P05 a confirmar, não há cadastro de grupos previsto no contrato). Tipos de manutenção ativos do Admin (RF404), exceto Preventiva, atribuída pelos planos. Observações internas não são visíveis ao solicitante. As quatro decisões ficam no rodapé deste card: Aprovar e criar OS (principal; valida os campos, grava a classificação, passa a Aprovada e abre RF502 pré-preenchida), Solicitar complementação, Concluir sem OS e Rejeitar (cada uma pede o texto em modal e fica no histórico, CTA002). Fluxo de emergência sem triagem: FE004, fora do escopo.">
+                <DevNote note="RF402-FLU004 / FLU005 / CTA001 (revisado): tipo de manutenção, prioridade, grupo responsável e responsável são OPCIONAIS na triagem; quem aprova pode deixá-los em branco e a criação da OS (RF502) pede o que faltar (tipo, prioridade e responsável da OS). Só o motivo da alteração da prioridade segue obrigatório (prioridade diferente da sugerida). Grupo: 💡 P05 a confirmar, não há cadastro de grupos previsto no contrato). Tipos de manutenção ativos do Admin (RF404), exceto Preventiva, atribuída pelos planos. Observações internas não são visíveis ao solicitante. As quatro decisões ficam no rodapé deste card, sempre visíveis sem rolar (no desktop o corpo rola e o rodapé fica fixo; abaixo de 1200px o rodapé cola na base da tela com a ação principal e o menu “Mais opções”): Aprovar e criar OS (principal; valida os campos, grava a classificação, passa a Aprovada e abre RF502 pré-preenchida), Solicitar complementação, Concluir sem OS e Rejeitar (cada uma pede o texto em modal e fica no histórico, CTA002). Fluxo de emergência sem triagem: FE004, fora do escopo.">
                   <Card
                     className="card-open" title="Classificação e encaminhamento"
-                    subtitle={editable ? 'Classifique e escolha o encaminhamento' : approvedPending ? 'Classificação registrada na aprovação' : 'Classificação registrada na triagem'}
+                    subtitle={editable ? 'Opcional: o que ficar em branco é pedido na criação da OS' : approvedPending ? 'Classificação registrada na aprovação' : 'Classificação registrada na triagem'}
                     footer={editable ? (
-                      <Stack gap="sm">
-                        <p className="field-note">Aprovar registra a aprovação agora e abre a criação da OS. Se você sair sem criar a OS, a solicitação continua Aprovada e a OS pode ser criada depois</p>
-                      <div className="sol-actions">
-                        <Button onClick={approve}>Aprovar e criar OS</Button>
-                        <Button variant="secondary" onClick={() => setDialog('complement')}>Solicitar complementação</Button>
-                        {canConclude(req, base) && <Button variant="secondary" onClick={() => setDialog('close')}>Concluir sem OS</Button>}
-                        <Button variant="ghost" className="sol-reject" onClick={() => setDialog('reject')}>Rejeitar</Button>
+                      stackedLayout ? undefined : (
+                      <div className="sol-actions is-grid">
+                        <Button className="sol-act-main" onClick={approve}>Aprovar e criar OS</Button>
+                        <Button variant="secondary" className="sol-act-wide" onClick={() => setDialog('complement')}>Solicitar complementação</Button>
+                        {canConclude(req, base) && <Button variant="secondary" className="sol-act-wide" onClick={() => setDialog('close')}>Concluir sem OS</Button>}
+                        <Button variant="ghost" className="sol-reject sol-act-wide" onClick={() => setDialog('reject')}>Rejeitar</Button>
                       </div>
-                      </Stack>
+                      )
                     ) : approvedPending && canTriage ? (
                       <div className="sol-actions"><Button onClick={() => goTo(`os-form.html?request=${req.id}`)}>Criar OS</Button></div>
                     ) : undefined}
@@ -445,10 +457,10 @@ function SolicitacaoScreen() {
                     <div className="card-body-tight">
                       {editable ? (
                         <Stack gap="md">
-                          <Dropdown label="Tipo de manutenção" required placeholder="Selecione" options={typeOptions} value={maintTypeId} onChange={setMaintTypeId} error={show('type')} />
+                          <Dropdown label="Tipo de manutenção" optional placeholder="Selecione" options={typeOptions} value={maintTypeId} onChange={setMaintTypeId} />
                           <DevNote note={`💡 Prioridade sugerida pela matriz criticidade × impacto (Admin RF405): criticidade ${criticality?.name ?? '-'} e impacto ${IMPACT_LABEL[req.impact]} → ${refs.priority(suggestion)?.name ?? '-'}. O valor inicial é a sugestão, editável pelo gestor.`}>
                             <Dropdown
-                              label="Prioridade" required placeholder="Selecione" options={priorityOptions} value={priorityId} onChange={setPriorityId} error={show('priority')}
+                              label="Prioridade" optional placeholder="Selecione" options={priorityOptions} value={priorityId} onChange={setPriorityId}
                               helperText={suggestion ? `Sugestão: ${refs.priority(suggestion)?.name} (criticidade ${criticality?.name}, impacto ${IMPACT_LABEL[req.impact]})` : undefined}
                             />
                           </DevNote>
@@ -457,12 +469,13 @@ function SolicitacaoScreen() {
                               <Textarea label="Motivo da alteração da prioridade" required rows={3} value={priorityReason} onChange={(e) => setPriorityReason(e.target.value)} error={show('priorityReason')} />
                             </DevNote>
                           )}
-                          <Dropdown label="Grupo responsável" required placeholder="Selecione" options={GROUPS.map((g) => ({ value: g, label: g }))} value={group} onChange={setGroup} error={show('group')} />
+                          <Dropdown label="Grupo responsável" optional placeholder="Selecione" options={GROUPS.map((g) => ({ value: g, label: g }))} value={group} onChange={setGroup} />
                           <Dropdown
-                            label="Responsável" required placeholder="Selecione" value={responsibleId} onChange={setResponsibleId} error={show('responsible')}
+                            label="Responsável" optional placeholder="Selecione" value={responsibleId} onChange={setResponsibleId}
                             options={staff.map((u) => ({ value: u.id, label: `${u.name} · ${PROFILE_LABEL[u.profile]}` }))}
                           />
                           <Textarea label="Observações internas" optional rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} helperText="Não visíveis ao solicitante" />
+                          <p className="field-note">Aprovar registra a aprovação agora e abre a criação da OS. Se você sair sem criar a OS, a solicitação continua Aprovada e a OS pode ser criada depois</p>
                         </Stack>
                       ) : (
                         <Stack gap="md">
@@ -485,6 +498,21 @@ function SolicitacaoScreen() {
                 </DevNote>
               )}
             </aside>
+            {stackedLayout && editable && (
+              <div className="sol-actionbar" role="group" aria-label="Decisão da triagem">
+                <div className="sol-actions is-compact">
+                  <Button onClick={approve}>Aprovar e criar OS</Button>
+                  <RowMenu
+                    target="decisao" label="Outras decisões" variant="secondary" size="md" trigger={{ text: 'Mais opções', icon: <IconMessageQuestion size={20} /> }}
+                    items={[
+                      { label: 'Solicitar complementação', icon: <IconMessageQuestion size={16} />, onClick: () => setDialog('complement') },
+                      ...(canConclude(req, base) ? [{ label: 'Concluir sem OS', icon: <IconCircleCheck size={16} />, onClick: () => setDialog('close') }] : []),
+                      { label: 'Rejeitar', icon: <IconBan size={16} />, danger: true, onClick: () => setDialog('reject') },
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </DevNote>
       </Stack>
