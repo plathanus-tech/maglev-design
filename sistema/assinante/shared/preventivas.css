@@ -147,3 +147,8 @@ ol.step-list > li { margin: 0; }
 .pick-head.is-clickable { cursor: pointer; }
 .pick-head-main { display: inline-flex; align-items: center; gap: var(--spacing-sm); min-width: 0; flex: 1; }
 .pick-head-check { display: inline-flex; flex-shrink: 0; cursor: default; }
+
+/* Nome do equipamento como link (abre o resumo) e foto do resumo */
+.pick-eq-link { padding: 0; background: none; border: 0; font: inherit; text-align: start; overflow-wrap: anywhere; cursor: pointer; }
+.pick-qv-photo { flex-shrink: 0; width: calc(var(--spacing-3xl) * 2); aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-control); border: var(--border-width-thin) solid var(--color-border-subtle); }
+.pick-qv-photo--icon { display: inline-flex; align-items: center; justify-content: center; background: var(--color-bg-subtle); color: var(--brand-primary); }

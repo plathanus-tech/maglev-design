@@ -12,6 +12,7 @@ import { environmentName, useSubSession } from './store';
 import { Text, useRefs } from './ui';
 import { photoSrc } from './photos';
 import { Equipment } from './data';
+import { EquipmentQuickView } from './equipamento-quick-view';
 
 /**
  * Seleção de equipamentos do plano (RF601-FLU002): vários equipamentos, agrupados por unidade, com busca e "selecionar a unidade toda".
@@ -192,6 +193,7 @@ function EquipmentPickerV2({ selected, onChange, error }: { selected: string[]; 
   const lockedUnitId = picked.size === 1 ? [...picked][0] : undefined;
   const lockedUnit = db.units.find((u) => u.id === lockedUnitId);
   // Cada unidade abre e fecha pela seta; vale o que a pessoa escolheu e, sem escolha, o padrão: fechada, exceto com busca/filtro ativos, com uma só unidade ou com equipamento já escolhido ao abrir
+  const [viewing, setViewing] = useState<Equipment | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries([...picked].map((u) => [String(u), true])));
 
   const visibleUnits = db.units.filter((u) => unitIds.includes(u.id) && u.status === 'ativo');
@@ -285,13 +287,14 @@ function EquipmentPickerV2({ selected, onChange, error }: { selected: string[]; 
               {items.map((e) => (
                 <Checkbox
                   key={e.id} checked={selected.includes(e.id)} disabled={blocked} onChange={(ev) => toggle(e.id, ev.target.checked)}
-                  label={<span className="pick-eq pick-eq--media"><EquipmentThumb equipment={e} icon={refs.category(e.categoryId)?.icon} /><span className="pick-eq-text"><span className="pick-eq-name">{e.name}</span><span className="pick-eq-env">{environmentName(db, e.environmentId)}</span></span></span>}
+                  label={<span className="pick-eq pick-eq--media"><EquipmentThumb equipment={e} icon={refs.category(e.categoryId)?.icon} /><span className="pick-eq-text"><button type="button" className="text-link pick-eq-link" aria-haspopup="dialog" onClick={() => setViewing(e)}>{e.name}</button><span className="pick-eq-env">{environmentName(db, e.environmentId)}</span></span></span>}
                 />
               ))}
             </div>
           </Stack>
         );
       })}
+      {viewing && <EquipmentQuickView equipment={viewing} onClose={() => setViewing(null)} />}
     </Stack>
   );
 }
