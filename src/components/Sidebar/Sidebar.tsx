@@ -67,6 +67,11 @@ export type SidebarProps = {
    * tema escolhido. Com o menu recolhido, mostra só os ícones. Sem `themeToggle`, o controle não é exibido.
    */
   themeToggle?: { dark: boolean; onChange: (dark: boolean) => void; labels?: { group: string; light: string; dark: string } };
+  /**
+   * Ação de destaque acima dos itens de navegação (ex.: um botão "Criar" com menu). Recebe o estado do menu para trocar para a versão só
+   * com ícone quando recolhido. Não aparece na variante `menu` (mobile).
+   */
+  topAction?: ReactNode | ((state: { open: boolean }) => ReactNode);
   /** Versão do produto, em texto pequeno no fim do menu (ex.: `v1.0.0`). */
   version?: string;
   /** Textos para i18n. */
@@ -102,6 +107,7 @@ export function Sidebar({
   user,
   onLogout,
   themeToggle,
+  topAction,
   version,
   labels = DEFAULT_LABELS,
   linkComponent,
@@ -138,6 +144,7 @@ export function Sidebar({
       </div>}
 
       <div className={styles.body}>
+        {!isMenu && topAction && <div className={styles.topAction}>{typeof topAction === 'function' ? topAction({ open }) : topAction}</div>}
         <nav className={styles.navList} aria-label={labels.nav}>
           {items.map(item => {
             const isActive = item.id === activeItem;

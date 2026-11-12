@@ -18,6 +18,8 @@ export interface PopoverProps {
   fit?: boolean;
   /** Painel com a largura do conteúdo (a do maior item) em qualquer tela, em vez da largura padrão de 352px. Para listas curtas de opções. */
   hug?: boolean;
+  /** Painel acima de barras fixas (menu lateral, cabeçalho), cujo nível é maior que o padrão dos popovers. Use quando o botão que abre está dentro de uma delas. */
+  elevated?: boolean;
   /** Ações do painel (ex.: Aplicar e Limpar): ficam fixas no rodapé enquanto só o conteúdo rola, então nunca ficam fora da tela. */
   footer?: ReactNode;
   children: ReactNode;
@@ -29,7 +31,7 @@ export interface PopoverProps {
  * (Dropdown) funcionam dentro dele: enquanto um menu está aberto, o clique não fecha o painel.
  * Para conteúdo que exige decisão ou foco preso, use `Dialog`.
  */
-export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, hug = false, footer, children }: PopoverProps) {
+export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, hug = false, elevated = false, footer, children }: PopoverProps) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<CSSProperties>();
@@ -79,7 +81,7 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
 
   if (!open) return null;
   return createPortal(
-    <div ref={panelRef} id={id} role="dialog" aria-label={label} className={[styles.panel, fit && styles.fit, hug && styles.hug].filter(Boolean).join(' ')} style={style}>
+    <div ref={panelRef} id={id} role="dialog" aria-label={label} className={[styles.panel, fit && styles.fit, hug && styles.hug].filter(Boolean).join(' ')} style={elevated ? { ...style, zIndex: 'calc(var(--z-sticky) + 1)' } : style}>
       <div className={styles.body}>{children}</div>
       {footer && <div className={styles.footer}>{footer}</div>}
     </div>,

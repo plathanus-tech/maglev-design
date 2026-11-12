@@ -6,7 +6,7 @@ import {
 } from '@tabler/icons-react';
 import { Badge, Button, Card, EmptyState, KpiCard, Stack, Table, TableColumn } from '@maglev/ds';
 import { AppLayout, PageHeader, mountApp } from './AppLayout';
-import { RowMenu, RowMenuItem } from './RowMenu';
+import { CreateMenu } from './CreateMenu';
 import { DevNote } from '../../admin/shared/dev-notes/DevNote';
 import { MobileCardList } from '../../admin/shared/MobileCardList';
 import { useIsMobile, useMediaQuery } from '../../admin/shared/useMediaQuery';
@@ -222,8 +222,11 @@ function InicioScreen() {
   // Atribuídas a mim
   const mineReq = openReqs.filter((r) => r.responsibleId === user.id);
   const mineOs = activeOrders.filter((o) => o.responsibleId === user.id || (o.executor.kind === 'interno' && o.executor.userId === user.id));
-  const novasReq = mineReq.filter((r) => refs.base(r.statusId) === 'aberto').length;
-  const novasOs = mineOs.filter((o) => refs.base(o.statusId) === 'aberto').length;
+  // Perfil Executor: novas manutenções atribuídas a ele como executor
+  const execNewIds = user.profile === 'executor' ? activeOrders.filter((o) => refs.base(o.statusId) === 'aberto' && o.executor.kind === 'interno' && o.executor.userId === user.id).map((o) => o.id) : [];
+  const novasExec = execNewIds.length;
+  // Pendentes (total do cartão): itens DISTINTOS atribuídos à pessoa que aparecem nas linhas do cartão: orçamento a aprovar, prazo vencido e, só no Executor, as novas manutenções dele (um item em dois indicadores conta uma vez)
+  const pendMine = new Set([...mineOs.filter((o) => (o.budget && !o.budget.decision) || o.dueAt < TODAY).map((o) => o.id), ...execNewIds]).size;
   const aprovOs = mineOs.filter((o) => o.budget && !o.budget.decision).length;
   const atrasoOs = mineOs.filter((o) => o.dueAt < TODAY).length;
   const mineUrl = (page: string, sub: string) => `${page}.html?filter=assigned-me&sub=${sub}`;
@@ -241,7 +244,7 @@ function InicioScreen() {
   // Prestador não compareceu: visita agendada em data passada sem registro de chegada (regra em os-alerts.ts)
   const noShowIds = new Set(attendanceAlerts({ orders: activeOrders }).filter((a) => a.kind === 'nao-compareceu').map((a) => a.order.id));
   const noShow = noShowIds.size;
-  const nothingPending = novasReq + novasOs + aprovOs + atrasoOs + pendTotal + osAtivas === 0;
+  const nothingPending = novasExec + aprovOs + atrasoOs + pendTotal + osAtivas === 0;
 
   // Tabelas recentes
   const reqRows: ReqRow[] = [...requests].sort((a, b) => b.openedAt.localeCompare(a.openedAt)).slice(0, 5).map((r) => {
@@ -337,13 +340,13 @@ function InicioScreen() {
 
   const dateText = todayText();
 
-  const mineEmpty = novasReq + novasOs + aprovOs + atrasoOs === 0;
+  const mineEmpty = novasExec + aprovOs + atrasoOs === 0;
   const solEmpty = pendAprov + pendInfo + awaitingApproval + unassignedNew === 0;
   const osEmpty = osAcao + osValid + osAtivas === 0;
 
   // Requer ação: itens DISTINTOS que esperam uma decisão (sem contar duas vezes o que aparece em mais de um cartão); "aguardando informação" depende do solicitante e fica de fora
-  const pendingReqIds = new Set([...mineReq.filter((x) => refs.base(x.statusId) === 'aberto'), ...openReqs.filter((x) => x.statusId === 'STS-04' || x.statusId === 'STS-02' || (x.statusId === 'STS-01' && !x.responsibleId && can('solicitacoes', 'triar')))].map((x) => x.id));
-  const pendingOsIds = new Set([...mineOs.filter((o) => refs.base(o.statusId) === 'aberto' || (o.budget && !o.budget.decision) || o.dueAt < TODAY), ...activeOrders.filter((o) => ['STO-04', 'STO-05', 'STO-07'].includes(o.statusId)), ...activeOrders.filter((o) => noShowIds.has(o.id))].map((o) => o.id));
+  const pendingReqIds = new Set([...openReqs.filter((x) => x.statusId === 'STS-04' || x.statusId === 'STS-02' || (x.statusId === 'STS-01' && !x.responsibleId && can('solicitacoes', 'triar')))].map((x) => x.id));
+  const pendingOsIds = new Set([...mineOs.filter((o) => (o.budget && !o.budget.decision) || o.dueAt < TODAY), ...activeOrders.filter((o) => execNewIds.includes(o.id)), ...activeOrders.filter((o) => ['STO-04', 'STO-05', 'STO-07'].includes(o.statusId)), ...activeOrders.filter((o) => noShowIds.has(o.id))].map((o) => o.id));
   const pendingTotal = pendingReqIds.size + pendingOsIds.size;
   // Selo de notificação em cada INDICADOR que pede ação (não no cartão): some no primeiro clique no indicador e fica lembrado na sessão; volta se o número crescer
   const [seen, setSeen] = useState<Record<string, number>>(readSeen);
@@ -365,19 +368,8 @@ function InicioScreen() {
     },
   });
 
-  // Atalho global de criação: só as ações que o perfil pode cadastrar
-  // Solicitante não usa o atalho: já tem o próprio fluxo de solicitação (Nova solicitação na lista e no menu)
-  const createItems: RowMenuItem[] = user.profile === 'solicitante' ? [] : [
-    ...(can('solicitacoes', 'cadastrar') ? [{ label: 'Nova solicitação', icon: <IconMessageReport size={16} />, onClick: () => goTo('solicitacao-form.html') }] : []),
-    ...(can('equipamentos', 'cadastrar') ? [{ label: 'Novo equipamento', icon: <IconMicrowave size={16} />, onClick: () => goTo('equipamento-form.html') }] : []),
-    ...(can('planos', 'cadastrar') ? [{ label: 'Novo plano de manutenção', icon: <IconCalendarRepeat size={16} />, onClick: () => goTo('plano-form.html') }] : []),
-    ...(can('prestadores', 'cadastrar') ? [{ label: 'Novo prestador', icon: <IconTruck size={16} />, onClick: () => goTo('prestador-form.html') }] : []),
-  ];
-  const createMenu = createItems.length > 0 && (
-    <DevNote note="Atalho global de criação (Início): menu “Criar” com Nova solicitação, Novo equipamento, Novo plano de manutenção e Novo prestador, cada um só para quem tem a permissão “Cadastrar” do módulo (sem nenhuma, o botão não aparece). Perfil Solicitante não vê o atalho: já tem o fluxo próprio de solicitação. Abre o mesmo cadastro de cada módulo. No mobile vira só o “+”, alinhado ao título.">
-      <RowMenu target="cadastros" label="Criar" items={createItems} trigger={{ text: 'Criar', icon: <IconPlus size={20} />, iconOnly: isMobile }} />
-    </DevNote>
-  );
+  // Atalho global de criação: no desktop fica no menu lateral (acima de Início); no mobile (sem menu lateral fixo) segue o "+" ao lado do título
+  const createMenu = isMobile ? <CreateMenu iconOnly note="Atalho global de criação (mobile): o “+” ao lado do título abre o menu Criar (Nova solicitação, Novo equipamento, Novo plano de manutenção e Novo prestador, cada um só com a permissão “Cadastrar” do módulo). No desktop o botão Criar fica no menu lateral, acima de Início." /> : undefined;
   const reqSectionId = 'inicio-req';
   const osSectionId = 'inicio-os';
 
@@ -403,7 +395,7 @@ function InicioScreen() {
       )}
       <Stack gap="xl">
         <DevNote note="RF101-FLU001/FLU002: tela inicial após o login; blocos conforme o perfil e as unidades (RGN002/CTA003). Saudação com a data de hoje e Bom dia/Boa tarde/Boa noite (relógio real). RGN016: o rótulo do menu é “Início”. Fora do escopo: SLA (FE001/RGN008), estágio de implantação (RGN010) e tutorial guiado (FE015/RGN011). Sem filtro de período.">
-          <PageHeader title={`${greeting()}, ${firstName(user.name)}`} subtitle={dateText} {...{ [isMobile ? 'iconActions' : 'actions']: createMenu }} />
+          <PageHeader title={`${greeting()}, ${firstName(user.name)}`} subtitle={dateText} iconActions={createMenu} />
         </DevNote>
 
         {pendingTotal > 0 && (
@@ -430,14 +422,19 @@ function InicioScreen() {
             ) : <h2 className="page-label ag-label-top">Requer ação</h2>}
             <div className={`ag-cards${mobileNew ? ' is-compact-grid' : ''}`}>
               <>
-                  <DevNote note="Estrutura simples: título e ícone (como no KpiCard) · subtítulo · indicador principal · divisor · secundários · ação. RGN001/RGN009: a cor do número principal segue a criticidade (CTA004: vermelho = crítico, amarelo = atenção) e some com 0. CTA001/CTA002: cada número leva à listagem já filtrada e bate com ela (filtros por URL; “sub” refina assigned-me / pending). Atribuídas a mim: principal = Novas; secundários = Necessitam de aprovação (RF503-RGN008) e Em atraso (RGN013, prazo da OS ultrapassado, sem SLA/FE001).">
-                    <Card className={`ag-card ag-accent ${mineEmpty ? 'ag-accent--neutral' : 'ag-accent--warning'}${mobileNew ? ' is-compact' : ''}`} title={titled('Atribuídas a mim', [['mine-new', novasReq + novasOs], ['mine-approval', aprovOs], ['mine-overdue', atrasoOs]])} actions={<KpiIcon>{mineEmpty ? <IconUserOff size={20} /> : <IconUser size={20} />}</KpiIcon>} headingLevel={3}>
+                  <DevNote note="Estrutura simples: título e ícone (como no KpiCard) · subtítulo · indicador principal · divisor · secundários · ação. RGN001/RGN009: a cor do número principal segue a criticidade (CTA004: vermelho = crítico, amarelo = atenção) e some com 0. CTA001/CTA002: cada número leva à listagem já filtrada e bate com ela (filtros por URL; “sub” refina assigned-me / pending). Atribuídas a mim (tudo no cartão é só do que está atribuído à pessoa): principal = Pendentes (TOTAL de itens distintos atribuídos a ela que aparecem nas linhas: orçamento a aprovar, prazo vencido e, só no Executor, as novas manutenções dele; não é clicável e usa tom neutro, porque é um total e não leva a uma lista única; um item em dois indicadores conta uma vez); detalhe, todos clicáveis = Orçamentos para aprovar (OS com orçamento do prestador ainda sem decisão, RF503-RGN008) e OS com prazo vencido (prazo da OS ultrapassado e ainda aberta, RGN013, sem SLA/FE001). Perfil Executor ganha a linha “Novas manutenções atribuídas a mim”.">
+                    <Card className={`ag-card ag-accent ${mineEmpty ? 'ag-accent--neutral' : 'ag-accent--warning'}${mobileNew ? ' is-compact' : ''}`} title={titled('Atribuídas a mim', [['mine-exec-new', novasExec], ['mine-approval', aprovOs], ['mine-overdue', atrasoOs]])} actions={<KpiIcon>{mineEmpty ? <IconUserOff size={20} /> : <IconUser size={20} />}</KpiIcon>} headingLevel={3}>
                       <div className="ag-items">
-                        <ActionItem hero {...notify('mine-new', novasReq + novasOs)} tone="warning" value={novasReq + novasOs} label="Novas" links={[...linksOf('solicitacoes', 'new', novasReq, novasReq === 1 ? 'solicitação' : 'solicitações'), ...linksOf('ordens-servico', 'new', novasOs, 'OS')]} />
+                        <ActionItem hero tone="neutral" value={pendMine} label="Pendentes" links={[]} />
                         <hr className="ag-divider" />
                         <div className="ag-secondary">
-                          <ActionItem {...notify('mine-approval', aprovOs)} tone="warning" value={aprovOs} label="Necessitam de aprovação" links={linksOf('ordens-servico', 'approval', aprovOs, 'OS')} />
-                          <ActionItem {...notify('mine-overdue', atrasoOs)} tone="critical" value={atrasoOs} label="Em atraso" links={linksOf('ordens-servico', 'overdue', atrasoOs, 'OS')} />
+                          {user.profile === 'executor' && (
+                            <DevNote note="Perfil Executor: linha extra com as novas manutenções (OS ainda não iniciadas) atribuídas a ele como executor, com o texto completo (só as OS em que ele é o executor, enquanto “Novas” também inclui as que ele responde). Leva à lista de OS atribuídas a ele, só as novas.">
+                              <ActionItem {...notify('mine-exec-new', novasExec)} tone="warning" value={novasExec} label="Novas manutenções atribuídas a mim" links={[{ label: 'Novas manutenções atribuídas a mim', href: mineUrl('ordens-servico', 'new') }]} />
+                            </DevNote>
+                          )}
+                          <ActionItem {...notify('mine-approval', aprovOs)} tone="warning" value={aprovOs} label="Orçamentos para aprovar" links={linksOf('ordens-servico', 'approval', aprovOs, 'OS')} />
+                          <ActionItem {...notify('mine-overdue', atrasoOs)} tone="critical" value={atrasoOs} label="OS com prazo vencido" links={linksOf('ordens-servico', 'overdue', atrasoOs, 'OS')} />
                         </div>
                       </div>
                     </Card>

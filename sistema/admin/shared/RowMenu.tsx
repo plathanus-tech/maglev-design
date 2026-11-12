@@ -1,5 +1,5 @@
 import { Fragment, KeyboardEvent, ReactNode, useRef, useState } from 'react';
-import { IconChevronDown, IconDotsVertical } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronUp, IconDotsVertical } from '@tabler/icons-react';
 import { Button, Popover, Tooltip } from '@maglev/ds';
 import './rowmenu.css';
 
@@ -18,14 +18,20 @@ export interface RowMenuItem {
  * Padrão de todas as listas: Visualizar (olho) fica à vista e o resto vai aqui, com as ações destrutivas (Excluir…) por último, separadas por uma linha. Sem itens, não renderiza. Fecha ao escolher, com Esc ou clique fora (o Popover devolve o foco ao botão);
  * setas, Home e End navegam entre os itens.
  */
-export function RowMenu({ target, items, defaultOpen = false, label, variant = 'ghost', size = 'sm', trigger }: {
+export function RowMenu({ target, items, defaultOpen = false, label, variant = 'ghost', size = 'sm', trigger, align, elevated, compact }: {
   target: string; items: RowMenuItem[]; defaultOpen?: boolean;
   /** Botão de página (ex.: cabeçalho do detalhe): `secondary` + `md`, ao lado da ação principal. */
   variant?: 'ghost' | 'secondary'; size?: 'sm' | 'md';
   /** Nome acessível fixo do botão (ex.: "Ações do equipamento"); sem ele usa "Mais ações de {target}". */
   label?: string;
   /** Botão com texto (ex.: "Criar", ação global de criação) no lugar do ⋮: abre o mesmo menu. */
-  trigger?: { text: string; icon: ReactNode; /** Só o ícone (ex.: "+" no mobile); o texto vira o nome acessível. */ iconOnly?: boolean };
+  /** Lado em que o menu se alinha ao botão (padrão: pela direita; `start` para botões à esquerda da tela, como no menu lateral). */
+  align?: 'start' | 'end';
+  /** O botão fica dentro de uma barra fixa (ex.: menu lateral): o menu abre acima dela. */
+  elevated?: boolean;
+  /** Menu mais compacto (padding e espaçamento menores e sombra mais leve): para menus de ação global, como o Criar do menu lateral. */
+  compact?: boolean;
+  trigger?: { text: string; /** Tamanho do botão (padrão `md`). */ size?: 'sm' | 'md'; icon: ReactNode; /** Só o ícone (ex.: "+" no mobile); o texto vira o nome acessível. */ iconOnly?: boolean };
 }) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(defaultOpen);
@@ -45,7 +51,7 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
       <div ref={anchor}>
         {trigger ? (
           <Button
-            iconOnly={trigger.iconOnly} iconLeft={trigger.icon} iconRight={trigger.iconOnly ? undefined : <IconChevronDown size={16} />} aria-label={trigger.iconOnly ? (label ?? trigger.text) : label} aria-haspopup="menu" aria-expanded={open}
+            size={trigger.size} iconOnly={trigger.iconOnly} iconLeft={trigger.icon} iconRight={trigger.iconOnly ? undefined : open ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />} aria-label={trigger.iconOnly ? (label ?? trigger.text) : label} aria-haspopup="menu" aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
           >
             {trigger.iconOnly ? undefined : trigger.text}
@@ -60,8 +66,8 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
         </Tooltip>
         )}
       </div>
-      <Popover hug open={open} onClose={() => setOpen(false)} anchorRef={anchor} label={label ?? `Ações de ${target}`}>
-        <div className="row-menu" role="menu" aria-label={label ?? `Ações de ${target}`} onKeyDown={onKeyDown}>
+      <Popover hug align={align} elevated={elevated} open={open} onClose={() => setOpen(false)} anchorRef={anchor} label={label ?? `Ações de ${target}`}>
+        <div className={`row-menu${compact ? ' is-compact' : ''}`} role="menu" aria-label={label ?? `Ações de ${target}`} onKeyDown={onKeyDown}>
           {items.map((it, i) => (
             <Fragment key={it.label}>
             {it.danger && i > 0 && !items[i - 1].danger && <div className="row-menu-sep" role="separator" />}

@@ -10,3 +10,7 @@
 .row-menu-btn { position: relative; }
 .row-menu-btn::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2.75rem; height: 2.75rem; transform: translate(-50%, -50%); }
 .row-menu-btn[aria-expanded="true"] { background: var(--color-bg-subtle); color: var(--color-text-primary); }
+
+/* Menu compacto (Criar no menu lateral): sombra mais leve (o painel não pode parecer um segundo menu lateral), menos padding e sem vão entre as opções; cada opção mantém a altura do botão small (36px) como área de toque */
+.row-menu.is-compact { gap: 0; }
+[class*="_panel_"]:has(.row-menu.is-compact) { padding: var(--spacing-2xs); box-shadow: var(--shadow-md); }

@@ -289,3 +289,6 @@
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);
 }
+
+/* Ação de destaque acima dos itens (ex.: Criar): ocupa a largura do menu, aberto ou recolhido */
+.topAction { flex-shrink: 0; display: flex; flex-direction: column; }

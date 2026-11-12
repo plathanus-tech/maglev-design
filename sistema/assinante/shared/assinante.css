@@ -239,3 +239,7 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 .pick-eq--media .pick-eq-env { color: var(--color-text-tertiary); }
 /* Busca e Filtros da seleção de equipamentos: 16px entre os campos quando empilham (sem o respiro extra da barra da tabela) */
 .pick-toolbar .toolbar-row > * { padding-block: 0; }
+
+/* Criar no topo do menu lateral: o botão ocupa a largura do menu (aberto) ou só o "+" (recolhido) */
+.app-sidebar-create > .dev-anchor, .app-sidebar-create > .dev-anchor > div, .app-sidebar-create > .dev-anchor > div > button { width: 100%; }
+.app-sidebar-create { padding-bottom: var(--spacing-xs); }
