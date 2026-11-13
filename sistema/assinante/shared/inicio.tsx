@@ -369,7 +369,7 @@ function InicioScreen() {
   });
 
   // Atalho global de criação: no desktop fica no menu lateral (acima de Início); no mobile (sem menu lateral fixo) segue o "+" ao lado do título
-  const createMenu = isMobile ? <CreateMenu iconOnly note="Atalho global de criação (mobile): o “+” ao lado do título abre o menu Cadastrar (Nova solicitação, Novo equipamento, Novo plano de manutenção e Novo prestador, cada um só com a permissão “Cadastrar” do módulo). No desktop o botão Cadastrar fica no menu lateral, acima de Início." /> : undefined;
+  const createMenu = isMobile ? <CreateMenu iconOnly note="Atalho global de criação (mobile): o “+” ao lado do título abre o menu Criar (Nova solicitação, Novo equipamento, Novo plano de manutenção e Novo prestador, cada um só com a permissão “Cadastrar” do módulo). No desktop o botão Criar fica no menu lateral, acima de Início." /> : undefined;
   const reqSectionId = 'inicio-req';
   const osSectionId = 'inicio-os';
 

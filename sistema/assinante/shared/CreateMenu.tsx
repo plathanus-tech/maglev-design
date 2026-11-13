@@ -23,6 +23,6 @@ export function useCreateItems(): RowMenuItem[] {
 export function CreateMenu({ iconOnly, align, elevated, size, compact, placement, note }: { iconOnly?: boolean; align?: 'start' | 'end'; elevated?: boolean; size?: 'sm' | 'md'; compact?: boolean; placement?: 'bottom' | 'right'; note?: string }) {
   const items = useCreateItems();
   if (items.length === 0) return null;
-  const button = <RowMenu target="cadastros" label="Cadastrar" items={items} align={align} elevated={elevated} compact={compact} placement={placement} trigger={{ text: 'Cadastrar', icon: <IconPlus size={size === 'sm' ? 16 : 20} />, iconOnly, size, chevron: placement !== 'right' }} />;
+  const button = <RowMenu target="cadastros" label="Criar" items={items} align={align} elevated={elevated} compact={compact} placement={placement} trigger={{ text: 'Criar', icon: <IconPlus size={size === 'sm' ? 16 : 20} />, iconOnly, size, chevron: placement !== 'right' }} />;
   return note ? <DevNote note={note}>{button}</DevNote> : button;
 }
