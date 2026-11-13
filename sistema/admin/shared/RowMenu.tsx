@@ -69,7 +69,7 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
         )}
       </div>
       <Popover hug align={align} elevated={elevated} placement={placement} open={open} onClose={() => setOpen(false)} anchorRef={anchor} label={label ?? `Ações de ${target}`}>
-        <div className={`row-menu${compact ? ' is-compact' : ''}`} role="menu" aria-label={label ?? `Ações de ${target}`} onKeyDown={onKeyDown}>
+        <div className={`row-menu${compact ? ' is-compact' : ''}${placement === 'right' ? ' has-tail' : ''}`} role="menu" aria-label={label ?? `Ações de ${target}`} onKeyDown={onKeyDown}>
           {items.map((it, i) => (
             <Fragment key={it.label}>
             {it.danger && i > 0 && !items[i - 1].danger && <div className="row-menu-sep" role="separator" />}

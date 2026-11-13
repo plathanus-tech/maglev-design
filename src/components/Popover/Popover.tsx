@@ -48,7 +48,8 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
       const edge = 8;
       if (placement === 'right') {
         // Ao lado do botão: borda esquerda do painel 8px depois da borda direita do botão, topo alinhado ao do botão (sobe só o necessário para não sair da tela)
-        const top = Math.min(r.top, Math.max(edge, window.innerHeight - edge - MIN_ROOM));
+        // O painel sobe 12px (raio do canto = 24px): assim a calda que aponta para o botão fica no trecho reto da borda, fora da curva
+        const top = Math.min(r.top - 12, Math.max(edge, window.innerHeight - edge - MIN_ROOM));
         setStyle({ top, maxHeight: window.innerHeight - edge - top, left: r.right + 8 });
         return;
       }

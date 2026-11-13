@@ -14,3 +14,13 @@
 /* Menu compacto (Criar no menu lateral): sombra mais leve (o painel não pode parecer um segundo menu lateral), menos padding e sem vão entre as opções; cada opção mantém a altura do botão small (36px) como área de toque */
 .row-menu.is-compact { gap: 0; }
 [class*="_panel_"]:has(.row-menu.is-compact) { padding: var(--spacing-2xs); box-shadow: var(--shadow-md); }
+
+/* Calda do popover que abre AO LADO do botão (Cadastrar no menu lateral): um pequeno triângulo na borda esquerda do painel, apontando para o botão, com o mesmo fundo e a mesma borda do painel
+   (parece parte do mesmo componente). Quadrado de 8px girado 45°, só com as bordas esquerda e de baixo (a ponta); o centro fica na altura do centro do botão pequeno (36px). */
+[class*="_panel_"]:has(.row-menu.has-tail)::before {
+  content: ""; position: absolute; z-index: 0; inset-inline-start: calc(var(--spacing-xs) * -1); inset-block-start: calc(var(--spacing-lg) + var(--spacing-2xs));
+  width: var(--spacing-sm); height: var(--spacing-sm); box-sizing: border-box;
+  background: var(--color-bg-raised); border-inline-start: var(--border-width-thin) solid var(--color-border-subtle); border-block-end: var(--border-width-thin) solid var(--color-border-subtle);
+  transform: rotate(45deg); pointer-events: none;
+}
+[class*="_panel_"]:has(.row-menu.has-tail) > [class*="_body_"] { position: relative; z-index: 1; }
