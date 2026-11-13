@@ -174,7 +174,7 @@ function AppLayoutInner({ active, screen, children, layout = 'default' }: { acti
       logo={{ full: <a className="logo-link" href="inicio.html" aria-label="Ir para o início"><img src={logoFull} alt="" /></a>, icon: <a className="logo-link" href="inicio.html" aria-label="Ir para o início"><img src={logoIcon} alt="" /></a> }}
       version={`v${APP_VERSION}`}
       topAction={variant === 'rail' ? ({ open: railOpen }) => (
-        <div className="app-sidebar-create">
+        <div className={`app-sidebar-create${railOpen ? "" : " is-collapsed"}`}>
           <CreateMenu iconOnly={!railOpen} align="start" elevated size="sm" compact placement="right" note="Atalho global de criação (menu lateral, acima de Início): botão “Criar” com Nova solicitação, Novo equipamento, Novo plano de manutenção e Novo prestador, cada um só para quem tem a permissão “Cadastrar” do módulo (sem nenhuma, o botão não aparece; o Solicitante não vê, pois já tem o fluxo próprio de solicitação). Com o menu recolhido vira só o “+”. Está em todas as telas da área logada do assinante; no mobile segue o “+” do Início e a barra inferior." />
         </div>
       ) : undefined}

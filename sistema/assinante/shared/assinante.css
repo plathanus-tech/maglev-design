@@ -241,5 +241,7 @@ tr:has(.notif-unread) > td { background: var(--color-bg-subtle); }
 .pick-toolbar .toolbar-row > * { padding-block: 0; }
 
 /* Criar no topo do menu lateral: o botão ocupa a largura do menu (aberto) ou só o "+" (recolhido) */
-.app-sidebar-create > .dev-anchor, .app-sidebar-create > .dev-anchor > div, .app-sidebar-create > .dev-anchor > div > button { width: 100%; }
+.app-sidebar-create:not(.is-collapsed) > .dev-anchor, .app-sidebar-create:not(.is-collapsed) > .dev-anchor > div, .app-sidebar-create:not(.is-collapsed) > .dev-anchor > div > button { width: 100%; }
+/* Recolhido: o botão só com "+" é quadrado (largura = altura, o iconOnly small do DS), não a largura do menu */
+.app-sidebar-create.is-collapsed { display: flex; justify-content: center; }
 .app-sidebar-create { padding-bottom: var(--spacing-xs); }
