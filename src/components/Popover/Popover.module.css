@@ -12,7 +12,7 @@
   /* a altura máxima vem do espaço visível (inline); só o corpo rola e o rodapé de ações fica fixo */
   display: flex; flex-direction: column;
 }
-.body { min-height: 0; overflow-y: auto; margin-inline: calc(var(--spacing-xs) * -1); padding-inline: var(--spacing-xs); }
+.body { min-height: 0; overflow-y: auto; margin-inline: calc(var(--spacing-xs) * -1); padding-inline: var(--spacing-xs); margin-block: calc(var(--spacing-xs) * -1); padding-block: var(--spacing-xs); }   /* folga em volta do conteúdo (compensada pela margem negativa): foco, sombra e 1-3px de sobra dos campos não criam uma barra de rolagem à toa */
 .footer { flex-shrink: 0; display: flex; justify-content: flex-end; gap: var(--spacing-sm); padding-top: var(--spacing-md); }
 
 /* Menu de ações (lista curta de itens): no mobile o painel se ajusta ao conteúdo em vez de ocupar 352px, sempre dentro da margem da tela */

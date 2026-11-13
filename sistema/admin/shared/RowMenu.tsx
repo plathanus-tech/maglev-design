@@ -18,7 +18,7 @@ export interface RowMenuItem {
  * Padrão de todas as listas: Visualizar (olho) fica à vista e o resto vai aqui, com as ações destrutivas (Excluir…) por último, separadas por uma linha. Sem itens, não renderiza. Fecha ao escolher, com Esc ou clique fora (o Popover devolve o foco ao botão);
  * setas, Home e End navegam entre os itens.
  */
-export function RowMenu({ target, items, defaultOpen = false, label, variant = 'ghost', size = 'sm', trigger, align, elevated, compact }: {
+export function RowMenu({ target, items, defaultOpen = false, label, variant = 'ghost', size = 'sm', trigger, align, elevated, compact, placement }: {
   target: string; items: RowMenuItem[]; defaultOpen?: boolean;
   /** Botão de página (ex.: cabeçalho do detalhe): `secondary` + `md`, ao lado da ação principal. */
   variant?: 'ghost' | 'secondary'; size?: 'sm' | 'md';
@@ -29,9 +29,11 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
   align?: 'start' | 'end';
   /** O botão fica dentro de uma barra fixa (ex.: menu lateral): o menu abre acima dela. */
   elevated?: boolean;
+  /** Menu ao lado do botão (`right`), em vez de abaixo: para botões no menu lateral. */
+  placement?: 'bottom' | 'right';
   /** Menu mais compacto (padding e espaçamento menores e sombra mais leve): para menus de ação global, como o Criar do menu lateral. */
   compact?: boolean;
-  trigger?: { text: string; /** Tamanho do botão (padrão `md`). */ size?: 'sm' | 'md'; icon: ReactNode; /** Só o ícone (ex.: "+" no mobile); o texto vira o nome acessível. */ iconOnly?: boolean };
+  trigger?: { text: string; /** Tamanho do botão (padrão `md`). */ size?: 'sm' | 'md'; /** Seta ao lado do texto (padrão: sim; some quando o menu abre ao lado do botão, onde a seta não faz sentido). */ chevron?: boolean; icon: ReactNode; /** Só o ícone (ex.: "+" no mobile); o texto vira o nome acessível. */ iconOnly?: boolean };
 }) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(defaultOpen);
@@ -51,7 +53,7 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
       <div ref={anchor}>
         {trigger ? (
           <Button
-            size={trigger.size} iconOnly={trigger.iconOnly} iconLeft={trigger.icon} iconRight={trigger.iconOnly ? undefined : open ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />} aria-label={trigger.iconOnly ? (label ?? trigger.text) : label} aria-haspopup="menu" aria-expanded={open}
+            size={trigger.size} iconOnly={trigger.iconOnly} iconLeft={trigger.icon} iconRight={trigger.iconOnly || trigger.chevron === false ? undefined : open ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />} aria-label={trigger.iconOnly ? (label ?? trigger.text) : label} aria-haspopup="menu" aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
           >
             {trigger.iconOnly ? undefined : trigger.text}
@@ -66,7 +68,7 @@ export function RowMenu({ target, items, defaultOpen = false, label, variant = '
         </Tooltip>
         )}
       </div>
-      <Popover hug align={align} elevated={elevated} open={open} onClose={() => setOpen(false)} anchorRef={anchor} label={label ?? `Ações de ${target}`}>
+      <Popover hug align={align} elevated={elevated} placement={placement} open={open} onClose={() => setOpen(false)} anchorRef={anchor} label={label ?? `Ações de ${target}`}>
         <div className={`row-menu${compact ? ' is-compact' : ''}`} role="menu" aria-label={label ?? `Ações de ${target}`} onKeyDown={onKeyDown}>
           {items.map((it, i) => (
             <Fragment key={it.label}>

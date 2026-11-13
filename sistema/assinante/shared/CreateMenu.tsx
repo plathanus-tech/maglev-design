@@ -5,7 +5,7 @@ import { useSubSession } from './store';
 import { goTo } from './ui';
 
 /**
- * Atalho global de criação ("Criar"): só as ações que o perfil pode cadastrar (permissão "Cadastrar" do módulo). O Solicitante não usa o atalho
+ * Atalho global de criação ("Cadastrar"): só as ações que o perfil pode cadastrar (permissão "Cadastrar" do módulo). O Solicitante não usa o atalho
  * (já tem o fluxo próprio de solicitação). Sem nenhuma ação, o botão não aparece.
  */
 export function useCreateItems(): RowMenuItem[] {
@@ -19,10 +19,10 @@ export function useCreateItems(): RowMenuItem[] {
   ];
 }
 
-/** Botão "Criar" com o menu de criação. `iconOnly`: só o "+" (menu lateral recolhido, mobile); `align`: lado em que o menu se alinha ao botão. */
-export function CreateMenu({ iconOnly, align, elevated, size, compact, note }: { iconOnly?: boolean; align?: 'start' | 'end'; elevated?: boolean; size?: 'sm' | 'md'; compact?: boolean; note?: string }) {
+/** Botão "Cadastrar" com o menu de criação. `iconOnly`: só o "+" (menu lateral recolhido, mobile); `align`: lado em que o menu se alinha ao botão. */
+export function CreateMenu({ iconOnly, align, elevated, size, compact, placement, note }: { iconOnly?: boolean; align?: 'start' | 'end'; elevated?: boolean; size?: 'sm' | 'md'; compact?: boolean; placement?: 'bottom' | 'right'; note?: string }) {
   const items = useCreateItems();
   if (items.length === 0) return null;
-  const button = <RowMenu target="cadastros" label="Criar" items={items} align={align} elevated={elevated} compact={compact} trigger={{ text: 'Criar', icon: <IconPlus size={size === 'sm' ? 16 : 20} />, iconOnly, size }} />;
+  const button = <RowMenu target="cadastros" label="Cadastrar" items={items} align={align} elevated={elevated} compact={compact} placement={placement} trigger={{ text: 'Cadastrar', icon: <IconPlus size={size === 'sm' ? 16 : 20} />, iconOnly, size, chevron: placement !== 'right' }} />;
   return note ? <DevNote note={note}>{button}</DevNote> : button;
 }

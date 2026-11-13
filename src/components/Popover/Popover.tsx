@@ -20,6 +20,8 @@ export interface PopoverProps {
   hug?: boolean;
   /** Painel acima de barras fixas (menu lateral, cabeçalho), cujo nível é maior que o padrão dos popovers. Use quando o botão que abre está dentro de uma delas. */
   elevated?: boolean;
+  /** `right`: o painel abre AO LADO do botão (à direita dele, alinhado ao topo), para botões em barras laterais. Padrão `bottom`: abaixo do botão. */
+  placement?: 'bottom' | 'right';
   /** Ações do painel (ex.: Aplicar e Limpar): ficam fixas no rodapé enquanto só o conteúdo rola, então nunca ficam fora da tela. */
   footer?: ReactNode;
   children: ReactNode;
@@ -31,7 +33,7 @@ export interface PopoverProps {
  * (Dropdown) funcionam dentro dele: enquanto um menu está aberto, o clique não fecha o painel.
  * Para conteúdo que exige decisão ou foco preso, use `Dialog`.
  */
-export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, hug = false, elevated = false, footer, children }: PopoverProps) {
+export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = false, hug = false, elevated = false, placement = 'bottom', footer, children }: PopoverProps) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<CSSProperties>();
@@ -44,6 +46,12 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
       const r = anchorRef.current?.getBoundingClientRect();
       if (!r) return;
       const edge = 8;
+      if (placement === 'right') {
+        // Ao lado do botão: borda esquerda do painel 8px depois da borda direita do botão, topo alinhado ao do botão (sobe só o necessário para não sair da tela)
+        const top = Math.min(r.top, Math.max(edge, window.innerHeight - edge - MIN_ROOM));
+        setStyle({ top, maxHeight: window.innerHeight - edge - top, left: r.right + 8 });
+        return;
+      }
       const below = window.innerHeight - r.bottom - 4 - edge;
       // Com pouco espaço embaixo (ex.: tabela curta, página sem rolagem) o painel sobe o suficiente para ter ao menos MIN_ROOM de altura,
       // sobrepondo o botão se for preciso, sem nunca sair da área visível; o conteúdo rola e o rodapé de ações fica fixo
@@ -57,7 +65,7 @@ export function Popover({ open, onClose, anchorRef, label, align = 'end', fit = 
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
     return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
-  }, [open, align, anchorRef]);
+  }, [open, align, placement, anchorRef]);
 
   useEffect(() => {
     if (!open) return;
